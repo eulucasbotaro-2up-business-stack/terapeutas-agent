@@ -1,0 +1,32 @@
+# render.yaml — Render Blueprint para Evolution API v2
+# Docs: https://docs.render.com/blueprint-spec
+#
+# Como usar:
+# 1. Crie um repo no GitHub com os arquivos desta pasta
+# 2. No Render.com, clique "New > Blueprint"
+# 3. Conecte o repo
+# 4. Configure as variaveis de ambiente no painel
+
+services:
+  - type: web
+    name: evolution-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    # IMPORTANTE: Render free tier suspende apos 15min de inatividade
+    # Para producao, usar plan: starter ($7/mes)
+    plan: free
+    region: oregon
+    # Health check — Evolution API responde na raiz
+    healthCheckPath: /
+    envVars:
+      # API Key para autenticar requisicoes a Evolution API
+      - key: AUTHENTICATION_API_KEY
+        sync: false
+      # URL publica do servico (o Render preenche automaticamente)
+      - key: SERVER_URL
+        sync: false
+      # Porta (Render injeta a variavel PORT automaticamente)
+      - key: PORT
+        value: 8080
+      - key: SERVER_PORT
+        value: 8080
