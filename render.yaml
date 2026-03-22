@@ -1,0 +1,38 @@
+# render.yaml — Render Blueprint (Infrastructure as Code)
+# Define o servico FastAPI no Render.com
+# Docs: https://docs.render.com/blueprint-spec
+
+services:
+  - type: web
+    name: terapeutas-agent-api
+    runtime: docker
+    # Usa o Dockerfile existente na raiz do projeto
+    dockerfilePath: ./Dockerfile
+    # Free tier do Render
+    plan: free
+    # Regiao mais proxima do Brasil
+    region: oregon
+    # Health check na rota raiz
+    healthCheckPath: /
+    # Variaveis de ambiente (configurar no painel do Render)
+    envVars:
+      - key: PORT
+        value: 8000
+      - key: ANTHROPIC_API_KEY
+        sync: false  # sync: false = precisa preencher manualmente no painel
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: EVOLUTION_API_URL
+        sync: false
+      - key: EVOLUTION_API_KEY
+        sync: false
+      - key: ASAAS_API_KEY
+        sync: false
+      - key: SECRET_KEY
+        sync: false
+      - key: DATABASE_URL
+        sync: false

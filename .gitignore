@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+.env
+*.ogg
+*.mp3
+venv/
+.venv/
+transcricoes.txt
+materiais/
