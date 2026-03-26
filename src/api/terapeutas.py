@@ -11,6 +11,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from src.core.supabase_client import get_supabase
+from src.core.niveis import MODULOS, obter_nome_modulo
 from src.models.schemas import TerapeutaCreate, TerapeutaResponse
 from src.rag.aprendizado import (
     registrar_feedback,
@@ -277,6 +278,83 @@ async def desativar_terapeuta(terapeuta_id: UUID):
         "status": "desativado",
         "terapeuta_id": str(terapeuta_id),
         "mensagem": "Terapeuta desativado com sucesso",
+    }
+
+
+# =============================================
+# ATUALIZAR NIVEL DE ACESSO
+# =============================================
+
+class NivelAcessoUpdate(BaseModel):
+    """Dados para atualizar o nivel de acesso de um terapeuta."""
+    nivel: int = Field(..., ge=1, le=6, description="Nivel de acesso (1-6)")
+
+
+@router.put(
+    "/{terapeuta_id}/nivel",
+    summary="Atualizar nivel de acesso do terapeuta",
+)
+async def atualizar_nivel_acesso(terapeuta_id: UUID, dados: NivelAcessoUpdate):
+    """
+    Atualiza o nivel de acesso de um terapeuta nos modulos da Escola de Alquimia.
+    Niveis de 1 (Fundamentos) a 6 (Protocolos e Aplicacao).
+    """
+    supabase = get_supabase()
+
+    # Verificar se o terapeuta existe e esta ativo
+    existente = (
+        supabase.table("terapeutas")
+        .select("id, nivel_acesso")
+        .eq("id", str(terapeuta_id))
+        .eq("ativo", True)
+        .limit(1)
+        .execute()
+    )
+
+    if not existente.data or len(existente.data) == 0:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Terapeuta {terapeuta_id} nao encontrado",
+        )
+
+    nivel_anterior = existente.data[0].get("nivel_acesso", 1) or 1
+
+    try:
+        resultado = (
+            supabase.table("terapeutas")
+            .update({
+                "nivel_acesso": dados.nivel,
+                "atualizado_em": datetime.now(timezone.utc).isoformat(),
+            })
+            .eq("id", str(terapeuta_id))
+            .execute()
+        )
+    except Exception as e:
+        logger.error(f"Erro ao atualizar nivel de acesso: {e}")
+        raise HTTPException(status_code=500, detail="Erro interno ao atualizar nivel")
+
+    if not resultado.data:
+        raise HTTPException(status_code=500, detail="Falha ao atualizar nivel no banco")
+
+    nome_modulo = obter_nome_modulo(dados.nivel)
+    nome_anterior = obter_nome_modulo(nivel_anterior)
+
+    logger.info(
+        f"Nivel de acesso atualizado: terapeuta={terapeuta_id}, "
+        f"{nivel_anterior} ({nome_anterior}) -> {dados.nivel} ({nome_modulo})"
+    )
+
+    return {
+        "terapeuta_id": str(terapeuta_id),
+        "nivel_anterior": nivel_anterior,
+        "nivel_atual": dados.nivel,
+        "modulo_anterior": nome_anterior,
+        "modulo_atual": nome_modulo,
+        "modulos_desbloqueados": [
+            {"nivel": n, "nome": MODULOS[n]["nome"], "descricao": MODULOS[n]["descricao"]}
+            for n in range(1, dados.nivel + 1)
+        ],
+        "mensagem": f"Nivel atualizado para {dados.nivel} - {nome_modulo}",
     }
 
 

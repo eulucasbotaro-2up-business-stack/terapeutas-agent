@@ -21,6 +21,7 @@ CREATE TABLE terapeutas (
   evolution_instance TEXT,
   tom_de_voz TEXT DEFAULT 'profissional e acolhedor', -- valor padrão alinhado com schemas.py
   whatsapp_conectado BOOLEAN DEFAULT false,         -- flag de conexão WhatsApp (terapeutas.py insere)
+  nivel_acesso INTEGER DEFAULT 1,                   -- nivel de acesso aos modulos (1-6, Escola de Alquimia)
   ativo BOOLEAN DEFAULT true,
   criado_em TIMESTAMPTZ DEFAULT now(),
   atualizado_em TIMESTAMPTZ DEFAULT now()

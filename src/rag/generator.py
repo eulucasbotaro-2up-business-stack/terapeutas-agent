@@ -31,9 +31,9 @@ _anthropic_client: Optional[anthropic.AsyncAnthropic] = None
 # CRIACAO_CONTEUDO precisa de mais tokens (2 variantes + hashtags + material de aprofundamento)
 # PESQUISA pode ser longa quando cruza multiplos materiais
 MAX_TOKENS_POR_MODO: dict[ModoOperacao, int] = {
-    ModoOperacao.CONSULTA: 2048,
-    ModoOperacao.CRIACAO_CONTEUDO: 2048,
-    ModoOperacao.PESQUISA: 1536,
+    ModoOperacao.CONSULTA: 6000,
+    ModoOperacao.CRIACAO_CONTEUDO: 3072,
+    ModoOperacao.PESQUISA: 2048,
     ModoOperacao.SAUDACAO: 256,
     ModoOperacao.FORA_ESCOPO: 256,
     ModoOperacao.EMERGENCIA: 512,
@@ -82,6 +82,65 @@ def _get_anthropic_client() -> anthropic.AsyncAnthropic:
     return _anthropic_client
 
 
+def _montar_mensagens_historico(
+    historico_mensagens: list[dict] | None,
+    pergunta_atual: str,
+) -> list[dict]:
+    """
+    Converte o historico de conversa em formato de mensagens alternadas user/assistant
+    para a API do Claude. Isso garante que o Claude VE toda a conversa anterior
+    como se fosse uma conversa nativa, nao apenas texto colado no system prompt.
+
+    Regras de formatacao:
+    - 'terapeuta' ou 'user' -> role 'user'
+    - 'agente' ou 'assistant' -> role 'assistant'
+    - Mensagens consecutivas do mesmo role sao concatenadas (API exige alternancia)
+    - A pergunta atual e adicionada como ultima mensagem 'user'
+
+    Args:
+        historico_mensagens: Lista de mensagens anteriores da conversa.
+        pergunta_atual: Pergunta atual da terapeuta.
+
+    Returns:
+        Lista de mensagens formatadas para a API do Claude.
+    """
+    messages: list[dict] = []
+
+    if historico_mensagens:
+        for msg in historico_mensagens:
+            role_original = msg.get("role", "")
+            content = msg.get("content", "").strip()
+            if not content:
+                continue
+
+            # Mapeia roles para o formato da API do Claude
+            if role_original in ("terapeuta", "user"):
+                role = "user"
+            elif role_original in ("agente", "assistant"):
+                role = "assistant"
+            else:
+                continue
+
+            # Se a ultima mensagem tem o mesmo role, concatena (API exige alternancia)
+            if messages and messages[-1]["role"] == role:
+                messages[-1]["content"] += "\n\n" + content
+            else:
+                messages.append({"role": role, "content": content})
+
+    # Adiciona a pergunta atual como ultima mensagem user
+    if messages and messages[-1]["role"] == "user":
+        # Se a ultima mensagem ja e user, concatena
+        messages[-1]["content"] += "\n\n" + pergunta_atual
+    else:
+        messages.append({"role": "user", "content": pergunta_atual})
+
+    # Garante que a primeira mensagem e sempre 'user' (exigencia da API)
+    if messages and messages[0]["role"] != "user":
+        messages.insert(0, {"role": "user", "content": "[Inicio da conversa]"})
+
+    return messages
+
+
 async def gerar_resposta(
     pergunta: str,
     terapeuta_id: str,
@@ -123,6 +182,27 @@ async def gerar_resposta(
     modo = modo_override or detectar_modo(pergunta)
     max_tokens = MAX_TOKENS_POR_MODO.get(modo, MAX_TOKENS_DEFAULT)
 
+    # Log de chunks recebidos para debug
+    if not contexto_chunks:
+        logger.warning(
+            f"[GENERATOR] Nenhum chunk recebido para terapeuta {terapeuta_id}. "
+            f"Pergunta: '{pergunta[:80]}'. O agente respondera sem contexto RAG."
+        )
+    else:
+        logger.info(
+            f"[GENERATOR] Recebidos {len(contexto_chunks)} chunks para terapeuta {terapeuta_id}. "
+            f"Similaridades: {[round(c.get('similaridade', 0), 3) for c in contexto_chunks[:5]]}"
+        )
+        # Log dos primeiros 200 chars de cada chunk para debug de contexto RAG
+        for i, chunk in enumerate(contexto_chunks[:5]):
+            conteudo_preview = chunk.get("conteudo", "")[:200].replace("\n", " ")
+            logger.info(
+                f"[GENERATOR] Chunk {i+1}/{len(contexto_chunks)} "
+                f"(sim={chunk.get('similaridade', 0):.3f}, "
+                f"fonte={chunk.get('arquivo_fonte', 'N/A')}): "
+                f"{conteudo_preview}..."
+            )
+
     # Monta o system prompt da Alquimia com contexto organizado por nivel
     system_prompt = montar_prompt(
         terapeuta=config_terapeuta,
@@ -142,29 +222,26 @@ async def gerar_resposta(
             f"Temperature: 0 (anti-delirio)"
         )
 
-        # O system prompt ja contem todas as instrucoes anti-delirio, regras e contexto.
-        # A mensagem do usuario contem apenas a pergunta, sem repeticao de instrucoes
-        # (repetir instrucoes no user message desperdicava ~50 tokens sem ganho).
+        # Monta mensagens: historico completo como turnos alternados + pergunta atual.
+        # Isso permite ao Claude LEMBRAR toda a conversa anterior (anamnese, dados do caso).
+        # O system prompt contem instrucoes, contexto RAG e regras anti-delirio.
+        messages = _montar_mensagens_historico(historico_mensagens, pergunta)
+
         response = await client.messages.create(
             model=settings.CLAUDE_MODEL,
             max_tokens=max_tokens,
             temperature=0,  # ZERO criatividade = ZERO delirio
             system=system_prompt,
-            messages=[
-                {
-                    "role": "user",
-                    "content": pergunta,
-                }
-            ],
+            messages=messages,
         )
 
         # Extrai o texto da resposta
         resposta = response.content[0].text
 
-        # Adiciona fontes ao final da resposta para rastreabilidade
+        # Fontes ficam apenas no log, NAO na resposta (quebra humanizacao)
         fontes = extrair_fontes_resposta(contexto_chunks)
         if fontes:
-            resposta += fontes
+            logger.info(f"Fontes consultadas: {fontes}")
 
         logger.info(
             f"Resposta gerada: {len(resposta)} caracteres | "
@@ -198,7 +275,7 @@ async def classificar_intencao(mensagem: str) -> IntencaoMensagem:
 
     try:
         response = await client.messages.create(
-            model="claude-haiku-4-20250414",
+            model="claude-haiku-4-5-20251001",
             max_tokens=50,
             messages=[
                 {

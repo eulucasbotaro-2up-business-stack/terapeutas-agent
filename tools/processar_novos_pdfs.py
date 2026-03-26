@@ -19,7 +19,7 @@ from openai import OpenAI
 from supabase import create_client
 
 # ── Configurações ──────────────────────────────────────────────
-TERAPEUTA_ID = "d125dc38-f20e-4be2-9f25-92454a636f0d"
+TERAPEUTA_ID = "5085ff75-fe00-49fe-95f4-a5922a0cf179"
 
 # Dois locais de PDFs
 PDF_DIRS = [

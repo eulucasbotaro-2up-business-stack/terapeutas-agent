@@ -6,10 +6,14 @@ Carrega variáveis de ambiente do arquivo .env usando pydantic-settings.
 from functools import lru_cache
 from pathlib import Path
 
+from dotenv import load_dotenv
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Caminho absoluto do .env (raiz do projeto)
 _ENV_FILE = Path(__file__).resolve().parent.parent.parent / ".env"
+
+# Forçar carregamento do .env nas variáveis de ambiente
+load_dotenv(_ENV_FILE, override=True)
 
 
 class Settings(BaseSettings):

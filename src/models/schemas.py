@@ -38,6 +38,7 @@ class TerapeutaResponse(BaseModel):
     nome_agente: str
     tom_de_voz: str
     whatsapp_conectado: bool = False
+    nivel_acesso: int = 1
     ativo: bool = True
     criado_em: datetime
     atualizado_em: datetime

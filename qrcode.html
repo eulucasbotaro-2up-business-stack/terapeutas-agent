@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head><title>QR Code - Alquimia Joel</title></head>
+<body style="display:flex;justify-content:center;align-items:center;height:100vh;flex-direction:column;font-family:Arial">
+<h2>Escaneie com o WhatsApp do Tony</h2>
+<p>WhatsApp > Aparelhos Conectados > Conectar Aparelho</p>
+<div id="qr"></div>
+<script>
+fetch('http://localhost:8080/instance/connect/alquimia-joel', {headers:{'apikey':'terapeutas-agent-evo-key-2026'}})
+.then(r=>r.json())
+.then(d=>{
+  if(d.base64) document.getElementById('qr').innerHTML='<img src="'+d.base64+'" width="400">';
+  else document.getElementById('qr').innerHTML='<p>Ja conectado ou erro: '+JSON.stringify(d)+'</p>';
+})
+</script>
+</body>
+</html>

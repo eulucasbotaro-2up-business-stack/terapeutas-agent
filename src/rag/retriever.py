@@ -3,9 +3,14 @@ Busca vetorial para o sistema de RAG.
 
 Recebe a pergunta do paciente, gera embedding e busca os chunks mais
 relevantes no Supabase pgvector, filtrados por terapeuta_id (multi-tenant).
+
+Suporta busca híbrida: vetorial + filtro por tags para maior precisão.
+Detecta automaticamente tags relevantes na pergunta e filtra chunks.
+Se a busca filtrada retornar poucos resultados, faz fallback sem filtro.
 """
 
 import logging
+import re
 from typing import Optional
 
 from openai import AsyncOpenAI
@@ -19,7 +24,131 @@ logger = logging.getLogger(__name__)
 _openai_client: Optional[AsyncOpenAI] = None
 
 # Threshold mínimo de similaridade — chunks abaixo disso são descartados
-SIMILARIDADE_MINIMA = 0.3
+# Reduzido de 0.15 para 0.05 para aceitar mais chunks relevantes sobre
+# florais específicos (Trapoeraba, Manjericão, Rosa, etc.) e termos
+# alquímicos específicos que tinham similaridade baixa e estavam sendo filtrados
+SIMILARIDADE_MINIMA = 0.05
+
+# Mínimo de chunks filtrados para considerar a busca com tags válida.
+# Se retornar menos que isso, faz fallback para busca sem filtro.
+MINIMO_CHUNKS_COM_TAG = 2
+
+# ============================================================
+# Mapeamento de termos na pergunta → tags para filtro
+# ============================================================
+# Cada entrada: (padrão regex case-insensitive, lista de tags)
+# A detecção é aditiva — se múltiplos padrões casam, todas as tags
+# são combinadas para o filtro (operador overlap: qualquer tag em comum).
+# ============================================================
+MAPA_TERMOS_TAGS: list[tuple[str, list[str]]] = [
+    # DNA e cores
+    (r"\bdna\b", ["dna"]),
+    (r"\bdna\s+alqu[ií]mico", ["dna", "dna_leitura"]),
+    (r"\b7\s*cores?\b|sete\s+cores?", ["dna"]),
+    (r"\bcor\s+(vermelh|laranj|amarel|verde|azul|[ií]ndigo|violet)", ["dna"]),
+    (r"\bleitura\s+de\s+dna\b|leitura\s+alqu[ií]mica", ["dna", "dna_leitura"]),
+    (r"\brefer[eê]ncia\s+do\s+dna\b", ["dna", "dna_referencia"]),
+
+    # Chakras
+    (r"\bchakra|chacra|chackra", ["chakra"]),
+    (r"\bchakra\s+base\b|chakra\s+ra[ií]z", ["chakra", "chakra_base"]),
+    (r"\bchakra\s+sacral\b", ["chakra", "chakra_sacral"]),
+    (r"\bplexo\s+solar\b", ["chakra", "chakra_plexo"]),
+    (r"\bchakra\s+card[ií]aco\b|chakra\s+cora[çc][aã]o", ["chakra", "chakra_cardiaco"]),
+    (r"\bchakra\s+lar[ií]ngeo\b|chakra\s+garganta", ["chakra", "chakra_laringeo"]),
+    (r"\bchakra\s+frontal\b|terceiro\s+olho", ["chakra", "chakra_frontal"]),
+    (r"\bchakra\s+coron[aá]rio\b", ["chakra", "chakra_coronario"]),
+
+    # Elementos
+    (r"\b4\s*elementos|quatro\s+elementos", ["elementos"]),
+    (r"\belemento\s+terra\b", ["elementos", "elemento_terra"]),
+    (r"\belemento\s+[aá]gua\b", ["elementos", "elemento_agua"]),
+    (r"\belemento\s+fogo\b", ["elementos", "elemento_fogo"]),
+    (r"\belemento\s+ar\b", ["elementos", "elemento_ar"]),
+    (r"\bpl[eé]tora\b", ["elementos", "pletora"]),
+    (r"\bphoenix\b|f[eê]nix", ["elementos", "phoenix"]),
+
+    # Transmutação
+    (r"\bnigredo\b", ["transmutacao", "nigredo"]),
+    (r"\brubedo\b", ["transmutacao", "rubedo"]),
+    (r"\balbedo\b", ["transmutacao"]),
+    (r"\btransmuta[çc][aã]o\b", ["transmutacao"]),
+    (r"\baliastrum\b", ["transmutacao", "aliastrum"]),
+    (r"\btrindade\b", ["trindade"]),
+    (r"\btartarus\b|t[aá]rtaro", ["tartarus"]),
+
+    # Matrix e traumas
+    (r"\bmatrix\b|matriz", ["matrix"]),
+    (r"\btrauma\b|traum[aá]tic", ["matrix", "matrix_trauma"]),
+    (r"\bpadr[aã]o\s+(repetitivo|familiar|emocional)", ["matrix", "matrix_padrao"]),
+    (r"\bheran[çc]a\b|herdad", ["matrix", "matrix_heranca"]),
+    (r"\bmiasma\b", ["miasma"]),
+
+    # Astrologia
+    (r"\bastrolog", ["astrologia"]),
+    (r"\bmapa\s+astral\b|mapa\s+astrol[oó]gic", ["astrologia", "astro_mapa"]),
+    (r"\bsigno\b|signos\b", ["astrologia"]),
+    (r"\bciclo\b|ciclos\b", ["astro_ciclo"]),
+    (r"\bregente\b", ["astrologia", "astro_regente"]),
+    (r"\bcasa\s+astrol[oó]gica\b", ["astrologia", "astro_casa"]),
+
+    # Biorritmo
+    (r"\bbiorr[ií]tmo|biorritmo", ["biorritmo"]),
+
+    # Fluxus
+    (r"\bfluxus\b|john\s+dee", ["fluxus"]),
+
+    # Florais
+    (r"\bfloral\b|florais\b", ["floral"]),
+    (r"\bflor\s+alqu[ií]mic|flores\s+alqu[ií]mic", ["floral"]),
+    (r"\baura\s+d(as|os)\s+flor", ["floral", "floral_aura"]),
+    (r"\bessência\s+floral\b|ess[eê]ncia", ["floral"]),
+    (r"\btrapoeraba\b", ["floral", "kit_primus"]),
+    (r"\bmanjeric[aã]o\b", ["floral", "kit_primus"]),
+    (r"\brosa\b.*\bfloral\b|\bfloral\b.*\brosa\b", ["floral", "kit_primus"]),
+    (r"\bbabosa\b", ["floral", "kit_primus"]),
+    (r"\bpic[aã]o\b", ["floral", "kit_primus"]),
+    (r"\blótus\b|lotus\b", ["floral"]),
+    (r"\bmagnólia\b|magnolia\b", ["floral"]),
+
+    # Protocolos
+    (r"\bprotocolo\b", ["protocolo"]),
+    (r"\bkit\s+primus\b|kite\s+primus", ["protocolo", "kit_primus"]),
+
+    # Vitriol e Torus
+    (r"\bvitriol\b", ["vitriol"]),
+    (r"\btorus\b", ["torus"]),
+
+    # Fundamentos / pesquisa
+    (r"\bprimeiro\s+passo\b|como\s+come[çc]ar", ["fundamentos"]),
+    (r"\bpesquisa\b", ["pesquisa"]),
+]
+
+
+def detectar_tags(pergunta: str) -> list[str]:
+    """
+    Detecta tags relevantes a partir do texto da pergunta.
+
+    Usa regex case-insensitive para encontrar termos-chave e
+    retorna a lista de tags correspondentes (sem duplicatas).
+
+    Args:
+        pergunta: Texto da pergunta do paciente.
+
+    Returns:
+        Lista de tags detectadas (pode ser vazia).
+    """
+    tags_encontradas: set[str] = set()
+    texto = pergunta.lower()
+
+    for padrao, tags in MAPA_TERMOS_TAGS:
+        if re.search(padrao, texto, re.IGNORECASE):
+            tags_encontradas.update(tags)
+
+    tags_list = sorted(tags_encontradas)
+    if tags_list:
+        logger.info(f"Tags detectadas na pergunta: {tags_list}")
+    return tags_list
 
 
 def _get_openai_client() -> AsyncOpenAI:
@@ -62,8 +191,11 @@ async def buscar_contexto(
     """
     Busca os chunks mais relevantes para a pergunta do paciente.
 
-    Usa a função RPC 'buscar_chunks' do Supabase (pgvector) para encontrar
-    os chunks com maior similaridade semântica, filtrados pelo terapeuta_id.
+    Usa busca híbrida: vetorial (cosine similarity) + filtro por tags.
+    1. Detecta tags na pergunta (regex sobre termos-chave)
+    2. Se tags detectadas, usa buscar_chunks_v2 com filtro de tags
+    3. Se poucos resultados com filtro, faz fallback sem filtro
+    4. Fallback final: buscar_chunks original (sem tags)
 
     Args:
         pergunta: Texto da pergunta do paciente.
@@ -78,6 +210,9 @@ async def buscar_contexto(
                 "similaridade": float,
                 "documento_id": str,
                 "chunk_index": int,
+                "arquivo_fonte": str,
+                "tags": list[str],
+                "modulo": int,
             },
             ...
         ]
@@ -93,27 +228,69 @@ async def buscar_contexto(
         # 1. Gera embedding da pergunta
         embedding_pergunta = await gerar_embedding_pergunta(pergunta)
 
-        # 2. Chama a RPC do Supabase para busca vetorial
-        # A função 'buscar_chunks' já existe no banco e faz:
-        # - Busca por similaridade coseno no pgvector
-        # - Filtra por terapeuta_id
-        # - Retorna os top_k chunks mais similares
-        resultado = supabase.rpc(
-            "buscar_chunks",
-            {
-                "query_embedding": embedding_pergunta,
-                "p_terapeuta_id": terapeuta_id,
-                "match_count": quantidade,
-            },
-        ).execute()
+        # 2. Detecta tags na pergunta para filtro opcional
+        tags_detectadas = detectar_tags(pergunta)
+
+        # 3. Tenta busca com tags (se detectadas)
+        resultado = None
+        usou_tags = False
+
+        if tags_detectadas:
+            try:
+                resultado = supabase.rpc(
+                    "buscar_chunks_v2",
+                    {
+                        "query_embedding": embedding_pergunta,
+                        "p_terapeuta_id": terapeuta_id,
+                        "match_count": quantidade,
+                        "p_tags": tags_detectadas,
+                    },
+                ).execute()
+                usou_tags = True
+
+                # Fallback: se poucos resultados com filtro, busca sem filtro
+                if not resultado.data or len(resultado.data) < MINIMO_CHUNKS_COM_TAG:
+                    logger.info(
+                        f"Busca com tags retornou {len(resultado.data) if resultado.data else 0} chunks "
+                        f"(mínimo: {MINIMO_CHUNKS_COM_TAG}), fazendo fallback sem tags"
+                    )
+                    resultado = None
+                    usou_tags = False
+
+            except Exception as e:
+                logger.warning(f"Erro na busca com tags, fazendo fallback: {e}")
+                resultado = None
+                usou_tags = False
+
+        # 4. Fallback: busca sem filtro de tags (buscar_chunks_v2 com p_tags=NULL)
+        if resultado is None:
+            try:
+                resultado = supabase.rpc(
+                    "buscar_chunks_v2",
+                    {
+                        "query_embedding": embedding_pergunta,
+                        "p_terapeuta_id": terapeuta_id,
+                        "match_count": quantidade,
+                        "p_tags": None,
+                    },
+                ).execute()
+            except Exception:
+                # Fallback final: usa a função original buscar_chunks
+                logger.warning("buscar_chunks_v2 falhou, usando buscar_chunks original")
+                resultado = supabase.rpc(
+                    "buscar_chunks",
+                    {
+                        "query_embedding": embedding_pergunta,
+                        "p_terapeuta_id": terapeuta_id,
+                        "match_count": quantidade,
+                    },
+                ).execute()
 
         if not resultado.data:
             logger.info(f"Nenhum chunk encontrado para terapeuta {terapeuta_id}")
             return []
 
-        # 3. Filtra chunks com similaridade abaixo do threshold
-        # Inclui arquivo_fonte (vindo da tabela documentos via JOIN na RPC)
-        # para que o prompts.py consiga identificar o nivel de cada chunk
+        # 5. Filtra chunks com similaridade abaixo do threshold
         chunks_relevantes = [
             {
                 "conteudo": chunk["conteudo"],
@@ -121,6 +298,8 @@ async def buscar_contexto(
                 "documento_id": chunk.get("documento_id", ""),
                 "chunk_index": chunk.get("chunk_index", 0),
                 "arquivo_fonte": chunk.get("arquivo_fonte", chunk.get("nome_arquivo", "")),
+                "tags": chunk.get("tags", []),
+                "modulo": chunk.get("modulo"),
             }
             for chunk in resultado.data
             if chunk.get("similaridade", 0) >= SIMILARIDADE_MINIMA
@@ -129,6 +308,7 @@ async def buscar_contexto(
         logger.info(
             f"Busca vetorial: {len(resultado.data)} chunks encontrados, "
             f"{len(chunks_relevantes)} acima do threshold ({SIMILARIDADE_MINIMA})"
+            f"{' [COM filtro de tags: ' + str(tags_detectadas) + ']' if usou_tags else ' [SEM filtro de tags]'}"
         )
 
         return chunks_relevantes

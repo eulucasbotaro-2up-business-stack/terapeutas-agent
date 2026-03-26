@@ -5,13 +5,18 @@ Agente de IA no WhatsApp com base de conhecimento para terapeutas.
 
 from contextlib import asynccontextmanager
 
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from src.core.config import get_settings
 from src.api.webhook import router as webhook_router
 from src.api.terapeutas import router as terapeutas_router
 from src.api.documentos import router as documentos_router
+from src.api.teste import router as teste_router
 
 
 @asynccontextmanager
@@ -92,3 +97,12 @@ async def verificar_config():
 app.include_router(webhook_router)
 app.include_router(terapeutas_router)
 app.include_router(documentos_router)
+app.include_router(teste_router)
+
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+
+@app.get("/chat", tags=["Teste"])
+async def chat_page():
+    """Serve a pagina de chat de teste."""
+    return FileResponse(_PROJECT_ROOT / "chat.html")

@@ -25,6 +25,7 @@ from src.rag.aprendizado import (
     formatar_contexto_personalizado,
 )
 from src.whatsapp.evolution import EvolutionClient
+from src.core.ux_rules import humanizar_resposta
 from src.whatsapp.messages import (
     extrair_numero_mensagem,
     eh_mensagem_valida,
@@ -258,16 +259,19 @@ async def _processar_mensagem(payload: dict) -> None:
 
         elif modo in (ModoOperacao.CONSULTA, ModoOperacao.CRIACAO_CONTEUDO, ModoOperacao.PESQUISA):
             # Modos principais — usar RAG com o modo detectado
+            # CONSULTA usa top_k=10 para trazer mais contexto alquimico no diagnostico
+            top_k_busca = 10 if modo == ModoOperacao.CONSULTA else 5
             contexto_chunks = await buscar_contexto(
                 pergunta=texto_mensagem,
                 terapeuta_id=terapeuta_id,
+                top_k=top_k_busca,
             )
 
             # Buscar historico de conversa (essencial para CONSULTA multi-turno / anamnese)
             historico = _buscar_historico_conversa(
                 terapeuta_id=terapeuta_id,
                 paciente_numero=numero_paciente,
-                limite=10,
+                limite=20,
             )
 
             # Carregar contexto personalizado de aprendizado continuo
@@ -302,8 +306,10 @@ async def _processar_mensagem(payload: dict) -> None:
                 config_terapeuta=config_terapeuta,
             )
 
-        # 7. Enviar resposta via Evolution API
+        # 7. Humanizar resposta antes de enviar (regras UX do Lucas)
         if resposta_texto:
+            resposta_texto = humanizar_resposta(resposta_texto)
+
             await evolution.enviar_mensagem(
                 instance=instance_name,
                 numero=numero_paciente,

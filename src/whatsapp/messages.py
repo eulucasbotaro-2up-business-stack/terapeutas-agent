@@ -19,83 +19,80 @@ logger = logging.getLogger(__name__)
 def formatar_boas_vindas(nome_terapeuta: str) -> str:
     """
     Mensagem de boas-vindas quando um paciente entra em contato
-    pela primeira vez.
+    pela primeira vez. Tom humanizado, sem parecer bot.
 
     Args:
         nome_terapeuta: Nome do terapeuta para personalizar a mensagem.
     """
     return (
-        f"Olá! Sou o assistente virtual do(a) *{nome_terapeuta}*. "
-        f"Estou aqui para ajudar com informações sobre os materiais e "
-        f"protocolos disponibilizados pelo(a) seu/sua terapeuta.\n\n"
-        f"Como posso ajudar você hoje?"
+        f"Oi, tudo bem? Aqui e do consultorio do(a) {nome_terapeuta}. "
+        f"Posso te ajudar com informacoes sobre os materiais e "
+        f"protocolos que o(a) {nome_terapeuta} disponibilizou pra voce.\n\n"
+        f"Me conta, o que voce precisa?"
     )
 
 
 def formatar_encaminhamento(nome_terapeuta: str, contato: str) -> str:
     """
-    Mensagem para encaminhar o paciente ao terapeuta quando a questão
-    foge do escopo da base de conhecimento.
+    Mensagem para encaminhar o paciente ao terapeuta quando a questao
+    foge do escopo da base de conhecimento. Tom humanizado.
 
     Args:
         nome_terapeuta: Nome do terapeuta.
         contato: Telefone ou e-mail de contato do terapeuta.
     """
     return (
-        f"Essa questão precisa da atenção direta do(a) *{nome_terapeuta}*. "
-        f"Por favor, entre em contato diretamente:\n\n"
-        f"Contato: {contato}\n\n"
-        f"O(A) {nome_terapeuta} poderá orientar você da melhor forma."
+        f"Essa questao precisa de um olhar mais direto do(a) {nome_terapeuta}. "
+        f"O melhor caminho e entrar em contato diretamente pelo {contato}.\n\n"
+        f"O(A) {nome_terapeuta} vai conseguir te orientar melhor nisso."
     )
 
 
 def formatar_urgencia(nome_terapeuta: str, contato: str) -> str:
     """
-    Mensagem para situações de urgência/crise detectadas na conversa.
-    Prioriza encaminhamento imediato e CVV.
+    Mensagem para situacoes de urgencia/crise detectadas na conversa.
+    Prioriza encaminhamento imediato e CVV. Tom acolhedor e humano.
 
     Args:
         nome_terapeuta: Nome do terapeuta.
         contato: Telefone de contato do terapeuta.
     """
     return (
-        f"Percebo que você pode estar passando por um momento difícil. "
-        f"Quero que saiba que você não está sozinho(a).\n\n"
-        f"*Se estiver em crise, ligue agora:*\n"
-        f"CVV (Centro de Valorização da Vida): *188*\n"
-        f"Chat: https://www.cvv.org.br\n\n"
-        f"Também entre em contato com *{nome_terapeuta}*: {contato}\n\n"
-        f"Sua saúde e bem-estar são prioridade."
+        f"Ei, percebo que voce pode estar passando por um momento dificil. "
+        f"Quero que saiba que voce nao esta sozinho(a).\n\n"
+        f"Se estiver precisando de ajuda agora, liga pro CVV no 188, "
+        f"funciona 24 horas e e gratuito. Tambem tem o chat em cvv.org.br\n\n"
+        f"E entra em contato com {nome_terapeuta} tambem, pelo {contato}. "
+        f"Sua saude vem primeiro, ta?"
     )
 
 
 def formatar_agendamento(contato: str) -> str:
     """
-    Mensagem padrão quando o paciente pede para agendar consulta.
+    Mensagem quando o paciente pede para agendar consulta. Tom natural.
 
     Args:
         contato: Telefone ou link de agendamento do terapeuta.
     """
     return (
-        f"Para agendar ou remarcar sua consulta, entre em contato "
-        f"diretamente com o consultório:\n\n"
-        f"Contato: {contato}\n\n"
-        f"Ficaremos felizes em encontrar o melhor horário para você!"
+        f"Pra agendar ou remarcar sua consulta, o melhor e falar "
+        f"direto com o consultorio pelo {contato}.\n\n"
+        f"La eles encontram o melhor horario pra voce."
     )
 
 
 def formatar_fora_escopo() -> str:
     """
-    Mensagem quando a pergunta do paciente foge completamente
-    do escopo da base de conhecimento do terapeuta.
+    Mensagem quando a pergunta do paciente foge do escopo
+    da base de conhecimento do terapeuta. Tom conversacional.
     """
     return (
-        "Desculpe, não encontrei informações sobre esse assunto nos "
-        "materiais disponibilizados pelo(a) seu/sua terapeuta.\n\n"
-        "Posso ajudar com dúvidas relacionadas aos protocolos e "
-        "materiais que foram compartilhados com você. "
-        "Para outras questões, entre em contato diretamente com "
-        "seu/sua terapeuta."
+        "Sobre isso eu nao tenho informacao nos materiais que "
+        "o(a) terapeuta disponibilizou, infelizmente.\n\n"
+        "Posso te ajudar com duvidas sobre os protocolos e "
+        "materiais que foram compartilhados com voce. "
+        "Se for sobre outro assunto, o melhor e falar direto "
+        "com seu/sua terapeuta."
     )
 
 
@@ -242,11 +239,11 @@ def eh_mensagem_valida(payload: dict[str, Any]) -> bool:
 
 def formatar_aviso_audio() -> str:
     """
-    Mensagem padrão quando o paciente envia áudio.
-    O sistema ainda não processa áudio.
+    Mensagem quando o paciente envia audio.
+    O sistema ainda nao processa audio. Tom natural.
     """
     return (
-        "Desculpe, ainda não consigo processar mensagens de áudio. "
-        "Poderia enviar sua dúvida por texto? "
-        "Assim consigo ajudar melhor!"
+        "Nao consegui ouvir o audio, infelizmente. "
+        "Consegue me mandar por texto? "
+        "Assim fica mais facil te ajudar."
     )
