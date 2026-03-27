@@ -106,13 +106,14 @@ MSGS_ONBOARDING: list[str] = [
 
 # --- Código inválido (tentativas 1-4) ---
 MSG_CODIGO_INVALIDO = (
-    "Esse código não é válido. Por favor, tente digitar novamente."
+    "Esse código não é válido. 🔑\n\n"
+    "Verifique o código enviado após a compra e coloque o código novamente:"
 )
 
 # --- Código inválido (5ª tentativa em diante) ---
 MSG_CODIGO_INVALIDO_FINAL = (
-    "Você atingiu o limite de tentativas.\n\n"
-    "Entre em contato com o suporte para regularizar seu acesso."
+    "Você atingiu o limite de tentativas. ❌\n\n"
+    "Por favor, entre em contato com o administrador para regularizar seu acesso."
 )
 
 # --- Acesso suspenso por assinatura ---
