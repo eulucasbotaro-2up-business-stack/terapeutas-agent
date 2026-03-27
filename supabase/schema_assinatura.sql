@@ -13,11 +13,8 @@ ALTER TABLE codigos_liberacao
 ALTER TABLE chat_estado
   ADD COLUMN IF NOT EXISTS motivo_bloqueio TEXT; -- 'VIOLACAO' | 'ASSINATURA_EXPIRADA' | 'PAGAMENTO_FALHOU' | 'CANCELADO' | 'ADMIN'
 
--- Adicionar estado SUSPENSO à tabela chat_estado
--- Atualizar o CHECK constraint (precisa recriar)
-ALTER TABLE chat_estado DROP CONSTRAINT IF EXISTS chat_estado_estado_check;
-ALTER TABLE chat_estado ADD CONSTRAINT chat_estado_estado_check
-  CHECK (estado IN ('PENDENTE_CODIGO', 'ATIVO', 'BLOQUEADO'));
+-- Estados válidos do chat: PENDENTE_CODIGO → ATIVO → BLOQUEADO
+-- Nota: o CHECK constraint já existe desde schema_acesso.sql, nenhuma alteração necessária aqui.
 
 -- Índices extras
 CREATE INDEX IF NOT EXISTS idx_codigos_asaas_subscription

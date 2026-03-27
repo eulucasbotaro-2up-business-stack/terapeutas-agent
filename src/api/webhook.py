@@ -350,13 +350,9 @@ async def _processar_mensagem(payload: dict) -> None:
             )
             return
 
-        # 6. Carregar memória do usuário em paralelo com o histórico
-        memoria, historico = await asyncio.gather(
-            carregar_memoria_completa(terapeuta_id, numero_paciente),
-            asyncio.to_thread(
-                _buscar_historico_conversa, terapeuta_id, numero_paciente, 20
-            ),
-        )
+        # 6. Carregar memória e histórico (sequencial — Supabase client não é thread-safe)
+        memoria = await carregar_memoria_completa(terapeuta_id, numero_paciente)
+        historico = _buscar_historico_conversa(terapeuta_id, numero_paciente, 20)
 
         # Formatar memória para injeção no prompt
         memoria_fmt = formatar_memoria_para_prompt(memoria, estado.nome_usuario)
@@ -857,13 +853,9 @@ async def _processar_mensagem_meta(payload: dict) -> None:
             )
             return
 
-        # 7. Carregar memória do usuário em paralelo com o histórico
-        memoria, historico = await asyncio.gather(
-            carregar_memoria_completa(terapeuta_id, numero_paciente),
-            asyncio.to_thread(
-                _buscar_historico_conversa, terapeuta_id, numero_paciente, 20
-            ),
-        )
+        # 7. Carregar memória e histórico (sequencial — Supabase client não é thread-safe)
+        memoria = await carregar_memoria_completa(terapeuta_id, numero_paciente)
+        historico = _buscar_historico_conversa(terapeuta_id, numero_paciente, 20)
 
         # Formatar memória para injeção no prompt
         memoria_fmt = formatar_memoria_para_prompt(memoria, estado.nome_usuario)

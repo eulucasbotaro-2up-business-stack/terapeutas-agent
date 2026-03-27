@@ -16,4 +16,12 @@ EXPOSE 8000
 
 # Comando padrão
 # Usa $PORT se disponível (Render/Railway definem), senão 8000
-CMD uvicorn src.main:app --host 0.0.0.0 --port ${PORT:-8000}
+# --workers 1 para Railway (single container, sem conflito de estado em memória)
+# --timeout-keep-alive 65 para suportar webhooks Meta (timeout padrão deles é 60s)
+CMD uvicorn src.main:app \
+    --host 0.0.0.0 \
+    --port ${PORT:-8000} \
+    --workers 1 \
+    --timeout-keep-alive 65 \
+    --log-level info \
+    --access-log
