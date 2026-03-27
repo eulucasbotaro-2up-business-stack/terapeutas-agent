@@ -968,10 +968,12 @@ async def _processar_mensagem(payload: dict) -> None:
         # Strip prefixo de mídia antes de rotear — evita "[Mensagem de áudio] Oi..."
         # confundir o classificador e rotear áudios clínicos como SAUDACAO
         texto_para_rotear = _extrair_texto_para_codigo(texto_para_processar)
+        _is_audio = texto_para_processar.startswith("[Mensagem de áudio]") or texto_mensagem.startswith("[Mensagem de áudio]")
         modo = await rotear_mensagem(
             texto_para_rotear,
             historico[-6:] if historico else [],
             estado.nome_usuario,
+            is_audio=_is_audio,
         )
         logger.info(f"Modo roteado (Evolution): {modo.value}")
         # classificar_intencao só é chamado nos modos que usam RAG (economiza API)
@@ -1774,10 +1776,12 @@ async def _processar_mensagem_meta(payload: dict) -> None:
         # Strip prefixo de mídia antes de rotear — evita "[Mensagem de áudio] Oi..."
         # confundir o classificador e rotear áudios clínicos como SAUDACAO
         texto_para_rotear = _extrair_texto_para_codigo(texto_para_processar)
+        _is_audio = texto_para_processar.startswith("[Mensagem de áudio]") or texto_mensagem.startswith("[Mensagem de áudio]")
         modo = await rotear_mensagem(
             texto_para_rotear,
             historico[-6:] if historico else [],
             estado.nome_usuario,
+            is_audio=_is_audio,
         )
         logger.info(f"Modo roteado (Meta): {modo.value}")
         # classificar_intencao só é chamado nos modos que usam RAG (economiza chamada Haiku)

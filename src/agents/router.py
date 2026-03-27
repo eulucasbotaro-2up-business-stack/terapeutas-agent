@@ -65,7 +65,7 @@ def _get_router_client() -> anthropic.AsyncAnthropic:
     return _router_client
 
 
-def _classificar_localmente(texto: str) -> Optional[ModoOperacao]:
+def _classificar_localmente(texto: str, is_audio: bool = False) -> Optional[ModoOperacao]:
     """
     Tenta classificar a mensagem localmente por keywords conhecidas.
     Retorna None se a mensagem for ambígua e precisar do Haiku.
@@ -90,8 +90,13 @@ def _classificar_localmente(texto: str) -> Optional[ModoOperacao]:
         logger.info(f"[ROUTER] Meta-mensagem sobre áudio → PESQUISA local: '{texto[:60]}'")
         return ModoOperacao.PESQUISA
 
-    # Saudação: só para mensagens curtas (≤4 palavras) com keyword óbvia
-    if num_palavras <= 4:
+    # Áudio: nunca classifica como SAUDACAO — transcrições sempre têm conteúdo intencional
+    if is_audio:
+        # Mantém apenas emergência (já tratada acima) e continua para outros modos
+        pass
+
+    # Saudação: só para mensagens curtas (≤4 palavras) com keyword óbvia — e nunca para áudio
+    if not is_audio and num_palavras <= 4:
         for kw in _KEYWORDS_OBVIAS_SAUDACAO:
             if kw in texto_lower:
                 # Garantir que não há keywords de outros modos na mesma mensagem
@@ -146,7 +151,8 @@ def _classificar_localmente(texto: str) -> Optional[ModoOperacao]:
     # Mensagem muito curta (1 palavra ≤15 chars) sem keyword reconhecível
     # → quase sempre é um nome ou saudação informal — tratar como SAUDACAO
     # sem chamar LLM (economiza custo + latência)
-    if num_palavras == 1 and len(texto) <= 15:
+    # Exceção: áudio nunca é SAUDACAO, mesmo se transcrição for curta
+    if not is_audio and num_palavras == 1 and len(texto) <= 15:
         logger.info(f"[ROUTER] Mensagem muito curta/nome-like → SAUDACAO local: '{texto}'")
         return ModoOperacao.SAUDACAO
 
@@ -188,6 +194,7 @@ async def _classificar_com_haiku(
     texto: str,
     historico: list[dict],
     nome_usuario: Optional[str],
+    is_audio: bool = False,
 ) -> ModoOperacao:
     """
     Chama Claude Haiku para classificar a intenção da mensagem.
@@ -213,6 +220,13 @@ async def _classificar_com_haiku(
 
     nome_contexto = f" O nome do terapeuta é {nome_usuario}." if nome_usuario else ""
 
+    _aviso_audio = (
+        "\n\nIMPORTANTE: Esta mensagem foi transcrita de um áudio. "
+        "Nunca classifique como SAUDACAO — sempre trate como conteúdo real."
+        if is_audio
+        else ""
+    )
+
     prompt_sistema = (
         "Você é um roteador de intenções para um assistente de terapeutas da Escola de Alquimia do Joel Aleixo."
         + nome_contexto
@@ -224,6 +238,7 @@ async def _classificar_com_haiku(
         "- EMERGENCIA: menciona risco de vida, suicídio, crise severa\n"
         "- FORA_ESCOPO: completamente fora da Escola de Alquimia\n\n"
         "Responda APENAS com a categoria, sem explicação."
+        + _aviso_audio
     )
 
     mensagem_usuario = f"Mensagem: {texto}{historico_resumo}"
@@ -238,6 +253,12 @@ async def _classificar_com_haiku(
         )
         categoria_raw = response.content[0].text.strip() if response.content else ""
         modo = _mapear_categoria_haiku(categoria_raw)
+        # Áudio nunca deve ser SAUDACAO — sobrescrever para CONSULTA se necessário
+        if is_audio and modo == ModoOperacao.SAUDACAO:
+            logger.info(
+                f"[ROUTER] Haiku retornou SAUDACAO para áudio — sobrescrevendo para CONSULTA: '{texto[:50]}'"
+            )
+            modo = ModoOperacao.CONSULTA
         logger.info(
             f"[ROUTER] Haiku classificou '{texto[:50]}' → {categoria_raw} → {modo.value}"
         )
@@ -255,6 +276,7 @@ async def rotear_mensagem(
     texto: str,
     historico: list[dict],
     nome_usuario: Optional[str],
+    is_audio: bool = False,
 ) -> ModoOperacao:
     """
     Roteia a mensagem para o modo de operação correto.
@@ -271,6 +293,7 @@ async def rotear_mensagem(
         texto: Texto da mensagem da terapeuta.
         historico: Últimas mensagens da conversa (até 6 turnos).
         nome_usuario: Nome do terapeuta, se disponível.
+        is_audio: Se True, a mensagem é transcrição de áudio — nunca classificar como SAUDACAO.
 
     Returns:
         ModoOperacao correspondente à intenção detectada.
@@ -280,12 +303,12 @@ async def rotear_mensagem(
         return ModoOperacao.SAUDACAO
 
     # Etapa 1: tentar classificação local (sem LLM)
-    modo_local = _classificar_localmente(texto)
+    modo_local = _classificar_localmente(texto, is_audio=is_audio)
     if modo_local is not None:
         logger.info(f"[ROUTER] Classificação local: {modo_local.value} para '{texto[:50]}'")
         return modo_local
 
     # Etapa 2: mensagem ambígua — chamar Haiku
     logger.info(f"[ROUTER] Mensagem ambígua, consultando Haiku: '{texto[:50]}'")
-    modo_haiku = await _classificar_com_haiku(texto, historico, nome_usuario)
+    modo_haiku = await _classificar_com_haiku(texto, historico, nome_usuario, is_audio=is_audio)
     return modo_haiku
