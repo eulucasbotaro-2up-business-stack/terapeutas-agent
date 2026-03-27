@@ -30,9 +30,19 @@ services:
         sync: false
       - key: EVOLUTION_API_KEY
         sync: false
+      - key: META_WHATSAPP_TOKEN
+        sync: false
+      - key: META_PHONE_NUMBER_ID
+        sync: false
+      - key: META_WHATSAPP_BUSINESS_ID
+        sync: false
+      - key: META_VERIFY_TOKEN
+        sync: false
       - key: ASAAS_API_KEY
         sync: false
-      - key: SECRET_KEY
+      - key: ASAAS_WEBHOOK_TOKEN
         sync: false
-      - key: DATABASE_URL
+      - key: CONTATO_ADMIN
+        sync: false
+      - key: SECRET_KEY
         sync: false

@@ -1,9 +1,39 @@
+# Python
 __pycache__/
 *.pyc
-.env
-*.ogg
-*.mp3
+*.pyo
+*.pyd
+.Python
+
+# Ambientes virtuais
 venv/
 .venv/
+env/
+
+# Variáveis de ambiente (NUNCA commitar)
+.env
+.env.local
+
+# Arquivos temporários e de teste
+qrcode_response.json
 transcricoes.txt
+
+# Supabase CLI
+supabase/.temp/
+
+# Materiais (PDFs grandes — ficam no Supabase Storage)
 materiais/
+
+# Áudio
+*.ogg
+*.mp3
+*.wav
+
+# IDE / editores
+.claude/settings.local.json
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
