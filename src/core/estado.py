@@ -440,8 +440,16 @@ def validar_codigo(
                 )
                 return False
 
-            # 4. Para código de uso único: verificar se já foi usado por outro
-            if not row.get("reutilizavel") and row.get("usado") and numero_ativo != numero_telefone:
+            # 4. Para código de uso único: verificar se já foi usado por OUTRO número.
+            #    Se numero_ativo é None (código nunca ativado), não bloquear.
+            #    O campo usado=True com numero_ativo=None pode ocorrer em race condition
+            #    durante ativar_acesso_com_codigo — deve ser tratado como válido.
+            if (
+                not row.get("reutilizavel")
+                and row.get("usado")
+                and numero_ativo is not None
+                and numero_ativo != numero_telefone
+            ):
                 logger.warning(
                     f"Código '{codigo_norm[:10]}' de uso único já foi utilizado"
                 )
@@ -497,8 +505,9 @@ def registrar_nome_usuario(
     Returns:
         O nome que foi salvo.
     """
-    palavras = texto.strip().split()
-    nome = " ".join(palavras[:3])[:60]
+    # Filtrar apenas palavras com ao menos 1 caractere alfabético (evita nomes como "123" ou "!!!")
+    palavras_validas = [p for p in texto.strip().split() if any(c.isalpha() for c in p)]
+    nome = " ".join(palavras_validas[:3])[:60] if palavras_validas else "Usuário"
 
     supabase = get_supabase()
     supabase.table("chat_estado").update({

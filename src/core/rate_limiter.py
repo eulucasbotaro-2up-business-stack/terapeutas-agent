@@ -35,11 +35,15 @@ class _PerUserRateLimiter:
     Rate limiter por número de telefone.
     Garante que não enviamos mensagens rápido demais para o mesmo usuário.
     Thread-safe via asyncio.Lock por usuário.
+
+    NOTA: asyncio.Lock deve ser criado no event loop ativo — por isso usamos
+    um dict simples em vez de defaultdict(asyncio.Lock), que criaria os locks
+    fora do loop e causaria DeprecationWarning em Python 3.10+ / falha em 3.12+.
     """
 
     def __init__(self):
         self._last_sent: dict[str, float] = defaultdict(float)
-        self._locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
+        self._locks: dict[str, asyncio.Lock] = {}
 
     async def aguardar(self, numero: str, intervalo: float = MIN_INTERVAL_SEQUENTIAL_S) -> None:
         """
@@ -50,6 +54,9 @@ class _PerUserRateLimiter:
             numero: Número de destino (formato internacional).
             intervalo: Intervalo mínimo desejado em segundos.
         """
+        # Cria o Lock sob demanda dentro de uma coroutine (garante event loop correto)
+        if numero not in self._locks:
+            self._locks[numero] = asyncio.Lock()
         lock = self._locks[numero]
         async with lock:
             agora = time.monotonic()

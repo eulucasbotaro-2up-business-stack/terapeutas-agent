@@ -399,10 +399,10 @@ def _limitar_paragrafos(texto: str, max_paragrafos: int = 3) -> str:
         return '\n\n'.join(paragrafos)
 
     # Pega os primeiros N paragrafos
+    # NOTA: não adiciona frase de continuação — seria detectada como saudação de bot
+    # e removida pelo pós-processamento em humanizar_resposta(). Truncar silenciosamente
+    # é mais seguro; diagnósticos longos têm max_paragrafos=15 e raramente são cortados.
     cortado = '\n\n'.join(paragrafos[:max_paragrafos])
-
-    # Adiciona indicacao de que ha mais conteudo
-    cortado += "\n\nPosso continuar se quiser."
 
     return cortado
 

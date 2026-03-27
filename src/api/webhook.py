@@ -295,7 +295,8 @@ async def _processar_mensagem(payload: dict) -> None:
         }
 
         # 4. Máquina de estados — controle de acesso
-        estado, is_new = obter_ou_criar_estado(terapeuta_id, numero_paciente)
+        # obter_ou_criar_estado usa requests síncrono → rodar em thread para não bloquear event loop
+        estado, is_new = await asyncio.to_thread(obter_ou_criar_estado, terapeuta_id, numero_paciente)
 
         # ── BLOQUEADO ──────────────────────────────────────────────────────────
         if estado.is_bloqueado:
@@ -505,26 +506,42 @@ async def _processar_mensagem(payload: dict) -> None:
                 logger.warning(f"Contexto de aprendizado indisponível: {e}")
                 ctx_formatado = None
 
-            resposta_texto = await gerar_resposta(
-                pergunta=texto_para_processar,
-                terapeuta_id=terapeuta_id,
-                contexto_chunks=contexto_chunks,
-                config_terapeuta=config_terapeuta,
-                historico_mensagens=historico if historico else None,
-                contexto_personalizado=ctx_formatado,
-                memoria_usuario=memoria_fmt,
-            )
+            try:
+                resposta_texto = await gerar_resposta(
+                    pergunta=texto_para_processar,
+                    terapeuta_id=terapeuta_id,
+                    contexto_chunks=contexto_chunks,
+                    config_terapeuta=config_terapeuta,
+                    historico_mensagens=historico if historico else None,
+                    contexto_personalizado=ctx_formatado,
+                    memoria_usuario=memoria_fmt,
+                )
+            except Exception as e:
+                logger.error(f"Falha ao gerar resposta Claude (Evolution): {e}", exc_info=True)
+                await evolution.enviar_mensagem(
+                    instance=instance_name, numero=numero_paciente,
+                    texto="Tive um problema ao processar sua mensagem. Pode repetir?",
+                )
+                return
         else:
             contexto_chunks = await buscar_contexto(
                 pergunta=texto_para_processar, terapeuta_id=terapeuta_id,
             )
-            resposta_texto = await gerar_resposta(
-                pergunta=texto_para_processar,
-                terapeuta_id=terapeuta_id,
-                contexto_chunks=contexto_chunks,
-                config_terapeuta=config_terapeuta,
-                memoria_usuario=memoria_fmt,
-            )
+            try:
+                resposta_texto = await gerar_resposta(
+                    pergunta=texto_para_processar,
+                    terapeuta_id=terapeuta_id,
+                    contexto_chunks=contexto_chunks,
+                    config_terapeuta=config_terapeuta,
+                    memoria_usuario=memoria_fmt,
+                )
+            except Exception as e:
+                logger.error(f"Falha ao gerar resposta Claude (Evolution, fallback): {e}", exc_info=True)
+                await evolution.enviar_mensagem(
+                    instance=instance_name, numero=numero_paciente,
+                    texto="Tive um problema ao processar sua mensagem. Pode repetir?",
+                )
+                return
 
         # 10. Enviar resposta (com rate limiting anti-ban)
         if resposta_texto:
@@ -748,9 +765,16 @@ async def _resolver_media_meta(msg_type: str, media_id: str, texto_atual: str) -
         # 1. Obter URL de download da mídia
         async with httpx.AsyncClient(timeout=30) as client:
             r = await client.get(
-                f"https://graph.facebook.com/v19.0/{media_id}",
+                f"https://graph.facebook.com/v22.0/{media_id}",
                 headers={"Authorization": f"Bearer {token}"},
             )
+            if r.status_code == 401:
+                logger.error(
+                    f"Token Meta expirado ou inválido ao buscar mídia "
+                    f"(media_id={media_id}, status=401). "
+                    "Verifique META_WHATSAPP_TOKEN."
+                )
+                return texto_atual
             r.raise_for_status()
             media_url = r.json().get("url", "")
             if not media_url:
@@ -762,6 +786,11 @@ async def _resolver_media_meta(msg_type: str, media_id: str, texto_atual: str) -
                 media_url,
                 headers={"Authorization": f"Bearer {token}"},
             )
+            if r2.status_code == 401:
+                logger.error(
+                    f"Token Meta expirado ao baixar mídia (media_id={media_id}, status=401)"
+                )
+                return texto_atual
             r2.raise_for_status()
             media_bytes = r2.content
             content_type = r2.headers.get("content-type", "")
@@ -787,7 +816,9 @@ async def _resolver_media_meta(msg_type: str, media_id: str, texto_atual: str) -
             if texto_transcrito:
                 logger.info(f"Whisper transcreveu {msg_type}: '{texto_transcrito[:80]}...'")
                 return texto_transcrito
-            return texto_atual
+            # Áudio transcrito como vazio: avisar o usuário em vez de retornar placeholder
+            logger.warning(f"Whisper retornou transcrição vazia para {msg_type} de {media_id}")
+            return "[AUDIO_SEM_CONTEUDO]"
 
         elif msg_type == "image":
             # Descrição via Claude vision
@@ -846,7 +877,9 @@ async def _resolver_media_meta(msg_type: str, media_id: str, texto_atual: str) -
 
     except Exception as e:
         logger.error(f"Falha ao resolver mídia ({msg_type}, media_id={media_id}): {e}", exc_info=True)
-        return texto_atual
+        # Retornar marcador específico de falha para que o chamador possa
+        # informar o usuário graciosamente em vez de ignorar silenciosamente
+        return "[MIDIA_FALHOU]"
 
 
 # =============================================
@@ -913,11 +946,35 @@ async def _processar_mensagem_meta(payload: dict) -> None:
         if not texto_mensagem.strip():
             return
 
+        if texto_mensagem == "[AUDIO_SEM_CONTEUDO]":
+            # Whisper não conseguiu transcrever — avisar o usuário antes de ignorar
+            logger.info(f"Áudio sem conteúdo detectado para {numero_paciente} — enviando aviso")
+            try:
+                await meta_client.send_text_message(
+                    phone_number=numero_paciente,
+                    message="Não consegui entender o áudio. Pode reenviar como texto?",
+                )
+            except Exception as e:
+                logger.warning(f"Falha ao enviar aviso de áudio vazio: {e}")
+            return
+
+        if texto_mensagem == "[MIDIA_FALHOU]":
+            # Falha ao baixar ou processar a mídia — avisar o usuário
+            logger.info(f"Falha de mídia para {numero_paciente} — enviando aviso")
+            try:
+                await meta_client.send_text_message(
+                    phone_number=numero_paciente,
+                    message="Não consegui processar o arquivo enviado. Pode tentar novamente ou reenviar como texto?",
+                )
+            except Exception as e:
+                logger.warning(f"Falha ao enviar aviso de falha de mídia: {e}")
+            return
+
         if texto_mensagem.startswith("[") and texto_mensagem.endswith("]"):
             logger.info(f"Tipo não suportado: {texto_mensagem} — ignorando")
             return
 
-        # 4. Buscar terapeuta
+        # 6. Buscar terapeuta
         terapeuta = _buscar_terapeuta_por_phone_number_id(phone_number_id)
         if not terapeuta:
             logger.warning(f"Nenhum terapeuta para phone_number_id '{phone_number_id}'")
@@ -934,7 +991,8 @@ async def _processar_mensagem_meta(payload: dict) -> None:
         }
 
         # 5. Máquina de estados — controle de acesso
-        estado, is_new = obter_ou_criar_estado(terapeuta_id, numero_paciente)
+        # obter_ou_criar_estado usa requests síncrono → rodar em thread para não bloquear event loop
+        estado, is_new = await asyncio.to_thread(obter_ou_criar_estado, terapeuta_id, numero_paciente)
 
         # ── BLOQUEADO ──────────────────────────────────────────────────────────
         if estado.is_bloqueado:
@@ -1134,26 +1192,42 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                 logger.warning(f"Contexto de aprendizado indisponível (Meta): {e}")
                 ctx_formatado = None
 
-            resposta_texto = await gerar_resposta(
-                pergunta=texto_para_processar,
-                terapeuta_id=terapeuta_id,
-                contexto_chunks=contexto_chunks,
-                config_terapeuta=config_terapeuta,
-                historico_mensagens=historico if historico else None,
-                contexto_personalizado=ctx_formatado,
-                memoria_usuario=memoria_fmt,
-            )
+            try:
+                resposta_texto = await gerar_resposta(
+                    pergunta=texto_para_processar,
+                    terapeuta_id=terapeuta_id,
+                    contexto_chunks=contexto_chunks,
+                    config_terapeuta=config_terapeuta,
+                    historico_mensagens=historico if historico else None,
+                    contexto_personalizado=ctx_formatado,
+                    memoria_usuario=memoria_fmt,
+                )
+            except Exception as e:
+                logger.error(f"Falha ao gerar resposta Claude (Meta): {e}", exc_info=True)
+                await meta_client.send_text_message(
+                    phone_number=numero_paciente,
+                    message="Tive um problema ao processar sua mensagem. Pode repetir?",
+                )
+                return
         else:
             contexto_chunks = await buscar_contexto(
                 pergunta=texto_para_processar, terapeuta_id=terapeuta_id,
             )
-            resposta_texto = await gerar_resposta(
-                pergunta=texto_para_processar,
-                terapeuta_id=terapeuta_id,
-                contexto_chunks=contexto_chunks,
-                config_terapeuta=config_terapeuta,
-                memoria_usuario=memoria_fmt,
-            )
+            try:
+                resposta_texto = await gerar_resposta(
+                    pergunta=texto_para_processar,
+                    terapeuta_id=terapeuta_id,
+                    contexto_chunks=contexto_chunks,
+                    config_terapeuta=config_terapeuta,
+                    memoria_usuario=memoria_fmt,
+                )
+            except Exception as e:
+                logger.error(f"Falha ao gerar resposta Claude (Meta, fallback): {e}", exc_info=True)
+                await meta_client.send_text_message(
+                    phone_number=numero_paciente,
+                    message="Tive um problema ao processar sua mensagem. Pode repetir?",
+                )
+                return
 
         # 11. Enviar resposta (com rate limiting anti-ban)
         if resposta_texto:
@@ -1230,7 +1304,8 @@ async def verificar_webhook_meta(
 
     logger.warning(
         f"Webhook Meta verificação falhou — token inválido "
-        f"(recebido: {token[:10]}..., esperado: {settings.META_VERIFY_TOKEN[:10]}...)"
+        f"(recebido: {'***' if token else 'vazio'}, "
+        f"META_VERIFY_TOKEN configurado: {'sim' if settings.META_VERIFY_TOKEN else 'NÃO — variável vazia!'})"
     )
     raise HTTPException(status_code=403, detail="Token de verificação inválido")
 

@@ -54,9 +54,11 @@ MAX_RESUMOS_NO_PROMPT = 3
 # Quantas mensagens usar ao gerar o resumo da sessão
 MAX_MSGS_PARA_RESUMO = 30
 
-# Limiar de dissimilaridade para acionar detecção de mudança de tópico (0.0–1.0)
-# 1.0 = completamente diferente. Abaixo disso = mesmo tópico.
-LIMIAR_MUDANCA_TOPICO = 0.82
+# Limiar de similaridade Jaccard ABAIXO do qual consideramos mudança de tópico.
+# Jaccard raramente ultrapassa 0.3 mesmo para textos relacionados.
+# 0.15 = textos quase completamente diferentes → confirmar mudança de assunto.
+# Anterior: usava (1.0 - 0.82) = 0.18 como threshold — mantido e documentado.
+LIMIAR_MUDANCA_TOPICO = 0.18
 
 # Quantidade mínima de trocas na conversa antes de ativar detecção de mudança
 MIN_TROCAS_PARA_DETECTAR = 3
@@ -175,7 +177,7 @@ def detectar_mudanca_assunto(
 
     similaridade = calcular_similaridade_topico(msgs_usuario, nova_mensagem)
 
-    if similaridade < (1.0 - LIMIAR_MUDANCA_TOPICO):  # similaridade baixa = assuntos diferentes
+    if similaridade < LIMIAR_MUDANCA_TOPICO:  # similaridade Jaccard abaixo do limiar = assuntos diferentes
         topico = _resumo_topico(msgs_usuario)
         logger.info(
             f"Mudança de assunto detectada | similaridade={similaridade:.2f} | "
