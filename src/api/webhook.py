@@ -26,7 +26,8 @@ from src.agents.specialists import (
     get_prompt_agente_caso_clinico,
     get_prompt_agente_metodo,
     get_prompt_agente_conteudo,
-    get_prompt_agente_saudacao,
+    # get_prompt_agente_saudacao não é usado aqui:
+    # SAUDACAO usa gerar_saudacao_ativo() diretamente — sem LLM/RAG por design
 )
 from src.agents.guardian import verificar_resposta
 from src.core.estado import (
@@ -195,7 +196,27 @@ def _buscar_historico_conversa(
         return []
 
 
-def _salvar_conversa(
+def _salvar_conversa_sync(
+    terapeuta_id: str,
+    paciente_numero: str,
+    mensagem_paciente: str,
+    resposta_agente: str,
+    intencao: str,
+) -> None:
+    """Versão síncrona pura — não chamar diretamente em contexto async."""
+    supabase = get_supabase()
+    supabase.table("conversas").insert({
+        "id": str(uuid4()),
+        "terapeuta_id": terapeuta_id,
+        "paciente_numero": paciente_numero,
+        "mensagem_paciente": mensagem_paciente,
+        "resposta_agente": resposta_agente,
+        "intencao": intencao,
+        "criado_em": datetime.now(timezone.utc).isoformat(),
+    }).execute()
+
+
+async def _salvar_conversa(
     terapeuta_id: str,
     paciente_numero: str,
     mensagem_paciente: str,
@@ -204,21 +225,13 @@ def _salvar_conversa(
 ) -> None:
     """
     Salva o registro da conversa na tabela 'conversas' para historico.
-    Usa nomes de colunas corretos do schema do banco.
+    Usa asyncio.to_thread para não bloquear o event loop com IO síncrono do Supabase.
     """
-    supabase = get_supabase()
-
     try:
-        supabase.table("conversas").insert({
-            "id": str(uuid4()),
-            "terapeuta_id": terapeuta_id,
-            "paciente_numero": paciente_numero,
-            "mensagem_paciente": mensagem_paciente,
-            "resposta_agente": resposta_agente,
-            "intencao": intencao,
-            "criado_em": datetime.now(timezone.utc).isoformat(),
-        }).execute()
-
+        await asyncio.to_thread(
+            _salvar_conversa_sync,
+            terapeuta_id, paciente_numero, mensagem_paciente, resposta_agente, intencao,
+        )
         logger.info(
             f"Conversa salva — terapeuta={terapeuta_id}, paciente={paciente_numero}"
         )
@@ -318,7 +331,7 @@ async def _processar_mensagem(payload: dict) -> None:
         if estado.is_pendente:
             if is_new:
                 # Primeira mensagem ever: salvar ANTES de enviar (garante rastreabilidade)
-                _salvar_conversa(
+                await _salvar_conversa(
                     terapeuta_id=terapeuta_id,
                     paciente_numero=numero_paciente,
                     mensagem_paciente=texto_mensagem,
@@ -330,11 +343,13 @@ async def _processar_mensagem(payload: dict) -> None:
                 )
             else:
                 # Já recebeu boas-vindas: tentar validar como código
-                if validar_codigo(terapeuta_id, numero_paciente, texto_mensagem):
-                    liberar_acesso(terapeuta_id, numero_paciente, texto_mensagem)
+                # validar_codigo usa Supabase sync → to_thread para não bloquear event loop
+                codigo_valido = await asyncio.to_thread(validar_codigo, terapeuta_id, numero_paciente, texto_mensagem)
+                if codigo_valido:
+                    await asyncio.to_thread(liberar_acesso, terapeuta_id, numero_paciente, texto_mensagem)
                     # Ativar assinatura: define data_expiracao com base nos meses comprados
-                    ativar_acesso_com_codigo(terapeuta_id, texto_mensagem, numero_paciente)
-                    _salvar_conversa(
+                    await asyncio.to_thread(ativar_acesso_com_codigo, terapeuta_id, texto_mensagem, numero_paciente)
+                    await _salvar_conversa(
                         terapeuta_id=terapeuta_id,
                         paciente_numero=numero_paciente,
                         mensagem_paciente=texto_mensagem,
@@ -345,7 +360,7 @@ async def _processar_mensagem(payload: dict) -> None:
                         MSGS_ACESSO_LIBERADO, evolution, instance_name, numero_paciente,
                     )
                 else:
-                    _salvar_conversa(
+                    await _salvar_conversa(
                         terapeuta_id=terapeuta_id,
                         paciente_numero=numero_paciente,
                         mensagem_paciente=texto_mensagem,
@@ -362,12 +377,12 @@ async def _processar_mensagem(payload: dict) -> None:
 
         # 5a. Coletar nome se ainda não temos
         if estado.aguardando_nome:
-            nome = registrar_nome_usuario(terapeuta_id, numero_paciente, texto_mensagem)
+            nome = await asyncio.to_thread(registrar_nome_usuario, terapeuta_id, numero_paciente, texto_mensagem)
             msg_nome = gerar_msg_boas_vindas_nome(nome)
             await evolution.enviar_mensagem(
                 instance=instance_name, numero=numero_paciente, texto=msg_nome,
             )
-            _salvar_conversa(
+            await _salvar_conversa(
                 terapeuta_id=terapeuta_id, paciente_numero=numero_paciente,
                 mensagem_paciente=texto_mensagem, resposta_agente=msg_nome,
                 intencao="NOME_REGISTRADO",
@@ -376,14 +391,14 @@ async def _processar_mensagem(payload: dict) -> None:
 
         # 5b. Moderação: detectar profanidade ANTES do RAG
         if detectar_profanidade(texto_mensagem):
-            violacoes = registrar_violacao(terapeuta_id, numero_paciente)
+            violacoes = await asyncio.to_thread(registrar_violacao, terapeuta_id, numero_paciente)
             aviso = MSG_AVISO_1 if violacoes == 1 else (
                 MSG_AVISO_2 if violacoes == 2 else gerar_msg_bloqueio(settings.CONTATO_ADMIN)
             )
             await evolution.enviar_mensagem(
                 instance=instance_name, numero=numero_paciente, texto=aviso,
             )
-            _salvar_conversa(
+            await _salvar_conversa(
                 terapeuta_id=terapeuta_id, paciente_numero=numero_paciente,
                 mensagem_paciente=texto_mensagem, resposta_agente=aviso,
                 intencao=f"VIOLACAO_{violacoes}",
@@ -391,8 +406,9 @@ async def _processar_mensagem(payload: dict) -> None:
             return
 
         # 6. Carregar memória e histórico (sequencial — Supabase client não é thread-safe)
+        # _buscar_historico_conversa usa Supabase sync → to_thread evita bloquear event loop
         memoria = await carregar_memoria_completa(terapeuta_id, numero_paciente)
-        historico = _buscar_historico_conversa(terapeuta_id, numero_paciente, 20)
+        historico = await asyncio.to_thread(_buscar_historico_conversa, terapeuta_id, numero_paciente, 20)
 
         # Formatar memória para injeção no prompt
         memoria_fmt = formatar_memoria_para_prompt(memoria, estado.nome_usuario)
@@ -414,7 +430,7 @@ async def _processar_mensagem(payload: dict) -> None:
                 await evolution.enviar_mensagem(
                     instance=instance_name, numero=numero_paciente, texto=retomada,
                 )
-                _salvar_conversa(
+                await _salvar_conversa(
                     terapeuta_id=terapeuta_id, paciente_numero=numero_paciente,
                     mensagem_paciente=texto_mensagem, resposta_agente=retomada,
                     intencao="RETOMADA_TOPICO",
@@ -435,7 +451,8 @@ async def _processar_mensagem(payload: dict) -> None:
             estado.nome_usuario,
         )
         logger.info(f"Modo roteado (Evolution): {modo.value}")
-        intencao = await classificar_intencao(texto_para_processar)
+        # classificar_intencao só é chamado nos modos que usam RAG (economiza API)
+        intencao = None
 
         resposta_texto: str | list[str] = ""
 
@@ -499,13 +516,16 @@ async def _processar_mensagem(payload: dict) -> None:
                     await evolution.enviar_mensagem(
                         instance=instance_name, numero=numero_paciente, texto=confirmacao,
                     )
-                    _salvar_conversa(
+                    await _salvar_conversa(
                         terapeuta_id=terapeuta_id, paciente_numero=numero_paciente,
                         mensagem_paciente=texto_mensagem, resposta_agente=confirmacao,
                         intencao="CONFIRMACAO_TOPICO",
                     )
                     asyncio.create_task(atualizar_timestamp_mensagem(terapeuta_id, numero_paciente))
                     return
+
+            # Classificar intenção apenas no branch RAG (economiza chamada Haiku)
+            intencao = await classificar_intencao(texto_para_processar)
 
             top_k_busca = 10 if modo == ModoOperacao.CONSULTA else 5
             contexto_chunks = await buscar_contexto(
@@ -598,10 +618,15 @@ async def _processar_mensagem(payload: dict) -> None:
 
         # 11. Salvar conversa
         resposta_salvar = " | ".join(resposta_texto) if isinstance(resposta_texto, list) else resposta_texto
-        _salvar_conversa(
+        _intencao_str = (
+            f"{modo.value}|{intencao.value if hasattr(intencao, 'value') else str(intencao)}"
+            if intencao is not None
+            else modo.value
+        )
+        await _salvar_conversa(
             terapeuta_id=terapeuta_id, paciente_numero=numero_paciente,
             mensagem_paciente=texto_mensagem, resposta_agente=resposta_salvar,
-            intencao=f"{modo.value}|{intencao.value if hasattr(intencao, 'value') else str(intencao)}",
+            intencao=_intencao_str,
         )
 
         # 12. Background: timestamp + perfil + aprendizado + guardião
@@ -1050,7 +1075,7 @@ async def _processar_mensagem_meta(payload: dict) -> None:
         if estado.is_pendente:
             if is_new:
                 # Primeira mensagem ever: salvar ANTES de enviar (garante rastreabilidade)
-                _salvar_conversa(
+                await _salvar_conversa(
                     terapeuta_id=terapeuta_id,
                     paciente_numero=numero_paciente,
                     mensagem_paciente=texto_mensagem,
@@ -1060,11 +1085,13 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                 await _enviar_sequencia_meta(MSGS_ONBOARDING, meta_client, numero_paciente)
             else:
                 # Já recebeu boas-vindas: tentar como código de liberação
-                if validar_codigo(terapeuta_id, numero_paciente, texto_mensagem):
-                    liberar_acesso(terapeuta_id, numero_paciente, texto_mensagem)
+                # validar_codigo usa Supabase sync → to_thread para não bloquear event loop
+                codigo_valido = await asyncio.to_thread(validar_codigo, terapeuta_id, numero_paciente, texto_mensagem)
+                if codigo_valido:
+                    await asyncio.to_thread(liberar_acesso, terapeuta_id, numero_paciente, texto_mensagem)
                     # Ativar assinatura: define data_expiracao com base nos meses comprados
-                    ativar_acesso_com_codigo(terapeuta_id, texto_mensagem, numero_paciente)
-                    _salvar_conversa(
+                    await asyncio.to_thread(ativar_acesso_com_codigo, terapeuta_id, texto_mensagem, numero_paciente)
+                    await _salvar_conversa(
                         terapeuta_id=terapeuta_id,
                         paciente_numero=numero_paciente,
                         mensagem_paciente=texto_mensagem,
@@ -1075,7 +1102,7 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                         MSGS_ACESSO_LIBERADO, meta_client, numero_paciente,
                     )
                 else:
-                    _salvar_conversa(
+                    await _salvar_conversa(
                         terapeuta_id=terapeuta_id,
                         paciente_numero=numero_paciente,
                         mensagem_paciente=texto_mensagem,
@@ -1091,12 +1118,12 @@ async def _processar_mensagem_meta(payload: dict) -> None:
 
         # 6a. Coletar nome se ainda não temos
         if estado.aguardando_nome:
-            nome = registrar_nome_usuario(terapeuta_id, numero_paciente, texto_mensagem)
+            nome = await asyncio.to_thread(registrar_nome_usuario, terapeuta_id, numero_paciente, texto_mensagem)
             msg_nome = gerar_msg_boas_vindas_nome(nome)
             await meta_client.send_text_message(
                 phone_number=numero_paciente, message=msg_nome,
             )
-            _salvar_conversa(
+            await _salvar_conversa(
                 terapeuta_id=terapeuta_id, paciente_numero=numero_paciente,
                 mensagem_paciente=texto_mensagem, resposta_agente=msg_nome,
                 intencao="NOME_REGISTRADO",
@@ -1105,14 +1132,14 @@ async def _processar_mensagem_meta(payload: dict) -> None:
 
         # 6b. Moderação: detectar profanidade ANTES do RAG
         if detectar_profanidade(texto_mensagem):
-            violacoes = registrar_violacao(terapeuta_id, numero_paciente)
+            violacoes = await asyncio.to_thread(registrar_violacao, terapeuta_id, numero_paciente)
             aviso = MSG_AVISO_1 if violacoes == 1 else (
                 MSG_AVISO_2 if violacoes == 2 else gerar_msg_bloqueio(settings.CONTATO_ADMIN)
             )
             await meta_client.send_text_message(
                 phone_number=numero_paciente, message=aviso,
             )
-            _salvar_conversa(
+            await _salvar_conversa(
                 terapeuta_id=terapeuta_id, paciente_numero=numero_paciente,
                 mensagem_paciente=texto_mensagem, resposta_agente=aviso,
                 intencao=f"VIOLACAO_{violacoes}",
@@ -1120,8 +1147,9 @@ async def _processar_mensagem_meta(payload: dict) -> None:
             return
 
         # 7. Carregar memória e histórico (sequencial — Supabase client não é thread-safe)
+        # _buscar_historico_conversa usa Supabase sync → to_thread evita bloquear event loop
         memoria = await carregar_memoria_completa(terapeuta_id, numero_paciente)
-        historico = _buscar_historico_conversa(terapeuta_id, numero_paciente, 20)
+        historico = await asyncio.to_thread(_buscar_historico_conversa, terapeuta_id, numero_paciente, 20)
 
         # Formatar memória para injeção no prompt
         memoria_fmt = formatar_memoria_para_prompt(memoria, estado.nome_usuario)
@@ -1141,7 +1169,7 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                 await meta_client.send_text_message(
                     phone_number=numero_paciente, message=retomada,
                 )
-                _salvar_conversa(
+                await _salvar_conversa(
                     terapeuta_id=terapeuta_id, paciente_numero=numero_paciente,
                     mensagem_paciente=texto_mensagem, resposta_agente=retomada,
                     intencao="RETOMADA_TOPICO",
@@ -1161,7 +1189,8 @@ async def _processar_mensagem_meta(payload: dict) -> None:
             estado.nome_usuario,
         )
         logger.info(f"Modo roteado (Meta): {modo.value}")
-        intencao = await classificar_intencao(texto_para_processar)
+        # classificar_intencao só é chamado nos modos que usam RAG (economiza chamada Haiku)
+        intencao = None
 
         resposta_texto: str | list[str] = ""
 
@@ -1221,13 +1250,16 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                     await meta_client.send_text_message(
                         phone_number=numero_paciente, message=confirmacao,
                     )
-                    _salvar_conversa(
+                    await _salvar_conversa(
                         terapeuta_id=terapeuta_id, paciente_numero=numero_paciente,
                         mensagem_paciente=texto_mensagem, resposta_agente=confirmacao,
                         intencao="CONFIRMACAO_TOPICO",
                     )
                     asyncio.create_task(atualizar_timestamp_mensagem(terapeuta_id, numero_paciente))
                     return
+
+            # Classificar intenção apenas no branch RAG (economiza chamada Haiku)
+            intencao = await classificar_intencao(texto_para_processar)
 
             top_k_busca = 10 if modo == ModoOperacao.CONSULTA else 5
             contexto_chunks = await buscar_contexto(
@@ -1318,10 +1350,15 @@ async def _processar_mensagem_meta(payload: dict) -> None:
 
         # 12. Salvar conversa
         resposta_salvar = " | ".join(resposta_texto) if isinstance(resposta_texto, list) else resposta_texto
-        _salvar_conversa(
+        _intencao_str_meta = (
+            f"{modo.value}|{intencao.value if hasattr(intencao, 'value') else str(intencao)}"
+            if intencao is not None
+            else modo.value
+        )
+        await _salvar_conversa(
             terapeuta_id=terapeuta_id, paciente_numero=numero_paciente,
             mensagem_paciente=texto_mensagem, resposta_agente=resposta_salvar,
-            intencao=f"{modo.value}|{intencao.value if hasattr(intencao, 'value') else str(intencao)}",
+            intencao=_intencao_str_meta,
         )
 
         # 13. Background: timestamp + perfil + aprendizado + guardião

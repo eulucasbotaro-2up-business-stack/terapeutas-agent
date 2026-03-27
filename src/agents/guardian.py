@@ -37,7 +37,9 @@ _MEDICAMENTOS_COMUNS = {
     "zolpidem", "zopiclona", "midazolam",
     "risperidona", "olanzapina", "quetiapina", "aripiprazol", "haloperidol",
     "clozapina", "ziprasidona",
-    "lítio", "valproato", "carbamazepina", "lamotrigina", "topiramato",
+    # "lítio" removido: nome usado em contexto alquímico/mineral — falso positivo frequente
+    # O padrão de dosagem (_PATTERN_MEDICAMENTO_DOSAGEM) cobre "lítio 300mg" corretamente
+    "valproato", "carbamazepina", "lamotrigina", "topiramato",
     "metilfenidato", "lisdexanfetamina", "atomoxetina",
     "propranolol", "atenolol", "metoprolol",
     "ibuprofeno", "paracetamol", "dipirona", "naproxeno",
@@ -52,13 +54,15 @@ _MEDICAMENTOS_COMUNS = {
 # Termos de diagnóstico médico formal (CID, DSM, diagnósticos clínicos)
 _DIAGNOSTICOS_MEDICOS = {
     "transtorno depressivo maior", "episódio depressivo maior",
-    "transtorno de ansiedade generalizada", "tag",
+    "transtorno de ansiedade generalizada",
+    # "tag" removido: falso positivo com "hashtag" — o nome completo acima é suficiente
     "transtorno do pânico", "transtorno bipolar", "bipolar tipo",
     "esquizofrenia", "transtorno esquizoafetivo",
     "transtorno borderline", "transtorno de personalidade borderline", "tpb",
     "transtorno obsessivo-compulsivo", "toc",
     "transtorno de estresse pós-traumático", "tept",
-    "transtorno do espectro autista", "tea",
+    "transtorno do espectro autista",
+    # "tea" removido: falso positivo (ex: "atopia tea", palavras com "tea") — nome completo é suficiente
     "transtorno de déficit de atenção", "tdah",
     "anorexia nervosa", "bulimia nervosa", "compulsão alimentar",
     "cid-10", "cid-11", "dsm-5", "dsm-iv",

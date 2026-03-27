@@ -216,7 +216,6 @@ async def _classificar_com_haiku(
     mensagem_usuario = f"Mensagem: {texto}{historico_resumo}"
 
     try:
-        settings = get_settings()
         response = await client.messages.create(
             model=_HAIKU_MODEL,
             max_tokens=10,
