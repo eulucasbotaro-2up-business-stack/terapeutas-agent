@@ -63,13 +63,7 @@ from src.core.memoria import (
     processar_fim_sessao_em_background,
     formatar_memoria_para_prompt,
     gerar_msg_retomada_sessao,
-    detectar_mudanca_assunto,
-    gerar_msg_confirma_mudanca,
-    gerar_msg_retomada_topico,
-    salvar_confirmacao_topico,
     limpar_confirmacao_topico,
-    eh_confirmacao,
-    eh_negacao,
 )
 from src.rag.retriever import buscar_contexto
 from src.rag.generator import gerar_resposta, classificar_intencao
@@ -962,36 +956,13 @@ async def _processar_mensagem(payload: dict) -> None:
         # Formatar memória para injeção no prompt
         memoria_fmt = formatar_memoria_para_prompt(memoria, estado.nome_usuario)
 
-        # 7. Tratar confirmação de mudança de assunto (se pendente)
+        # 7. Processar mensagem normalmente (detecção de mudança de assunto removida —
+        #    Jaccard similarity é incompatível com conversas clínicas onde cada turno
+        #    introduz novos termos sobre o mesmo caso, gerando sempre falso positivo)
         if estado.aguardando_confirmacao_topico:
-            topico_ant = estado.topico_anterior or "assunto anterior"
-            msg_pendente = estado.mensagem_pendente_topico or texto_mensagem
-
-            if eh_confirmacao(texto_mensagem):
-                # Usuário confirmou a mudança: processar a mensagem que disparou
-                await limpar_confirmacao_topico(terapeuta_id, numero_paciente)
-                texto_para_processar = msg_pendente
-                logger.info(f"Mudança de assunto CONFIRMADA para {numero_paciente}")
-            elif eh_negacao(texto_mensagem):
-                # Usuário quer continuar o assunto anterior
-                await limpar_confirmacao_topico(terapeuta_id, numero_paciente)
-                retomada = gerar_msg_retomada_topico(topico_ant, estado.nome_usuario)
-                await evolution.enviar_mensagem(
-                    instance=instance_name, numero=numero_paciente, texto=retomada,
-                )
-                await _salvar_conversa(
-                    terapeuta_id=terapeuta_id, paciente_numero=numero_paciente,
-                    mensagem_paciente=texto_mensagem, resposta_agente=retomada,
-                    intencao="RETOMADA_TOPICO",
-                )
-                asyncio.create_task(atualizar_timestamp_mensagem(terapeuta_id, numero_paciente))
-                return
-            else:
-                # Usuário enviou outra coisa — limpar e processar normalmente
-                await limpar_confirmacao_topico(terapeuta_id, numero_paciente)
-                texto_para_processar = texto_mensagem
-        else:
-            texto_para_processar = texto_mensagem
+            # Limpar estado legado caso tenha ficado preso
+            await limpar_confirmacao_topico(terapeuta_id, numero_paciente)
+        texto_para_processar = texto_mensagem
 
         # 8. Rotear mensagem: Haiku para ambíguo, keywords para óbvio
         modo = await rotear_mensagem(
@@ -1049,30 +1020,6 @@ async def _processar_mensagem(payload: dict) -> None:
             resposta_texto = MENSAGEM_FORA_ESCOPO
 
         elif modo in (ModoOperacao.CONSULTA, ModoOperacao.CRIACAO_CONTEUDO, ModoOperacao.PESQUISA):
-            # 9a. Detectar mudança de assunto antes de responder
-            if (
-                not estado.aguardando_confirmacao_topico
-                and historico
-                and len(historico) >= 6  # mínimo 3 trocas
-            ):
-                mudou, topico_ant = detectar_mudanca_assunto(historico, texto_para_processar)
-                if mudou:
-                    # Salvar estado + enviar confirmação (não processa RAG agora)
-                    await salvar_confirmacao_topico(
-                        terapeuta_id, numero_paciente, texto_para_processar, topico_ant
-                    )
-                    confirmacao = gerar_msg_confirma_mudanca(topico_ant, estado.nome_usuario)
-                    await evolution.enviar_mensagem(
-                        instance=instance_name, numero=numero_paciente, texto=confirmacao,
-                    )
-                    await _salvar_conversa(
-                        terapeuta_id=terapeuta_id, paciente_numero=numero_paciente,
-                        mensagem_paciente=texto_mensagem, resposta_agente=confirmacao,
-                        intencao="CONFIRMACAO_TOPICO",
-                    )
-                    asyncio.create_task(atualizar_timestamp_mensagem(terapeuta_id, numero_paciente))
-                    return
-
             # Classificar intenção apenas no branch RAG (economiza chamada Haiku)
             intencao = await classificar_intencao(texto_para_processar)
 
