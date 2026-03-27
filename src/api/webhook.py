@@ -809,10 +809,13 @@ async def _processar_mensagem(payload: dict) -> None:
         numero_paciente, texto_mensagem = extrair_numero_mensagem(payload)
         instance_name = payload.get("instance", "")
 
-        logger.info(f"Evolution: mensagem de {numero_paciente} na instância {instance_name}")
+        logger.info(
+            f"[PROC_DIAG] numero={numero_paciente}, instance={instance_name}, "
+            f"texto='{texto_mensagem[:80]}'"
+        )
 
         if not texto_mensagem or not texto_mensagem.strip():
-            logger.info("Mensagem sem texto — ignorando")
+            logger.info(f"[PROC_DIAG] Mensagem sem texto — ignorando (numero={numero_paciente})")
             return
 
         # 2. Deduplicação: Evolution API pode enviar webhooks duplicados
@@ -1291,10 +1294,20 @@ async def receber_webhook_whatsapp(
         logger.warning("Webhook recebeu payload inválido (não é JSON)")
         raise HTTPException(status_code=400, detail="Payload inválido — esperado JSON")
 
+    # LOG DIAGNÓSTICO — captura tipo de mensagem para debug de áudio
+    evento = body.get("event", "desconhecido")
+    _data_diag = body.get("data", {})
+    _msg_diag = _data_diag.get("message", {})
+    _from_me_diag = _data_diag.get("key", {}).get("fromMe", "?")
+    _msg_keys_diag = list(_msg_diag.keys()) if isinstance(_msg_diag, dict) else repr(_msg_diag)
+    logger.info(
+        f"[WEBHOOK_DIAG] evento={evento}, fromMe={_from_me_diag}, "
+        f"message_keys={_msg_keys_diag}"
+    )
+
     # Validar se é uma mensagem que deve ser processada
     if not eh_mensagem_valida(body):
-        evento = body.get("event", "desconhecido")
-        logger.debug(f"Evento ignorado ou mensagem inválida: {evento}")
+        logger.info(f"[WEBHOOK_DIAG] Evento ignorado/inválido: {evento}")
         return {"status": "ignorado", "evento": evento}
 
     # Processar a mensagem em background (não travar o webhook)
