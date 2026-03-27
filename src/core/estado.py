@@ -139,18 +139,47 @@ MSGS_ACESSO_LIBERADO: list[str] = [
 
 # --- Nome registrado: iniciar conversa ---
 def gerar_msg_boas_vindas_nome(nome: str) -> str:
+    import random
     nome_fmt = nome.strip().split()[0].capitalize()
-    return (
-        f"Prazer, {nome_fmt}! Estou pronto para te ajudar. "
-        "O que você gostaria de saber ou explorar hoje?"
-    )
+
+    variacoes = [
+        f"{nome_fmt}, prazer! Pode mandar o que tiver. Caso clínico, dúvida conceitual, ou quer criar conteúdo pra redes? Tô aqui pra caminhar junto contigo.",
+        f"Prazer, {nome_fmt}. Pode trazer o que você precisar — análise de caso, pesquisa no método do Joel, ou produção de conteúdo. O que você traz hoje?",
+        f"{nome_fmt}! Bom ter você aqui. Caso clínico, dúvida sobre o método, criação de post... me conta o que está na sua cabeça.",
+    ]
+    return random.choice(variacoes)
 
 # --- Usuário já ativo diz "oi" de novo ---
 def gerar_saudacao_ativo(nome: Optional[str]) -> list[str]:
-    if nome:
-        nome_fmt = nome.strip().split()[0].capitalize()
-        return [f"Olá, {nome_fmt}! Como posso te ajudar hoje? 🙏"]
-    return ["Olá! Como posso te ajudar hoje? 🙏"]
+    """
+    Retorna saudação natural para usuário já ativo.
+    Menciona as 3 frentes sem bullet points nem cara de IA.
+    Varia o texto para não repetir sempre o mesmo padrão.
+    """
+    import random
+    nome_fmt = nome.strip().split()[0].capitalize() if nome else ""
+
+    variacoes = [
+        (
+            f"{'Fala, ' + nome_fmt + '!' if nome_fmt else 'Fala!'} Pode trazer o que tiver.",
+            "Caso clínico pra analisar, dúvida sobre o método, ou quer criar um conteúdo? Tô aqui."
+        ),
+        (
+            f"{'Opa, ' + nome_fmt + '.' if nome_fmt else 'Opa.'} Que bom te ver aqui.",
+            "Me conta o que você traz hoje — um caso, uma dúvida do método, ou precisa de conteúdo pra redes?"
+        ),
+        (
+            f"{'E aí, ' + nome_fmt + '!' if nome_fmt else 'E aí!'} Tô por aqui.",
+            "Pode ser caso clínico, pesquisa nos materiais do Joel, ou criação de post. O que você precisa?"
+        ),
+        (
+            f"{'Oi, ' + nome_fmt + '.' if nome_fmt else 'Oi.'} Que bom.",
+            "Tem um caso pra analisar, uma dúvida sobre o método, ou quer aprofundar algum conceito específico?"
+        ),
+    ]
+
+    escolha = random.choice(variacoes)
+    return list(escolha)
 
 # --- Moderação: aviso 1 ---
 MSG_AVISO_1 = (
