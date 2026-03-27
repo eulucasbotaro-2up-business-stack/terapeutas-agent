@@ -139,7 +139,7 @@ MSGS_ACESSO_LIBERADO: list[str] = [
     (
         "A partir de agora você tem acesso completo à base de conhecimento "
         "do método alquímico do Joel Aleixo.\n\n"
-        "Pode perguntar sobre o método, trazer casos ou pedir conteúdo — "
+        "Pode perguntar sobre o método, trazer casos clínicos ou pedir ajuda para produção de conteúdo — "
         "por texto ou áudio, como preferir."
     ),
     "Antes de começar, como posso te chamar?",
