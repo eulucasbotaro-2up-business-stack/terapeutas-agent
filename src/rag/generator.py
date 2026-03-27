@@ -149,6 +149,7 @@ async def gerar_resposta(
     historico_mensagens: list[dict] | None = None,
     modo_override: ModoOperacao | None = None,
     contexto_personalizado: str | None = None,
+    memoria_usuario: str | None = None,
 ) -> str:
     """
     Gera resposta do agente usando Claude API com o system prompt da Alquimia.
@@ -211,6 +212,7 @@ async def gerar_resposta(
         modo_override=modo_override,
         historico_mensagens=historico_mensagens,
         contexto_personalizado=contexto_personalizado,
+        memoria_usuario=memoria_usuario,
     )
 
     try:

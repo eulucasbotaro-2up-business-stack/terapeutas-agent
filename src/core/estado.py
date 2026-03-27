@@ -235,6 +235,16 @@ class EstadoChat:
         self.criado_em: str = row.get("criado_em", "")
         self.atualizado_em: str = row.get("atualizado_em", "")
 
+        # --- Campos de memória e sessão (schema_memoria.sql) ---
+        self.ultima_mensagem_em: Optional[str] = row.get("ultima_mensagem_em")
+        self.sessao_atual_inicio: Optional[str] = row.get("sessao_atual_inicio")
+        # Confirmação de mudança de tópico
+        self.aguardando_confirmacao_topico: bool = bool(
+            row.get("aguardando_confirmacao_topico", False)
+        )
+        self.mensagem_pendente_topico: Optional[str] = row.get("mensagem_pendente_topico")
+        self.topico_anterior: Optional[str] = row.get("topico_anterior")
+
     @property
     def is_pendente(self) -> bool:
         return self.estado == "PENDENTE_CODIGO"

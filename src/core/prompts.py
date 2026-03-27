@@ -1094,14 +1094,15 @@ def montar_prompt(
     modo_override: ModoOperacao | None = None,
     historico_mensagens: list[dict] | None = None,
     contexto_personalizado: str | None = None,
+    memoria_usuario: str | None = None,
 ) -> str:
     """
     Monta o system prompt completo com deteccao automatica de modo e contexto RAG.
 
     Esta e a funcao principal que orquestra toda a montagem do prompt.
     Ela detecta o modo de operacao, formata o contexto por nivel,
-    injeta as instrucoes especificas do modo e o contexto personalizado
-    de aprendizado continuo no prompt.
+    injeta as instrucoes especificas do modo, o contexto personalizado
+    de aprendizado continuo e a memória do usuário no prompt.
 
     Args:
         terapeuta: Dicionario com dados do terapeuta:
@@ -1117,6 +1118,9 @@ def montar_prompt(
             Essencial para consultas multi-turno (anamnese).
         contexto_personalizado: Texto de contexto personalizado do aprendizado continuo.
             Gerado por aprendizado.formatar_contexto_personalizado().
+        memoria_usuario: Memória persistente do usuário formatada.
+            Gerado por memoria.formatar_memoria_para_prompt().
+            Inclui perfil acumulado, temas, resumos de sessões anteriores.
 
     Returns:
         System prompt completo formatado, pronto para enviar ao Claude.
@@ -1167,6 +1171,11 @@ def montar_prompt(
     # Injeta contexto personalizado de aprendizado continuo (se disponivel)
     if contexto_personalizado:
         prompt += f"\n\n## {contexto_personalizado}"
+
+    # Injeta memória persistente do usuário (sessões anteriores, perfil, temas)
+    # Este bloco dá ao agente continuidade real entre dias e sessões.
+    if memoria_usuario:
+        prompt += f"\n\n{memoria_usuario}"
 
     return prompt
 

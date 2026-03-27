@@ -36,6 +36,21 @@ from src.core.estado import (
 )
 from src.core.assinatura import ativar_acesso_com_codigo
 from src.core.rate_limiter import aguardar_antes_de_enviar
+from src.core.memoria import (
+    carregar_memoria_completa,
+    atualizar_timestamp_mensagem,
+    atualizar_perfil_apos_interacao,
+    processar_fim_sessao_em_background,
+    formatar_memoria_para_prompt,
+    gerar_msg_retomada_sessao,
+    detectar_mudanca_assunto,
+    gerar_msg_confirma_mudanca,
+    gerar_msg_retomada_topico,
+    salvar_confirmacao_topico,
+    limpar_confirmacao_topico,
+    eh_confirmacao,
+    eh_negacao,
+)
 from src.rag.retriever import buscar_contexto
 from src.rag.generator import gerar_resposta, classificar_intencao
 from src.rag.aprendizado import (
@@ -313,10 +328,8 @@ async def _processar_mensagem(payload: dict) -> None:
                 instance=instance_name, numero=numero_paciente, texto=msg_nome,
             )
             _salvar_conversa(
-                terapeuta_id=terapeuta_id,
-                paciente_numero=numero_paciente,
-                mensagem_paciente=texto_mensagem,
-                resposta_agente=msg_nome,
+                terapeuta_id=terapeuta_id, paciente_numero=numero_paciente,
+                mensagem_paciente=texto_mensagem, resposta_agente=msg_nome,
                 intencao="NOME_REGISTRADO",
             )
             return
@@ -324,34 +337,94 @@ async def _processar_mensagem(payload: dict) -> None:
         # 5b. Moderação: detectar profanidade ANTES do RAG
         if detectar_profanidade(texto_mensagem):
             violacoes = registrar_violacao(terapeuta_id, numero_paciente)
-            if violacoes == 1:
-                aviso = MSG_AVISO_1
-            elif violacoes == 2:
-                aviso = MSG_AVISO_2
-            else:
-                aviso = gerar_msg_bloqueio(settings.CONTATO_ADMIN)
+            aviso = MSG_AVISO_1 if violacoes == 1 else (
+                MSG_AVISO_2 if violacoes == 2 else gerar_msg_bloqueio(settings.CONTATO_ADMIN)
+            )
             await evolution.enviar_mensagem(
                 instance=instance_name, numero=numero_paciente, texto=aviso,
             )
             _salvar_conversa(
-                terapeuta_id=terapeuta_id,
-                paciente_numero=numero_paciente,
-                mensagem_paciente=texto_mensagem,
-                resposta_agente=aviso,
+                terapeuta_id=terapeuta_id, paciente_numero=numero_paciente,
+                mensagem_paciente=texto_mensagem, resposta_agente=aviso,
                 intencao=f"VIOLACAO_{violacoes}",
             )
             return
 
-        # 6. Detectar modo e classificar intenção
-        modo = detectar_modo(texto_mensagem)
+        # 6. Carregar memória do usuário em paralelo com o histórico
+        memoria, historico = await asyncio.gather(
+            carregar_memoria_completa(terapeuta_id, numero_paciente),
+            asyncio.to_thread(
+                _buscar_historico_conversa, terapeuta_id, numero_paciente, 20
+            ),
+        )
+
+        # Formatar memória para injeção no prompt
+        memoria_fmt = formatar_memoria_para_prompt(memoria, estado.nome_usuario)
+
+        # 7. Tratar confirmação de mudança de assunto (se pendente)
+        if estado.aguardando_confirmacao_topico:
+            topico_ant = estado.topico_anterior or "assunto anterior"
+            msg_pendente = estado.mensagem_pendente_topico or texto_mensagem
+
+            if eh_confirmacao(texto_mensagem):
+                # Usuário confirmou a mudança: processar a mensagem que disparou
+                await limpar_confirmacao_topico(terapeuta_id, numero_paciente)
+                texto_para_processar = msg_pendente
+                logger.info(f"Mudança de assunto CONFIRMADA para {numero_paciente}")
+            elif eh_negacao(texto_mensagem):
+                # Usuário quer continuar o assunto anterior
+                await limpar_confirmacao_topico(terapeuta_id, numero_paciente)
+                retomada = gerar_msg_retomada_topico(topico_ant, estado.nome_usuario)
+                await evolution.enviar_mensagem(
+                    instance=instance_name, numero=numero_paciente, texto=retomada,
+                )
+                _salvar_conversa(
+                    terapeuta_id=terapeuta_id, paciente_numero=numero_paciente,
+                    mensagem_paciente=texto_mensagem, resposta_agente=retomada,
+                    intencao="RETOMADA_TOPICO",
+                )
+                asyncio.create_task(atualizar_timestamp_mensagem(terapeuta_id, numero_paciente))
+                return
+            else:
+                # Usuário enviou outra coisa — limpar e processar normalmente
+                await limpar_confirmacao_topico(terapeuta_id, numero_paciente)
+                texto_para_processar = texto_mensagem
+        else:
+            texto_para_processar = texto_mensagem
+
+        # 8. Detectar modo e classificar intenção
+        modo = detectar_modo(texto_para_processar)
         logger.info(f"Modo detectado: {modo.value}")
-        intencao = await classificar_intencao(texto_mensagem)
+        intencao = await classificar_intencao(texto_para_processar)
 
         resposta_texto: str | list[str] = ""
 
-        # 7. Saudação quando ATIVO — sem RAG, só cumprimento personalizado
+        # 9. Saudação quando ATIVO
         if modo == ModoOperacao.SAUDACAO:
-            resposta_texto = gerar_saudacao_ativo(estado.nome_usuario)
+            # Se nova sessão E tem histórico: retomar o que foi discutido
+            if memoria.get("is_nova_sessao") and memoria.get("resumos_sessoes"):
+                msg_retomada = gerar_msg_retomada_sessao(
+                    memoria["resumos_sessoes"], estado.nome_usuario
+                )
+                if msg_retomada:
+                    resposta_texto = msg_retomada
+                    # Processar fim de sessão em background (gera resumo da anterior)
+                    asyncio.create_task(
+                        processar_fim_sessao_em_background(
+                            terapeuta_id, numero_paciente, historico
+                        )
+                    )
+                else:
+                    resposta_texto = gerar_saudacao_ativo(estado.nome_usuario)
+            else:
+                resposta_texto = gerar_saudacao_ativo(estado.nome_usuario)
+                if memoria.get("is_nova_sessao") and historico:
+                    # Primeira vez com histórico mas sem resumo ainda: gerar em background
+                    asyncio.create_task(
+                        processar_fim_sessao_em_background(
+                            terapeuta_id, numero_paciente, historico
+                        )
+                    )
 
         elif modo == ModoOperacao.EMERGENCIA:
             resposta_texto = (
@@ -370,12 +443,33 @@ async def _processar_mensagem(payload: dict) -> None:
             resposta_texto = MENSAGEM_FORA_ESCOPO
 
         elif modo in (ModoOperacao.CONSULTA, ModoOperacao.CRIACAO_CONTEUDO, ModoOperacao.PESQUISA):
+            # 9a. Detectar mudança de assunto antes de responder
+            if (
+                not estado.aguardando_confirmacao_topico
+                and historico
+                and len(historico) >= 6  # mínimo 3 trocas
+            ):
+                mudou, topico_ant = detectar_mudanca_assunto(historico, texto_para_processar)
+                if mudou:
+                    # Salvar estado + enviar confirmação (não processa RAG agora)
+                    await salvar_confirmacao_topico(
+                        terapeuta_id, numero_paciente, texto_para_processar, topico_ant
+                    )
+                    confirmacao = gerar_msg_confirma_mudanca(topico_ant, estado.nome_usuario)
+                    await evolution.enviar_mensagem(
+                        instance=instance_name, numero=numero_paciente, texto=confirmacao,
+                    )
+                    _salvar_conversa(
+                        terapeuta_id=terapeuta_id, paciente_numero=numero_paciente,
+                        mensagem_paciente=texto_mensagem, resposta_agente=confirmacao,
+                        intencao="CONFIRMACAO_TOPICO",
+                    )
+                    asyncio.create_task(atualizar_timestamp_mensagem(terapeuta_id, numero_paciente))
+                    return
+
             top_k_busca = 10 if modo == ModoOperacao.CONSULTA else 5
             contexto_chunks = await buscar_contexto(
-                pergunta=texto_mensagem, terapeuta_id=terapeuta_id, top_k=top_k_busca,
-            )
-            historico = _buscar_historico_conversa(
-                terapeuta_id=terapeuta_id, paciente_numero=numero_paciente, limite=20,
+                pergunta=texto_para_processar, terapeuta_id=terapeuta_id, top_k=top_k_busca,
             )
             try:
                 ctx_aprendizado = await carregar_contexto_terapeuta(terapeuta_id)
@@ -385,25 +479,27 @@ async def _processar_mensagem(payload: dict) -> None:
                 ctx_formatado = None
 
             resposta_texto = await gerar_resposta(
-                pergunta=texto_mensagem,
+                pergunta=texto_para_processar,
                 terapeuta_id=terapeuta_id,
                 contexto_chunks=contexto_chunks,
                 config_terapeuta=config_terapeuta,
                 historico_mensagens=historico if historico else None,
                 contexto_personalizado=ctx_formatado,
+                memoria_usuario=memoria_fmt,
             )
         else:
             contexto_chunks = await buscar_contexto(
-                pergunta=texto_mensagem, terapeuta_id=terapeuta_id,
+                pergunta=texto_para_processar, terapeuta_id=terapeuta_id,
             )
             resposta_texto = await gerar_resposta(
-                pergunta=texto_mensagem,
+                pergunta=texto_para_processar,
                 terapeuta_id=terapeuta_id,
                 contexto_chunks=contexto_chunks,
                 config_terapeuta=config_terapeuta,
+                memoria_usuario=memoria_fmt,
             )
 
-        # 8. Enviar resposta (com rate limiting anti-ban)
+        # 10. Enviar resposta (com rate limiting anti-ban)
         if resposta_texto:
             if isinstance(resposta_texto, list):
                 await _enviar_sequencia_evolution(
@@ -417,25 +513,27 @@ async def _processar_mensagem(payload: dict) -> None:
                 )
             logger.info(f"Resposta enviada para {numero_paciente}")
 
-        # 9. Salvar conversa
+        # 11. Salvar conversa
         resposta_salvar = " | ".join(resposta_texto) if isinstance(resposta_texto, list) else resposta_texto
         _salvar_conversa(
-            terapeuta_id=terapeuta_id,
-            paciente_numero=numero_paciente,
-            mensagem_paciente=texto_mensagem,
-            resposta_agente=resposta_salvar,
+            terapeuta_id=terapeuta_id, paciente_numero=numero_paciente,
+            mensagem_paciente=texto_mensagem, resposta_agente=resposta_salvar,
             intencao=f"{modo.value}|{intencao.value if hasattr(intencao, 'value') else str(intencao)}",
         )
 
-        # 10. Aprendizado contínuo em background
+        # 12. Background: timestamp + perfil + aprendizado
+        asyncio.create_task(atualizar_timestamp_mensagem(terapeuta_id, numero_paciente))
+        asyncio.create_task(
+            atualizar_perfil_apos_interacao(
+                terapeuta_id, numero_paciente, estado.nome_usuario, texto_mensagem, modo.value
+            )
+        )
         if modo in (ModoOperacao.CONSULTA, ModoOperacao.CRIACAO_CONTEUDO, ModoOperacao.PESQUISA):
             try:
                 asyncio.create_task(
                     analisar_conversa(
-                        terapeuta_id=terapeuta_id,
-                        mensagem=texto_mensagem,
-                        resposta=resposta_salvar,
-                        modo=modo.value,
+                        terapeuta_id=terapeuta_id, mensagem=texto_mensagem,
+                        resposta=resposta_salvar, modo=modo.value,
                     )
                 )
             except Exception as e:
@@ -737,10 +835,8 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                 phone_number=numero_paciente, message=msg_nome,
             )
             _salvar_conversa(
-                terapeuta_id=terapeuta_id,
-                paciente_numero=numero_paciente,
-                mensagem_paciente=texto_mensagem,
-                resposta_agente=msg_nome,
+                terapeuta_id=terapeuta_id, paciente_numero=numero_paciente,
+                mensagem_paciente=texto_mensagem, resposta_agente=msg_nome,
                 intencao="NOME_REGISTRADO",
             )
             return
@@ -748,34 +844,88 @@ async def _processar_mensagem_meta(payload: dict) -> None:
         # 6b. Moderação: detectar profanidade ANTES do RAG
         if detectar_profanidade(texto_mensagem):
             violacoes = registrar_violacao(terapeuta_id, numero_paciente)
-            if violacoes == 1:
-                aviso = MSG_AVISO_1
-            elif violacoes == 2:
-                aviso = MSG_AVISO_2
-            else:
-                aviso = gerar_msg_bloqueio(settings.CONTATO_ADMIN)
+            aviso = MSG_AVISO_1 if violacoes == 1 else (
+                MSG_AVISO_2 if violacoes == 2 else gerar_msg_bloqueio(settings.CONTATO_ADMIN)
+            )
             await meta_client.send_text_message(
                 phone_number=numero_paciente, message=aviso,
             )
             _salvar_conversa(
-                terapeuta_id=terapeuta_id,
-                paciente_numero=numero_paciente,
-                mensagem_paciente=texto_mensagem,
-                resposta_agente=aviso,
+                terapeuta_id=terapeuta_id, paciente_numero=numero_paciente,
+                mensagem_paciente=texto_mensagem, resposta_agente=aviso,
                 intencao=f"VIOLACAO_{violacoes}",
             )
             return
 
-        # 7. Detectar modo e classificar intenção
-        modo = detectar_modo(texto_mensagem)
+        # 7. Carregar memória do usuário em paralelo com o histórico
+        memoria, historico = await asyncio.gather(
+            carregar_memoria_completa(terapeuta_id, numero_paciente),
+            asyncio.to_thread(
+                _buscar_historico_conversa, terapeuta_id, numero_paciente, 20
+            ),
+        )
+
+        # Formatar memória para injeção no prompt
+        memoria_fmt = formatar_memoria_para_prompt(memoria, estado.nome_usuario)
+
+        # 8. Tratar confirmação de mudança de assunto (se pendente)
+        if estado.aguardando_confirmacao_topico:
+            topico_ant = estado.topico_anterior or "assunto anterior"
+            msg_pendente = estado.mensagem_pendente_topico or texto_mensagem
+
+            if eh_confirmacao(texto_mensagem):
+                await limpar_confirmacao_topico(terapeuta_id, numero_paciente)
+                texto_para_processar = msg_pendente
+                logger.info(f"Mudança de assunto CONFIRMADA para {numero_paciente} (Meta)")
+            elif eh_negacao(texto_mensagem):
+                await limpar_confirmacao_topico(terapeuta_id, numero_paciente)
+                retomada = gerar_msg_retomada_topico(topico_ant, estado.nome_usuario)
+                await meta_client.send_text_message(
+                    phone_number=numero_paciente, message=retomada,
+                )
+                _salvar_conversa(
+                    terapeuta_id=terapeuta_id, paciente_numero=numero_paciente,
+                    mensagem_paciente=texto_mensagem, resposta_agente=retomada,
+                    intencao="RETOMADA_TOPICO",
+                )
+                asyncio.create_task(atualizar_timestamp_mensagem(terapeuta_id, numero_paciente))
+                return
+            else:
+                await limpar_confirmacao_topico(terapeuta_id, numero_paciente)
+                texto_para_processar = texto_mensagem
+        else:
+            texto_para_processar = texto_mensagem
+
+        # 9. Detectar modo e classificar intenção
+        modo = detectar_modo(texto_para_processar)
         logger.info(f"Modo detectado (Meta): {modo.value}")
-        intencao = await classificar_intencao(texto_mensagem)
+        intencao = await classificar_intencao(texto_para_processar)
 
         resposta_texto: str | list[str] = ""
 
-        # 8. Saudação quando ATIVO — cumprimento personalizado, sem RAG
+        # 10. Saudação quando ATIVO
         if modo == ModoOperacao.SAUDACAO:
-            resposta_texto = gerar_saudacao_ativo(estado.nome_usuario)
+            if memoria.get("is_nova_sessao") and memoria.get("resumos_sessoes"):
+                msg_retomada = gerar_msg_retomada_sessao(
+                    memoria["resumos_sessoes"], estado.nome_usuario
+                )
+                if msg_retomada:
+                    resposta_texto = msg_retomada
+                    asyncio.create_task(
+                        processar_fim_sessao_em_background(
+                            terapeuta_id, numero_paciente, historico
+                        )
+                    )
+                else:
+                    resposta_texto = gerar_saudacao_ativo(estado.nome_usuario)
+            else:
+                resposta_texto = gerar_saudacao_ativo(estado.nome_usuario)
+                if memoria.get("is_nova_sessao") and historico:
+                    asyncio.create_task(
+                        processar_fim_sessao_em_background(
+                            terapeuta_id, numero_paciente, historico
+                        )
+                    )
 
         elif modo == ModoOperacao.EMERGENCIA:
             resposta_texto = (
@@ -794,12 +944,32 @@ async def _processar_mensagem_meta(payload: dict) -> None:
             resposta_texto = MENSAGEM_FORA_ESCOPO
 
         elif modo in (ModoOperacao.CONSULTA, ModoOperacao.CRIACAO_CONTEUDO, ModoOperacao.PESQUISA):
+            # 10a. Detectar mudança de assunto antes de responder
+            if (
+                not estado.aguardando_confirmacao_topico
+                and historico
+                and len(historico) >= 6
+            ):
+                mudou, topico_ant = detectar_mudanca_assunto(historico, texto_para_processar)
+                if mudou:
+                    await salvar_confirmacao_topico(
+                        terapeuta_id, numero_paciente, texto_para_processar, topico_ant
+                    )
+                    confirmacao = gerar_msg_confirma_mudanca(topico_ant, estado.nome_usuario)
+                    await meta_client.send_text_message(
+                        phone_number=numero_paciente, message=confirmacao,
+                    )
+                    _salvar_conversa(
+                        terapeuta_id=terapeuta_id, paciente_numero=numero_paciente,
+                        mensagem_paciente=texto_mensagem, resposta_agente=confirmacao,
+                        intencao="CONFIRMACAO_TOPICO",
+                    )
+                    asyncio.create_task(atualizar_timestamp_mensagem(terapeuta_id, numero_paciente))
+                    return
+
             top_k_busca = 10 if modo == ModoOperacao.CONSULTA else 5
             contexto_chunks = await buscar_contexto(
-                pergunta=texto_mensagem, terapeuta_id=terapeuta_id, top_k=top_k_busca,
-            )
-            historico = _buscar_historico_conversa(
-                terapeuta_id=terapeuta_id, paciente_numero=numero_paciente, limite=20,
+                pergunta=texto_para_processar, terapeuta_id=terapeuta_id, top_k=top_k_busca,
             )
             try:
                 ctx_aprendizado = await carregar_contexto_terapeuta(terapeuta_id)
@@ -809,25 +979,27 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                 ctx_formatado = None
 
             resposta_texto = await gerar_resposta(
-                pergunta=texto_mensagem,
+                pergunta=texto_para_processar,
                 terapeuta_id=terapeuta_id,
                 contexto_chunks=contexto_chunks,
                 config_terapeuta=config_terapeuta,
                 historico_mensagens=historico if historico else None,
                 contexto_personalizado=ctx_formatado,
+                memoria_usuario=memoria_fmt,
             )
         else:
             contexto_chunks = await buscar_contexto(
-                pergunta=texto_mensagem, terapeuta_id=terapeuta_id,
+                pergunta=texto_para_processar, terapeuta_id=terapeuta_id,
             )
             resposta_texto = await gerar_resposta(
-                pergunta=texto_mensagem,
+                pergunta=texto_para_processar,
                 terapeuta_id=terapeuta_id,
                 contexto_chunks=contexto_chunks,
                 config_terapeuta=config_terapeuta,
+                memoria_usuario=memoria_fmt,
             )
 
-        # 9. Enviar resposta (com rate limiting anti-ban)
+        # 11. Enviar resposta (com rate limiting anti-ban)
         if resposta_texto:
             if isinstance(resposta_texto, list):
                 await _enviar_sequencia_meta(resposta_texto, meta_client, numero_paciente)
@@ -839,25 +1011,27 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                 )
             logger.info(f"Resposta enviada para {numero_paciente} via Meta")
 
-        # 10. Salvar conversa
+        # 12. Salvar conversa
         resposta_salvar = " | ".join(resposta_texto) if isinstance(resposta_texto, list) else resposta_texto
         _salvar_conversa(
-            terapeuta_id=terapeuta_id,
-            paciente_numero=numero_paciente,
-            mensagem_paciente=texto_mensagem,
-            resposta_agente=resposta_salvar,
+            terapeuta_id=terapeuta_id, paciente_numero=numero_paciente,
+            mensagem_paciente=texto_mensagem, resposta_agente=resposta_salvar,
             intencao=f"{modo.value}|{intencao.value if hasattr(intencao, 'value') else str(intencao)}",
         )
 
-        # 11. Aprendizado contínuo em background
+        # 13. Background: timestamp + perfil + aprendizado
+        asyncio.create_task(atualizar_timestamp_mensagem(terapeuta_id, numero_paciente))
+        asyncio.create_task(
+            atualizar_perfil_apos_interacao(
+                terapeuta_id, numero_paciente, estado.nome_usuario, texto_mensagem, modo.value
+            )
+        )
         if modo in (ModoOperacao.CONSULTA, ModoOperacao.CRIACAO_CONTEUDO, ModoOperacao.PESQUISA):
             try:
                 asyncio.create_task(
                     analisar_conversa(
-                        terapeuta_id=terapeuta_id,
-                        mensagem=texto_mensagem,
-                        resposta=resposta_salvar,
-                        modo=modo.value,
+                        terapeuta_id=terapeuta_id, mensagem=texto_mensagem,
+                        resposta=resposta_salvar, modo=modo.value,
                     )
                 )
             except Exception as e:
