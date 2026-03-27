@@ -160,19 +160,35 @@ def extrair_numero_mensagem(payload: dict[str, Any]) -> tuple[str, str]:
         elif "extendedTextMessage" in message:
             texto = message["extendedTextMessage"].get("text", "")
 
-        # 3. Mensagem de áudio — não suportado por enquanto
+        # 3. Mensagem de áudio — será transcrita via Whisper no webhook
         elif "audioMessage" in message:
-            logger.info("Áudio recebido de %s — não suportado", numero)
-            texto = "[AUDIO_NAO_SUPORTADO]"
+            logger.info("Áudio recebido de %s — pendente transcrição Whisper", numero)
+            texto = "[AUDIO_EVOLUTION_PENDENTE]"
 
-        # 4. Mensagem de imagem com legenda
+        # 4. Mensagem de imagem com legenda ou pendente processamento
         elif "imageMessage" in message:
-            texto = message["imageMessage"].get("caption", "[IMAGEM_RECEBIDA]")
-            if not texto:
-                texto = "[IMAGEM_RECEBIDA]"
+            caption = message["imageMessage"].get("caption", "")
+            texto = caption if caption else "[IMAGEM_EVOLUTION_PENDENTE]"
             logger.info("Imagem recebida de %s", numero)
 
-        # 5. Outros tipos não suportados
+        # 5. Mensagem de vídeo
+        elif "videoMessage" in message:
+            caption = message["videoMessage"].get("caption", "")
+            texto = caption if caption else "[VIDEO_EVOLUTION_PENDENTE]"
+            logger.info("Vídeo recebido de %s", numero)
+
+        # 6. Mensagem de documento
+        elif "documentMessage" in message:
+            mimetype = message["documentMessage"].get("mimetype", "")
+            filename = message["documentMessage"].get("fileName", "")
+            if "pdf" in mimetype or filename.lower().endswith(".pdf"):
+                texto = "[DOCUMENTO_PDF_EVOLUTION_PENDENTE]"
+            else:
+                caption = message["documentMessage"].get("caption", "")
+                texto = caption if caption else "[DOCUMENTO_RECEBIDO]"
+            logger.info("Documento recebido de %s (tipo=%s)", numero, mimetype)
+
+        # 7. Outros tipos não suportados
         else:
             tipos_encontrados = list(message.keys())
             logger.warning(

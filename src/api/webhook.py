@@ -77,7 +77,6 @@ from src.core.ux_rules import humanizar_resposta
 from src.whatsapp.messages import (
     extrair_numero_mensagem,
     eh_mensagem_valida,
-    formatar_aviso_audio,
 )
 
 logger = logging.getLogger(__name__)
@@ -263,14 +262,104 @@ async def _enviar_sequencia_evolution(
         await evolution.enviar_mensagem(instance=instance, numero=numero, texto=msg)
 
 
+async def _transcrever_audio_evolution(
+    evolution: "EvolutionClient",
+    instance_name: str,
+    numero_paciente: str,
+    payload: dict,
+    msg_type: str = "audio",
+) -> str:
+    """
+    Baixa e transcreve áudio/vídeo via Evolution API + OpenAI Whisper.
+    Retorna o texto transcrito ou um marcador de erro.
+    """
+    settings = get_settings()
+
+    # Feedback imediato antes de iniciar (latência Whisper ~3-10s)
+    try:
+        feedback = (
+            "Transcrevendo seu áudio..."
+            if msg_type == "audio"
+            else "Processando o áudio do vídeo..."
+        )
+        await evolution.enviar_mensagem(
+            instance=instance_name, numero=numero_paciente, texto=feedback,
+        )
+    except Exception:
+        pass  # Best-effort
+
+    # Baixar mídia via Evolution API
+    mensagem_data = payload.get("data", {})
+    try:
+        midia = await evolution.baixar_midia(instance_name, mensagem_data)
+    except Exception as e:
+        logger.error(f"Evolution baixar_midia falhou: {e}")
+        return "[AUDIO_DOWNLOAD_FALHOU]"
+
+    b64_data = midia.get("base64", "")
+    mime_type = midia.get("mimeType", "audio/ogg; codecs=opus")
+    if not b64_data:
+        logger.warning(f"Evolution baixar_midia retornou base64 vazio")
+        return "[AUDIO_SEM_CONTEUDO]"
+
+    # Decodificar base64
+    import base64 as _b64
+    try:
+        audio_bytes = _b64.b64decode(b64_data)
+    except Exception as e:
+        logger.error(f"Erro ao decodificar base64 do áudio: {e}")
+        return "[AUDIO_SEM_CONTEUDO]"
+
+    if len(audio_bytes) > 16 * 1024 * 1024:
+        logger.warning(f"Áudio muito grande: {len(audio_bytes)//1024//1024}MB")
+        return "[MIDIA_MUITO_GRANDE]"
+
+    # Detectar extensão
+    base_ct = mime_type.split(";")[0].strip().lower()
+    ext_map = {
+        "audio/ogg": "ogg", "audio/mpeg": "mp3", "audio/mp4": "mp4",
+        "audio/webm": "webm", "audio/wav": "wav", "audio/aac": "aac",
+        "audio/amr": "amr", "audio/3gpp": "3gp", "video/mp4": "mp4",
+    }
+    ext = ext_map.get(base_ct, "ogg")
+
+    # Transcrição via Whisper (com retry automático)
+    from openai import AsyncOpenAI
+    oai = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+    texto_transcrito = ""
+    for tentativa, lingua in enumerate(["pt", None]):
+        try:
+            kwargs: dict = dict(
+                model="whisper-1",
+                file=(f"audio.{ext}", io.BytesIO(audio_bytes), base_ct or "audio/ogg"),
+                response_format="text",
+            )
+            if lingua:
+                kwargs["language"] = lingua
+            transcript = await oai.audio.transcriptions.create(**kwargs)
+            texto_transcrito = (transcript if isinstance(transcript, str) else transcript.text).strip()
+            if texto_transcrito:
+                break
+            logger.info(f"Whisper tentativa {tentativa+1} vazia, tentando sem forçar idioma...")
+        except Exception as e:
+            logger.warning(f"Whisper tentativa {tentativa+1} falhou: {e}")
+
+    if texto_transcrito:
+        logger.info(f"Whisper transcreveu ({len(audio_bytes)//1024}KB): '{texto_transcrito[:100]}'")
+        return f"[Mensagem de áudio] {texto_transcrito}"
+
+    logger.warning(f"Whisper: transcrição vazia após retry para {numero_paciente}")
+    return "[AUDIO_SEM_CONTEUDO]"
+
+
 async def _processar_mensagem(payload: dict) -> None:
     """
     Processa a mensagem recebida via Evolution API em background.
 
     Fluxo com máquina de estados:
-      1. Extrair dados → 2. Validar tipo → 3. Buscar terapeuta →
-      4. Verificar estado (PENDENTE/ATIVO/BLOQUEADO) →
-      5. Se ATIVO: checar profanidade → 6. RAG pipeline → 7. Responder
+      1. Extrair dados → 2. Deduplicar → 3. Resolver mídia →
+      4. Buscar terapeuta → 5. Verificar estado (PENDENTE/ATIVO/BLOQUEADO) →
+      6. Se ATIVO: checar profanidade → 7. RAG pipeline → 8. Responder
     """
     try:
         settings = get_settings()
@@ -281,18 +370,43 @@ async def _processar_mensagem(payload: dict) -> None:
 
         logger.info(f"Evolution: mensagem de {numero_paciente} na instância {instance_name}")
 
-        # 2. Validar tipo de mensagem
         if not texto_mensagem or not texto_mensagem.strip():
             logger.info("Mensagem sem texto — ignorando")
             return
 
+        # 2. Deduplicação: Evolution API pode enviar webhooks duplicados
+        message_id = payload.get("data", {}).get("key", {}).get("id", "")
+        if message_id and _ja_processado(message_id):
+            logger.info(f"Evolution: mensagem duplicada ignorada (id={message_id})")
+            return
+
         evolution = EvolutionClient()
 
-        if texto_mensagem == "[AUDIO_NAO_SUPORTADO]":
-            await evolution.enviar_mensagem(
-                instance=instance_name, numero=numero_paciente,
-                texto=formatar_aviso_audio(),
+        # 3. Resolver mídia (áudio → Whisper, outros tipos pendentes → aviso)
+        _avisos_evolution = {
+            "[AUDIO_DOWNLOAD_FALHOU]": "Não consegui baixar o áudio. Pode reenviar?",
+            "[AUDIO_SEM_CONTEUDO]": "Não consegui entender o áudio. Pode reenviar em voz mais alta ou escrever o que disse?",
+            "[MIDIA_MUITO_GRANDE]": "O arquivo é muito grande. Pode enviar uma versão menor ou escrever como texto?",
+            "[IMAGEM_EVOLUTION_PENDENTE]": "Recebi sua imagem, mas ainda não consigo processar imagens por aqui. Pode descrever o que está na imagem?",
+            "[VIDEO_EVOLUTION_PENDENTE]": "Recebi seu vídeo, mas ainda não consigo processar vídeos por aqui. Pode resumir o conteúdo como texto?",
+            "[DOCUMENTO_PDF_EVOLUTION_PENDENTE]": "Recebi seu PDF, mas ainda não consigo ler documentos por este canal. Pode copiar o trecho relevante como texto?",
+        }
+
+        if texto_mensagem in ("[AUDIO_EVOLUTION_PENDENTE]", "[VIDEO_EVOLUTION_PENDENTE]"):
+            msg_type = "audio" if texto_mensagem == "[AUDIO_EVOLUTION_PENDENTE]" else "video"
+            texto_mensagem = await _transcrever_audio_evolution(
+                evolution, instance_name, numero_paciente, payload, msg_type
             )
+
+        if texto_mensagem in _avisos_evolution:
+            logger.info(f"Evolution: marcador de mídia {texto_mensagem} para {numero_paciente}")
+            try:
+                await evolution.enviar_mensagem(
+                    instance=instance_name, numero=numero_paciente,
+                    texto=_avisos_evolution[texto_mensagem],
+                )
+            except Exception as e:
+                logger.warning(f"Falha ao enviar aviso de mídia: {e}")
             return
 
         if texto_mensagem.startswith("[") and texto_mensagem.endswith("]"):

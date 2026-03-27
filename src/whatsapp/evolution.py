@@ -258,6 +258,29 @@ class EvolutionClient:
     # Configuração de webhook
     # ------------------------------------------------------------------
 
+    async def baixar_midia(
+        self,
+        instance: str,
+        mensagem_data: dict[str, Any],
+    ) -> dict[str, Any]:
+        """
+        Baixa mídia (áudio, imagem, vídeo, documento) via Evolution API.
+        A Evolution API decripta e retorna a mídia como base64.
+
+        Args:
+            instance: Nome da instância do terapeuta.
+            mensagem_data: O objeto "data" completo do webhook (inclui key + message).
+
+        Returns:
+            Dict com { base64, mediaType, fileName, mimeType }
+        """
+        logger.info("Baixando mídia via Evolution API (instância='%s')", instance)
+        return await self._request(
+            method="POST",
+            path=f"/message/download-media/{instance}",
+            json_body=mensagem_data,
+        )
+
     async def configurar_webhook(
         self,
         nome: str,
