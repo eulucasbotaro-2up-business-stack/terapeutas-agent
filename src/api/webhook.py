@@ -311,6 +311,25 @@ def _extrair_audio_bytes(b64_data: str) -> bytes | None:
         return None
 
 
+def _extrair_texto_para_codigo(texto: str) -> str:
+    """
+    Remove prefixos de mídia transcrita do texto antes de validar como código.
+    Se o usuário enviou o código por áudio, o texto vem como:
+    '[Mensagem de áudio] eu quero testar'
+    Precisamos extrair só 'eu quero testar' para a validação funcionar.
+    """
+    _prefixos_midia = [
+        "[Mensagem de áudio] ",
+        "[Imagem recebida] ",
+        "[PDF recebido]\n",
+        "[PDF recebido] ",
+    ]
+    for prefixo in _prefixos_midia:
+        if texto.startswith(prefixo):
+            return texto[len(prefixo):]
+    return texto
+
+
 def _normalizar_mime(raw_mime: str, fallback: str = "audio/ogg") -> str:
     """Normaliza MIME type removendo parâmetros extras (;codecs=opus etc.)"""
     if not raw_mime:
@@ -743,12 +762,14 @@ async def _processar_mensagem(payload: dict) -> None:
                 )
             else:
                 # Já recebeu boas-vindas: tentar validar como código
+                # Strip prefixos de mídia (caso o usuário mande o código por áudio)
+                texto_codigo = _extrair_texto_para_codigo(texto_mensagem)
                 # validar_codigo usa Supabase sync → to_thread para não bloquear event loop
-                codigo_valido = await asyncio.to_thread(validar_codigo, terapeuta_id, numero_paciente, texto_mensagem)
+                codigo_valido = await asyncio.to_thread(validar_codigo, terapeuta_id, numero_paciente, texto_codigo)
                 if codigo_valido:
-                    await asyncio.to_thread(liberar_acesso, terapeuta_id, numero_paciente, texto_mensagem)
+                    await asyncio.to_thread(liberar_acesso, terapeuta_id, numero_paciente, texto_codigo)
                     # Ativar assinatura: define data_expiracao com base nos meses comprados
-                    await asyncio.to_thread(ativar_acesso_com_codigo, terapeuta_id, texto_mensagem, numero_paciente)
+                    await asyncio.to_thread(ativar_acesso_com_codigo, terapeuta_id, texto_codigo, numero_paciente)
                     await _salvar_conversa(
                         terapeuta_id=terapeuta_id,
                         paciente_numero=numero_paciente,
@@ -1539,12 +1560,14 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                 await _enviar_sequencia_meta(MSGS_ONBOARDING, meta_client, numero_paciente)
             else:
                 # Já recebeu boas-vindas: tentar como código de liberação
+                # Strip prefixos de mídia (caso o usuário mande o código por áudio)
+                texto_codigo = _extrair_texto_para_codigo(texto_mensagem)
                 # validar_codigo usa Supabase sync → to_thread para não bloquear event loop
-                codigo_valido = await asyncio.to_thread(validar_codigo, terapeuta_id, numero_paciente, texto_mensagem)
+                codigo_valido = await asyncio.to_thread(validar_codigo, terapeuta_id, numero_paciente, texto_codigo)
                 if codigo_valido:
-                    await asyncio.to_thread(liberar_acesso, terapeuta_id, numero_paciente, texto_mensagem)
+                    await asyncio.to_thread(liberar_acesso, terapeuta_id, numero_paciente, texto_codigo)
                     # Ativar assinatura: define data_expiracao com base nos meses comprados
-                    await asyncio.to_thread(ativar_acesso_com_codigo, terapeuta_id, texto_mensagem, numero_paciente)
+                    await asyncio.to_thread(ativar_acesso_com_codigo, terapeuta_id, texto_codigo, numero_paciente)
                     await _salvar_conversa(
                         terapeuta_id=terapeuta_id,
                         paciente_numero=numero_paciente,
