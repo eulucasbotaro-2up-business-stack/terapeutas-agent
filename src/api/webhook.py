@@ -1446,21 +1446,7 @@ async def _resolver_media_meta(
             return "[MIDIA_MUITO_GRANDE]"
 
         if msg_type in ("audio", "video"):
-            # 5. Feedback imediato ao usuário
-            if meta_client and numero_paciente:
-                try:
-                    await meta_client.send_text_message(
-                        phone_number=numero_paciente,
-                        message=(
-                            "Recebi seu áudio, transcrevendo..."
-                            if msg_type == "audio"
-                            else "Recebi seu vídeo, processando o áudio..."
-                        ),
-                    )
-                except Exception:
-                    pass
-
-            # 6. Transcrever com Whisper (reutiliza a função central)
+            # Transcrever com Whisper (sem mensagem de espera ao usuário)
             mime_type_meta = base_ct_meta if base_ct_meta else "audio/ogg"
             texto_transcrito = await _whisper_transcrever(media_bytes, mime_type_meta, settings)
 
