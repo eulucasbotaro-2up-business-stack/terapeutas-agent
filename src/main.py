@@ -74,6 +74,7 @@ async def health_check():
         "status": "ok",
         "servico": "Terapeutas Agent API",
         "versao": "0.1.0",
+        "build": "2c8d0e1-fix-audio-code-prefix",
     }
 
 
