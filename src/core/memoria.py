@@ -91,7 +91,26 @@ _STOP_WORDS = {
     "bem", "aqui", "ali", "então", "quando", "como", "onde", "qual",
     "mas", "porém", "porque", "pois", "que", "quê",
     "tudo", "nada", "algo", "alguém", "ninguém",
+    # Palavras de prefixos de mídia — nunca devem virar "tópico"
+    "mensagem", "audio", "imagem", "recebida", "recebido", "transcrevendo",
 }
+
+# Prefixos de mídia adicionados pelo sistema antes de salvar/processar
+_PREFIXOS_MIDIA = [
+    "[Mensagem de áudio] ",
+    "[Imagem recebida] ",
+    "[PDF recebido]\n",
+    "[PDF recebido] ",
+    "[Mensagem de áudio]",
+]
+
+
+def _limpar_msg_para_topico(texto: str) -> str:
+    """Remove prefixos de mídia do texto antes de análise de tópico."""
+    for prefixo in _PREFIXOS_MIDIA:
+        if texto.startswith(prefixo):
+            return texto[len(prefixo):]
+    return texto
 
 
 # =============================================================================
@@ -116,9 +135,9 @@ def calcular_similaridade_topico(msgs_anteriores: list[str], nova_msg: str) -> f
 
     kw_historico: set[str] = set()
     for msg in msgs_anteriores[-4:]:
-        kw_historico.update(_extrair_palavras_chave(msg))
+        kw_historico.update(_extrair_palavras_chave(_limpar_msg_para_topico(msg)))
 
-    kw_nova = _extrair_palavras_chave(nova_msg)
+    kw_nova = _extrair_palavras_chave(_limpar_msg_para_topico(nova_msg))
 
     # Mensagem muito curta: não bloquear (provavelmente resposta sim/não)
     if not kw_historico or len(kw_nova) < 3:
@@ -134,7 +153,7 @@ def _resumo_topico(msgs_usuario: list[str]) -> str:
     """Extrai 2-3 palavras mais frequentes para nomear o tópico anterior."""
     todas: list[str] = []
     for msg in msgs_usuario[-4:]:
-        todas.extend(_extrair_palavras_chave(msg))
+        todas.extend(_extrair_palavras_chave(_limpar_msg_para_topico(msg)))
 
     if not todas:
         return "assunto anterior"
@@ -163,8 +182,11 @@ def detectar_mudanca_assunto(
     if len(historico) < MIN_TROCAS_PARA_DETECTAR * 2:
         return False, ""
 
+    # Remover prefixo de mídia para análise (evita falsos positivos com "áudio / mensagem")
+    nova_mensagem_limpa = _limpar_msg_para_topico(nova_mensagem)
+
     # Não ativa para mensagens muito curtas (respostas simples)
-    if len(nova_mensagem.strip()) < 15:
+    if len(nova_mensagem_limpa.strip()) < 15:
         return False, ""
 
     msgs_usuario = [
@@ -175,7 +197,7 @@ def detectar_mudanca_assunto(
     if len(msgs_usuario) < 2:
         return False, ""
 
-    similaridade = calcular_similaridade_topico(msgs_usuario, nova_mensagem)
+    similaridade = calcular_similaridade_topico(msgs_usuario, nova_mensagem_limpa)
 
     if similaridade < LIMIAR_MUDANCA_TOPICO:  # similaridade Jaccard abaixo do limiar = assuntos diferentes
         topico = _resumo_topico(msgs_usuario)
