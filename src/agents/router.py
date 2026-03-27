@@ -82,6 +82,14 @@ def _classificar_localmente(texto: str) -> Optional[ModoOperacao]:
             logger.warning(f"[ROUTER] EMERGENCIA detectada localmente: '{texto[:60]}'")
             return ModoOperacao.EMERGENCIA
 
+    # Mensagens meta sobre áudio/mídia: nunca são saudação — o usuário está reportando
+    # algo sobre o fluxo ("mandei um áudio", "não consegui enviar", etc.)
+    # Tratar como PESQUISA para não repetir o loop de saudação
+    _PALAVRAS_META_AUDIO = {"áudio", "audio", "mandei", "gravei", "gravando"}
+    if num_palavras <= 6 and sum(1 for p in _PALAVRAS_META_AUDIO if p in texto_lower) >= 2:
+        logger.info(f"[ROUTER] Meta-mensagem sobre áudio → PESQUISA local: '{texto[:60]}'")
+        return ModoOperacao.PESQUISA
+
     # Saudação: só para mensagens curtas (≤4 palavras) com keyword óbvia
     if num_palavras <= 4:
         for kw in _KEYWORDS_OBVIAS_SAUDACAO:

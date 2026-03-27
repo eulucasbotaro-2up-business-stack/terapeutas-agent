@@ -965,8 +965,11 @@ async def _processar_mensagem(payload: dict) -> None:
         texto_para_processar = texto_mensagem
 
         # 8. Rotear mensagem: Haiku para ambíguo, keywords para óbvio
+        # Strip prefixo de mídia antes de rotear — evita "[Mensagem de áudio] Oi..."
+        # confundir o classificador e rotear áudios clínicos como SAUDACAO
+        texto_para_rotear = _extrair_texto_para_codigo(texto_para_processar)
         modo = await rotear_mensagem(
-            texto_para_processar,
+            texto_para_rotear,
             historico[-6:] if historico else [],
             estado.nome_usuario,
         )
@@ -1337,43 +1340,59 @@ async def _resolver_media_meta(
         return texto_atual
 
     try:
-        # 1. Obter URL de download da mídia (timeout explícito)
+        # 1. Obter URL de download + baixar mídia (com retry automático)
+        # Meta URLs expiram rapidamente — retry com backoff resolve race conditions
+        media_bytes = b""
+        content_type = ""
         async with httpx.AsyncClient(timeout=httpx.Timeout(30.0, connect=10.0)) as client:
-            try:
-                r = await client.get(
-                    f"https://graph.facebook.com/v22.0/{media_id}",
-                    headers={"Authorization": f"Bearer {token}"},
-                )
-            except httpx.TimeoutException:
-                logger.error(f"Timeout ao buscar URL da mídia Meta (media_id={media_id})")
-                return "[MIDIA_FALHOU]"
-            if r.status_code == 401:
-                logger.error(
-                    f"Token Meta expirado ao buscar mídia (media_id={media_id}). "
-                    "Verifique META_WHATSAPP_TOKEN."
-                )
-                return "[MIDIA_TOKEN_INVALIDO]"
-            r.raise_for_status()
-            media_url = r.json().get("url", "")
+            # Tentar obter URL de download (até 2 tentativas)
+            media_url = ""
+            for tentativa_url in range(2):
+                try:
+                    r = await client.get(
+                        f"https://graph.facebook.com/v22.0/{media_id}",
+                        headers={"Authorization": f"Bearer {token}"},
+                    )
+                except httpx.TimeoutException:
+                    logger.warning(f"Timeout URL mídia Meta tentativa {tentativa_url+1} (media_id={media_id})")
+                    if tentativa_url == 1:
+                        return "[MIDIA_FALHOU]"
+                    await asyncio.sleep(1)
+                    continue
+                if r.status_code == 401:
+                    logger.error(f"Token Meta expirado (media_id={media_id}). Verifique META_WHATSAPP_TOKEN.")
+                    return "[MIDIA_TOKEN_INVALIDO]"
+                r.raise_for_status()
+                media_url = r.json().get("url", "")
+                if media_url:
+                    break
+                logger.warning(f"URL de mídia vazia tentativa {tentativa_url+1} (media_id={media_id})")
+                await asyncio.sleep(1)
+
             if not media_url:
-                logger.warning(f"URL de mídia não encontrada para media_id={media_id}")
+                logger.warning(f"URL de mídia não encontrada após retries para media_id={media_id}")
                 return texto_atual
 
-            # 2. Baixar o arquivo de mídia
-            try:
-                r2 = await client.get(
-                    media_url,
-                    headers={"Authorization": f"Bearer {token}"},
-                )
-            except httpx.TimeoutException:
-                logger.error(f"Timeout ao baixar mídia Meta (media_id={media_id})")
-                return "[MIDIA_FALHOU]"
-            if r2.status_code == 401:
-                logger.error(f"Token Meta expirado ao baixar mídia (media_id={media_id})")
-                return "[MIDIA_TOKEN_INVALIDO]"
-            r2.raise_for_status()
-            media_bytes = r2.content
-            content_type = r2.headers.get("content-type", "")
+            # 2. Baixar o arquivo de mídia (até 2 tentativas)
+            for tentativa_dl in range(2):
+                try:
+                    r2 = await client.get(
+                        media_url,
+                        headers={"Authorization": f"Bearer {token}"},
+                    )
+                except httpx.TimeoutException:
+                    logger.warning(f"Timeout download mídia Meta tentativa {tentativa_dl+1} (media_id={media_id})")
+                    if tentativa_dl == 1:
+                        return "[MIDIA_FALHOU]"
+                    await asyncio.sleep(1)
+                    continue
+                if r2.status_code == 401:
+                    logger.error(f"Token Meta expirado ao baixar mídia (media_id={media_id})")
+                    return "[MIDIA_TOKEN_INVALIDO]"
+                r2.raise_for_status()
+                media_bytes = r2.content
+                content_type = r2.headers.get("content-type", "")
+                break
 
         # 3. Validar content-type — se Meta retornar HTML (URL expirada), abortar
         base_ct_meta = _normalizar_mime(content_type, "")
@@ -1745,37 +1764,18 @@ async def _processar_mensagem_meta(payload: dict) -> None:
         # Formatar memória para injeção no prompt
         memoria_fmt = formatar_memoria_para_prompt(memoria, estado.nome_usuario)
 
-        # 8. Tratar confirmação de mudança de assunto (se pendente)
+        # 8. Processar mensagem normalmente (detecção de mudança de assunto removida)
         if estado.aguardando_confirmacao_topico:
-            topico_ant = estado.topico_anterior or "assunto anterior"
-            msg_pendente = estado.mensagem_pendente_topico or texto_mensagem
-
-            if eh_confirmacao(texto_mensagem):
-                await limpar_confirmacao_topico(terapeuta_id, numero_paciente)
-                texto_para_processar = msg_pendente
-                logger.info(f"Mudança de assunto CONFIRMADA para {numero_paciente} (Meta)")
-            elif eh_negacao(texto_mensagem):
-                await limpar_confirmacao_topico(terapeuta_id, numero_paciente)
-                retomada = gerar_msg_retomada_topico(topico_ant, estado.nome_usuario)
-                await meta_client.send_text_message(
-                    phone_number=numero_paciente, message=retomada,
-                )
-                await _salvar_conversa(
-                    terapeuta_id=terapeuta_id, paciente_numero=numero_paciente,
-                    mensagem_paciente=texto_mensagem, resposta_agente=retomada,
-                    intencao="RETOMADA_TOPICO",
-                )
-                asyncio.create_task(atualizar_timestamp_mensagem(terapeuta_id, numero_paciente))
-                return
-            else:
-                await limpar_confirmacao_topico(terapeuta_id, numero_paciente)
-                texto_para_processar = texto_mensagem
-        else:
-            texto_para_processar = texto_mensagem
+            # Limpar estado legado caso tenha ficado preso
+            await limpar_confirmacao_topico(terapeuta_id, numero_paciente)
+        texto_para_processar = texto_mensagem
 
         # 9. Rotear mensagem: Haiku para ambíguo, keywords para óbvio
+        # Strip prefixo de mídia antes de rotear — evita "[Mensagem de áudio] Oi..."
+        # confundir o classificador e rotear áudios clínicos como SAUDACAO
+        texto_para_rotear = _extrair_texto_para_codigo(texto_para_processar)
         modo = await rotear_mensagem(
-            texto_para_processar,
+            texto_para_rotear,
             historico[-6:] if historico else [],
             estado.nome_usuario,
         )
