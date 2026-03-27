@@ -42,8 +42,18 @@ class Settings(BaseSettings):
     EVOLUTION_API_URL: str = ""
     EVOLUTION_API_KEY: str = ""
 
+    # --- Meta WhatsApp Cloud API (alternativa à Evolution API) ---
+    META_WHATSAPP_TOKEN: str = ""
+    META_PHONE_NUMBER_ID: str = ""
+    META_WHATSAPP_BUSINESS_ID: str = ""
+    META_VERIFY_TOKEN: str = ""
+
     # --- Asaas (cobrança e pagamentos) ---
     ASAAS_API_KEY: str = ""
+
+    # --- Controle de acesso ---
+    # Contato exibido ao usuário quando o chat é bloqueado
+    CONTATO_ADMIN: str = "https://wa.me/5511999999999"
 
     # --- Aplicação ---
     SECRET_KEY: str = "trocar-em-producao"

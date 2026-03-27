@@ -15,8 +15,24 @@ from src.core.supabase_client import get_supabase
 from src.core.prompts import (
     detectar_modo,
     ModoOperacao,
-    gerar_boas_vindas,
     MENSAGEM_FORA_ESCOPO,
+)
+from src.core.estado import (
+    obter_ou_criar_estado,
+    validar_codigo,
+    liberar_acesso,
+    registrar_nome_usuario,
+    detectar_profanidade,
+    registrar_violacao,
+    gerar_msg_bloqueio,
+    gerar_msg_ja_bloqueado,
+    gerar_saudacao_ativo,
+    gerar_msg_boas_vindas_nome,
+    MSGS_ONBOARDING,
+    MSG_CODIGO_INVALIDO,
+    MSGS_ACESSO_LIBERADO,
+    MSG_AVISO_1,
+    MSG_AVISO_2,
 )
 from src.rag.retriever import buscar_contexto
 from src.rag.generator import gerar_resposta, classificar_intencao
@@ -159,132 +175,206 @@ def _salvar_conversa(
 # PROCESSAMENTO EM BACKGROUND
 # =============================================
 
+async def _enviar_sequencia_evolution(
+    msgs: list[str],
+    evolution: "EvolutionClient",
+    instance: str,
+    numero: str,
+    delay: float = 1.5,
+) -> None:
+    """Envia uma lista de mensagens com delay entre elas (Evolution API)."""
+    for i, msg in enumerate(msgs):
+        if i > 0:
+            await asyncio.sleep(delay)
+        await evolution.enviar_mensagem(instance=instance, numero=numero, texto=msg)
+
+
 async def _processar_mensagem(payload: dict) -> None:
     """
-    Processa a mensagem recebida do WhatsApp em background.
-    Fluxo completo: classificar intenção → buscar contexto → gerar resposta → enviar.
+    Processa a mensagem recebida via Evolution API em background.
 
-    Args:
-        payload: Payload JSON completo do webhook da Evolution API.
+    Fluxo com máquina de estados:
+      1. Extrair dados → 2. Validar tipo → 3. Buscar terapeuta →
+      4. Verificar estado (PENDENTE/ATIVO/BLOQUEADO) →
+      5. Se ATIVO: checar profanidade → 6. RAG pipeline → 7. Responder
     """
     try:
-        # 1. Extrair número e texto da mensagem (payload completo como dict)
+        settings = get_settings()
+
+        # 1. Extrair número e texto
         numero_paciente, texto_mensagem = extrair_numero_mensagem(payload)
         instance_name = payload.get("instance", "")
 
-        logger.info(
-            f"Processando mensagem de {numero_paciente} "
-            f"na instância {instance_name}"
-        )
+        logger.info(f"Evolution: mensagem de {numero_paciente} na instância {instance_name}")
 
-        # 2. Validar que temos texto para processar
+        # 2. Validar tipo de mensagem
         if not texto_mensagem or not texto_mensagem.strip():
-            logger.info("Mensagem sem texto (áudio, imagem, etc) — ignorando")
+            logger.info("Mensagem sem texto — ignorando")
             return
 
-        # Tratar mensagens de áudio com aviso específico
+        evolution = EvolutionClient()
+
         if texto_mensagem == "[AUDIO_NAO_SUPORTADO]":
-            evolution = EvolutionClient()
             await evolution.enviar_mensagem(
-                instance=instance_name,
-                numero=numero_paciente,
+                instance=instance_name, numero=numero_paciente,
                 texto=formatar_aviso_audio(),
             )
             return
 
-        # Ignorar outros tipos não suportados
         if texto_mensagem.startswith("[") and texto_mensagem.endswith("]"):
-            logger.info(f"Tipo de mensagem não suportado: {texto_mensagem} — ignorando")
+            logger.info(f"Tipo não suportado: {texto_mensagem} — ignorando")
             return
 
-        # 3. Identificar o terapeuta pela instância do Evolution
+        # 3. Buscar terapeuta
         terapeuta = _buscar_terapeuta_por_instancia(instance_name)
         if not terapeuta:
-            logger.warning(
-                f"Nenhum terapeuta encontrado para instância '{instance_name}'"
-            )
+            logger.warning(f"Nenhum terapeuta para instância '{instance_name}'")
             return
 
         terapeuta_id = terapeuta["id"]
         nome_terapeuta = terapeuta.get("nome", "Terapeuta")
         contato_terapeuta = terapeuta.get("telefone", "")
-        especialidade = terapeuta.get("especialidade", "Terapia Holística")
-        tom_voz = terapeuta.get("tom_de_voz", "profissional e acolhedor")
-
-        # Configuração do terapeuta para o gerador de respostas
         config_terapeuta = {
             "nome_terapeuta": nome_terapeuta,
-            "especialidade": especialidade,
-            "tom_voz": tom_voz,
+            "especialidade": terapeuta.get("especialidade", "Terapia Holística"),
+            "tom_voz": terapeuta.get("tom_de_voz", "profissional e acolhedor"),
             "contato": contato_terapeuta,
         }
 
-        # 4. Inicializar cliente Evolution para enviar respostas
-        evolution = EvolutionClient()
+        # 4. Máquina de estados — controle de acesso
+        estado, is_new = obter_ou_criar_estado(terapeuta_id, numero_paciente)
 
-        # 5. Detectar modo de operacao (CONSULTA, CRIACAO_CONTEUDO, PESQUISA, SAUDACAO, EMERGENCIA, FORA_ESCOPO)
+        # ── BLOQUEADO ──────────────────────────────────────────────────────────
+        if estado.is_bloqueado:
+            await evolution.enviar_mensagem(
+                instance=instance_name, numero=numero_paciente,
+                texto=gerar_msg_ja_bloqueado(settings.CONTATO_ADMIN),
+            )
+            return
+
+        # ── PENDENTE_CODIGO ────────────────────────────────────────────────────
+        if estado.is_pendente:
+            if is_new:
+                # Primeira mensagem ever: enviar boas-vindas + pedir código
+                await _enviar_sequencia_evolution(
+                    MSGS_ONBOARDING, evolution, instance_name, numero_paciente,
+                )
+                _salvar_conversa(
+                    terapeuta_id=terapeuta_id,
+                    paciente_numero=numero_paciente,
+                    mensagem_paciente=texto_mensagem,
+                    resposta_agente=" | ".join(MSGS_ONBOARDING),
+                    intencao="ONBOARDING",
+                )
+            else:
+                # Já recebeu boas-vindas: tentar validar como código
+                if validar_codigo(terapeuta_id, numero_paciente, texto_mensagem):
+                    liberar_acesso(terapeuta_id, numero_paciente, texto_mensagem)
+                    await _enviar_sequencia_evolution(
+                        MSGS_ACESSO_LIBERADO, evolution, instance_name, numero_paciente,
+                    )
+                    _salvar_conversa(
+                        terapeuta_id=terapeuta_id,
+                        paciente_numero=numero_paciente,
+                        mensagem_paciente=texto_mensagem,
+                        resposta_agente=" | ".join(MSGS_ACESSO_LIBERADO),
+                        intencao="CODIGO_VALIDO",
+                    )
+                else:
+                    await evolution.enviar_mensagem(
+                        instance=instance_name, numero=numero_paciente,
+                        texto=MSG_CODIGO_INVALIDO,
+                    )
+                    _salvar_conversa(
+                        terapeuta_id=terapeuta_id,
+                        paciente_numero=numero_paciente,
+                        mensagem_paciente=texto_mensagem,
+                        resposta_agente=MSG_CODIGO_INVALIDO,
+                        intencao="CODIGO_INVALIDO",
+                    )
+            return
+
+        # ── ATIVO ──────────────────────────────────────────────────────────────
+
+        # 5a. Coletar nome se ainda não temos
+        if estado.aguardando_nome:
+            nome = registrar_nome_usuario(terapeuta_id, numero_paciente, texto_mensagem)
+            msg_nome = gerar_msg_boas_vindas_nome(nome)
+            await evolution.enviar_mensagem(
+                instance=instance_name, numero=numero_paciente, texto=msg_nome,
+            )
+            _salvar_conversa(
+                terapeuta_id=terapeuta_id,
+                paciente_numero=numero_paciente,
+                mensagem_paciente=texto_mensagem,
+                resposta_agente=msg_nome,
+                intencao="NOME_REGISTRADO",
+            )
+            return
+
+        # 5b. Moderação: detectar profanidade ANTES do RAG
+        if detectar_profanidade(texto_mensagem):
+            violacoes = registrar_violacao(terapeuta_id, numero_paciente)
+            if violacoes == 1:
+                aviso = MSG_AVISO_1
+            elif violacoes == 2:
+                aviso = MSG_AVISO_2
+            else:
+                aviso = gerar_msg_bloqueio(settings.CONTATO_ADMIN)
+            await evolution.enviar_mensagem(
+                instance=instance_name, numero=numero_paciente, texto=aviso,
+            )
+            _salvar_conversa(
+                terapeuta_id=terapeuta_id,
+                paciente_numero=numero_paciente,
+                mensagem_paciente=texto_mensagem,
+                resposta_agente=aviso,
+                intencao=f"VIOLACAO_{violacoes}",
+            )
+            return
+
+        # 6. Detectar modo e classificar intenção
         modo = detectar_modo(texto_mensagem)
-        logger.info(f"Modo de operação detectado: {modo.value}")
-
-        # 6. Classificar a intenção da mensagem (via LLM, para logging e fallback)
+        logger.info(f"Modo detectado: {modo.value}")
         intencao = await classificar_intencao(texto_mensagem)
-        logger.info(f"Intenção classificada (LLM): {intencao}")
 
-        resposta_texto = ""
+        resposta_texto: str | list[str] = ""
 
-        # 7. Processar de acordo com o modo detectado
+        # 7. Saudação quando ATIVO — sem RAG, só cumprimento personalizado
         if modo == ModoOperacao.SAUDACAO:
-            # Usa a mensagem de boas-vindas da Alquimia (apresenta os 3 modos)
-            resposta_texto = gerar_boas_vindas(config_terapeuta)
+            resposta_texto = gerar_saudacao_ativo(estado.nome_usuario)
 
         elif modo == ModoOperacao.EMERGENCIA:
-            # Emergencia: acolhimento + encaminhamento profissional obrigatorio
             resposta_texto = (
-                "Percebo que voce pode estar lidando com uma situacao delicada. "
-                "Sua seguranca e prioridade absoluta.\n\n"
-                "*Se estiver em crise, ligue agora:*\n"
-                "CVV (Centro de Valorizacao da Vida): *188*\n"
-                "SAMU: *192*\n"
+                "Percebo que você pode estar lidando com uma situação delicada. "
+                "Sua segurança é prioridade absoluta.\n\n"
+                "Se estiver em crise, ligue agora:\n"
+                "CVV (Centro de Valorização da Vida): 188\n"
+                "SAMU: 192\n"
                 "Chat: https://www.cvv.org.br\n\n"
-                f"Entre em contato tambem com *{nome_terapeuta}*"
+                f"Entre em contato também com {nome_terapeuta}"
             )
             if contato_terapeuta:
                 resposta_texto += f": {contato_terapeuta}"
-            resposta_texto += (
-                "\n\nA alquimia cuida do campo, mas a seguranca clinica vem primeiro. "
-                "Procure ajuda profissional imediata."
-            )
 
         elif modo == ModoOperacao.FORA_ESCOPO:
-            # Usa a mensagem de fora de escopo da Alquimia
             resposta_texto = MENSAGEM_FORA_ESCOPO
 
         elif modo in (ModoOperacao.CONSULTA, ModoOperacao.CRIACAO_CONTEUDO, ModoOperacao.PESQUISA):
-            # Modos principais — usar RAG com o modo detectado
-            # CONSULTA usa top_k=10 para trazer mais contexto alquimico no diagnostico
             top_k_busca = 10 if modo == ModoOperacao.CONSULTA else 5
             contexto_chunks = await buscar_contexto(
-                pergunta=texto_mensagem,
-                terapeuta_id=terapeuta_id,
-                top_k=top_k_busca,
+                pergunta=texto_mensagem, terapeuta_id=terapeuta_id, top_k=top_k_busca,
             )
-
-            # Buscar historico de conversa (essencial para CONSULTA multi-turno / anamnese)
             historico = _buscar_historico_conversa(
-                terapeuta_id=terapeuta_id,
-                paciente_numero=numero_paciente,
-                limite=20,
+                terapeuta_id=terapeuta_id, paciente_numero=numero_paciente, limite=20,
             )
-
-            # Carregar contexto personalizado de aprendizado continuo
             try:
                 ctx_aprendizado = await carregar_contexto_terapeuta(terapeuta_id)
                 ctx_formatado = formatar_contexto_personalizado(ctx_aprendizado)
             except Exception as e:
-                logger.warning(f"Falha ao carregar contexto de aprendizado: {e}")
+                logger.warning(f"Contexto de aprendizado indisponível: {e}")
                 ctx_formatado = None
 
-            # Gerar resposta com RAG + historico + contexto personalizado
             resposta_texto = await gerar_resposta(
                 pergunta=texto_mensagem,
                 terapeuta_id=terapeuta_id,
@@ -293,13 +383,9 @@ async def _processar_mensagem(payload: dict) -> None:
                 historico_mensagens=historico if historico else None,
                 contexto_personalizado=ctx_formatado,
             )
-
         else:
-            # Modo nao reconhecido — fallback para RAG com modo PESQUISA
-            logger.warning(f"Modo nao reconhecido: {modo} — tratando como PESQUISA via RAG")
             contexto_chunks = await buscar_contexto(
-                pergunta=texto_mensagem,
-                terapeuta_id=terapeuta_id,
+                pergunta=texto_mensagem, terapeuta_id=terapeuta_id,
             )
             resposta_texto = await gerar_resposta(
                 pergunta=texto_mensagem,
@@ -308,29 +394,20 @@ async def _processar_mensagem(payload: dict) -> None:
                 config_terapeuta=config_terapeuta,
             )
 
-        # 7. Humanizar resposta antes de enviar (regras UX do Lucas)
+        # 8. Enviar resposta
         if resposta_texto:
             if isinstance(resposta_texto, list):
-                # Boas-vindas em múltiplas mensagens separadas
-                for i, parte in enumerate(resposta_texto):
-                    if i > 0:
-                        await asyncio.sleep(1.5)
-                    await evolution.enviar_mensagem(
-                        instance=instance_name,
-                        numero=numero_paciente,
-                        texto=parte,
-                    )
-                logger.info(f"Boas-vindas enviadas ({len(resposta_texto)} mensagens) para {numero_paciente}")
+                await _enviar_sequencia_evolution(
+                    resposta_texto, evolution, instance_name, numero_paciente,
+                )
             else:
                 resposta_texto = humanizar_resposta(resposta_texto)
                 await evolution.enviar_mensagem(
-                    instance=instance_name,
-                    numero=numero_paciente,
-                    texto=resposta_texto,
+                    instance=instance_name, numero=numero_paciente, texto=resposta_texto,
                 )
-                logger.info(f"Resposta enviada para {numero_paciente}")
+            logger.info(f"Resposta enviada para {numero_paciente}")
 
-        # 8. Salvar conversa no banco (registra tanto o modo quanto a intencao LLM)
+        # 9. Salvar conversa
         resposta_salvar = " | ".join(resposta_texto) if isinstance(resposta_texto, list) else resposta_texto
         _salvar_conversa(
             terapeuta_id=terapeuta_id,
@@ -340,25 +417,22 @@ async def _processar_mensagem(payload: dict) -> None:
             intencao=f"{modo.value}|{intencao.value if hasattr(intencao, 'value') else str(intencao)}",
         )
 
-        # 9. Analise de aprendizado em background (nao bloqueia o fluxo)
-        # Apenas para modos principais que geram resposta via RAG
+        # 10. Aprendizado contínuo em background
         if modo in (ModoOperacao.CONSULTA, ModoOperacao.CRIACAO_CONTEUDO, ModoOperacao.PESQUISA):
             try:
                 asyncio.create_task(
                     analisar_conversa(
                         terapeuta_id=terapeuta_id,
                         mensagem=texto_mensagem,
-                        resposta=resposta_texto,
+                        resposta=resposta_salvar,
                         modo=modo.value,
                     )
                 )
-                logger.info(f"Analise de aprendizado disparada em background para terapeuta {terapeuta_id}")
             except Exception as e:
-                # Aprendizado nunca deve quebrar o fluxo principal
-                logger.warning(f"Falha ao disparar analise de aprendizado: {e}")
+                logger.warning(f"Falha no aprendizado contínuo: {e}")
 
     except Exception as e:
-        logger.error(f"Erro ao processar mensagem do webhook: {e}", exc_info=True)
+        logger.error(f"Erro ao processar mensagem Evolution: {e}", exc_info=True)
 
 
 # =============================================
@@ -514,135 +588,209 @@ def _extrair_mensagem_meta(payload: dict) -> tuple[str, str, str, str]:
 # META CLOUD API — PROCESSAMENTO EM BACKGROUND
 # =============================================
 
+async def _enviar_sequencia_meta(
+    msgs: list[str],
+    meta_client: "MetaCloudClient",
+    numero: str,
+    delay: float = 1.5,
+) -> None:
+    """Envia uma lista de mensagens com delay entre elas (Meta Cloud API)."""
+    for i, msg in enumerate(msgs):
+        if i > 0:
+            await asyncio.sleep(delay)
+        await meta_client.send_text_message(phone_number=numero, message=msg)
+
+
 async def _processar_mensagem_meta(payload: dict) -> None:
     """
-    Processa a mensagem recebida da Meta WhatsApp Cloud API em background.
-    Fluxo: extrair dados → buscar terapeuta → RAG pipeline → responder via Meta Cloud API.
+    Processa a mensagem recebida via Meta WhatsApp Cloud API em background.
 
-    Args:
-        payload: Payload JSON completo do webhook da Meta.
+    Fluxo com máquina de estados:
+      1. Extrair dados → 2. Validar tipo → 3. Buscar terapeuta →
+      4. Verificar estado (PENDENTE/ATIVO/BLOQUEADO) →
+      5. Se ATIVO: checar profanidade → 6. RAG pipeline → 7. Responder
     """
     try:
-        # 1. Extrair dados do payload Meta
+        settings = get_settings()
+
+        # 1. Extrair dados
         phone_number_id, numero_paciente, texto_mensagem, message_id = _extrair_mensagem_meta(payload)
 
         if not numero_paciente or not texto_mensagem:
-            logger.info("Payload Meta sem mensagem de texto processável — ignorando")
+            logger.info("Payload Meta sem mensagem processável — ignorando")
             return
 
-        logger.info(
-            f"Processando mensagem Meta de {numero_paciente} "
-            f"(phone_number_id={phone_number_id})"
-        )
+        logger.info(f"Meta: mensagem de {numero_paciente} (phone_number_id={phone_number_id})")
 
-        # 2. Inicializar cliente Meta Cloud API
+        # 2. Inicializar cliente Meta e marcar como lida
         meta_client = MetaCloudClient()
-
-        # 3. Marcar mensagem como lida (double blue check)
         if message_id:
             try:
                 await meta_client.mark_as_read(message_id)
             except Exception as e:
-                logger.warning(f"Falha ao marcar mensagem como lida: {e}")
+                logger.warning(f"Falha ao marcar como lida: {e}")
 
-        # 4. Validar que temos texto para processar
+        # 3. Validar tipo de mensagem
         if not texto_mensagem.strip():
-            logger.info("Mensagem Meta sem texto — ignorando")
             return
 
-        # Tratar mensagens de áudio com aviso específico
         if texto_mensagem == "[AUDIO_NAO_SUPORTADO]":
             await meta_client.send_text_message(
-                phone_number=numero_paciente,
-                message=formatar_aviso_audio(),
+                phone_number=numero_paciente, message=formatar_aviso_audio(),
             )
             return
 
-        # Ignorar outros tipos não suportados
         if texto_mensagem.startswith("[") and texto_mensagem.endswith("]"):
-            logger.info(f"Tipo de mensagem Meta não suportado: {texto_mensagem} — ignorando")
+            logger.info(f"Tipo não suportado: {texto_mensagem} — ignorando")
             return
 
-        # 5. Identificar o terapeuta pelo phone_number_id
+        # 4. Buscar terapeuta
         terapeuta = _buscar_terapeuta_por_phone_number_id(phone_number_id)
         if not terapeuta:
-            logger.warning(
-                f"Nenhum terapeuta encontrado para phone_number_id '{phone_number_id}'"
-            )
+            logger.warning(f"Nenhum terapeuta para phone_number_id '{phone_number_id}'")
             return
 
         terapeuta_id = terapeuta["id"]
         nome_terapeuta = terapeuta.get("nome", "Terapeuta")
         contato_terapeuta = terapeuta.get("telefone", "")
-        especialidade = terapeuta.get("especialidade", "Terapia Holística")
-        tom_voz = terapeuta.get("tom_de_voz", "profissional e acolhedor")
-
         config_terapeuta = {
             "nome_terapeuta": nome_terapeuta,
-            "especialidade": especialidade,
-            "tom_voz": tom_voz,
+            "especialidade": terapeuta.get("especialidade", "Terapia Holística"),
+            "tom_voz": terapeuta.get("tom_de_voz", "profissional e acolhedor"),
             "contato": contato_terapeuta,
         }
 
-        # 6. Detectar modo de operação
+        # 5. Máquina de estados — controle de acesso
+        estado, is_new = obter_ou_criar_estado(terapeuta_id, numero_paciente)
+
+        # ── BLOQUEADO ──────────────────────────────────────────────────────────
+        if estado.is_bloqueado:
+            await meta_client.send_text_message(
+                phone_number=numero_paciente,
+                message=gerar_msg_ja_bloqueado(settings.CONTATO_ADMIN),
+            )
+            return
+
+        # ── PENDENTE_CODIGO ────────────────────────────────────────────────────
+        if estado.is_pendente:
+            if is_new:
+                # Primeira mensagem ever: enviar sequência de boas-vindas + pedir código
+                await _enviar_sequencia_meta(MSGS_ONBOARDING, meta_client, numero_paciente)
+                _salvar_conversa(
+                    terapeuta_id=terapeuta_id,
+                    paciente_numero=numero_paciente,
+                    mensagem_paciente=texto_mensagem,
+                    resposta_agente=" | ".join(MSGS_ONBOARDING),
+                    intencao="ONBOARDING",
+                )
+            else:
+                # Já recebeu boas-vindas: tentar como código de liberação
+                if validar_codigo(terapeuta_id, numero_paciente, texto_mensagem):
+                    liberar_acesso(terapeuta_id, numero_paciente, texto_mensagem)
+                    await _enviar_sequencia_meta(
+                        MSGS_ACESSO_LIBERADO, meta_client, numero_paciente,
+                    )
+                    _salvar_conversa(
+                        terapeuta_id=terapeuta_id,
+                        paciente_numero=numero_paciente,
+                        mensagem_paciente=texto_mensagem,
+                        resposta_agente=" | ".join(MSGS_ACESSO_LIBERADO),
+                        intencao="CODIGO_VALIDO",
+                    )
+                else:
+                    await meta_client.send_text_message(
+                        phone_number=numero_paciente, message=MSG_CODIGO_INVALIDO,
+                    )
+                    _salvar_conversa(
+                        terapeuta_id=terapeuta_id,
+                        paciente_numero=numero_paciente,
+                        mensagem_paciente=texto_mensagem,
+                        resposta_agente=MSG_CODIGO_INVALIDO,
+                        intencao="CODIGO_INVALIDO",
+                    )
+            return
+
+        # ── ATIVO ──────────────────────────────────────────────────────────────
+
+        # 6a. Coletar nome se ainda não temos
+        if estado.aguardando_nome:
+            nome = registrar_nome_usuario(terapeuta_id, numero_paciente, texto_mensagem)
+            msg_nome = gerar_msg_boas_vindas_nome(nome)
+            await meta_client.send_text_message(
+                phone_number=numero_paciente, message=msg_nome,
+            )
+            _salvar_conversa(
+                terapeuta_id=terapeuta_id,
+                paciente_numero=numero_paciente,
+                mensagem_paciente=texto_mensagem,
+                resposta_agente=msg_nome,
+                intencao="NOME_REGISTRADO",
+            )
+            return
+
+        # 6b. Moderação: detectar profanidade ANTES do RAG
+        if detectar_profanidade(texto_mensagem):
+            violacoes = registrar_violacao(terapeuta_id, numero_paciente)
+            if violacoes == 1:
+                aviso = MSG_AVISO_1
+            elif violacoes == 2:
+                aviso = MSG_AVISO_2
+            else:
+                aviso = gerar_msg_bloqueio(settings.CONTATO_ADMIN)
+            await meta_client.send_text_message(
+                phone_number=numero_paciente, message=aviso,
+            )
+            _salvar_conversa(
+                terapeuta_id=terapeuta_id,
+                paciente_numero=numero_paciente,
+                mensagem_paciente=texto_mensagem,
+                resposta_agente=aviso,
+                intencao=f"VIOLACAO_{violacoes}",
+            )
+            return
+
+        # 7. Detectar modo e classificar intenção
         modo = detectar_modo(texto_mensagem)
-        logger.info(f"Modo de operação detectado (Meta): {modo.value}")
-
-        # 7. Classificar intenção (via LLM, para logging)
+        logger.info(f"Modo detectado (Meta): {modo.value}")
         intencao = await classificar_intencao(texto_mensagem)
-        logger.info(f"Intenção classificada (Meta/LLM): {intencao}")
 
-        resposta_texto = ""
+        resposta_texto: str | list[str] = ""
 
-        # 8. Processar de acordo com o modo detectado (mesmo fluxo do Evolution)
+        # 8. Saudação quando ATIVO — cumprimento personalizado, sem RAG
         if modo == ModoOperacao.SAUDACAO:
-            resposta_texto = gerar_boas_vindas(config_terapeuta)
+            resposta_texto = gerar_saudacao_ativo(estado.nome_usuario)
 
         elif modo == ModoOperacao.EMERGENCIA:
             resposta_texto = (
-                "Percebo que voce pode estar lidando com uma situacao delicada. "
-                "Sua seguranca e prioridade absoluta.\n\n"
-                "*Se estiver em crise, ligue agora:*\n"
-                "CVV (Centro de Valorizacao da Vida): *188*\n"
-                "SAMU: *192*\n"
+                "Percebo que você pode estar lidando com uma situação delicada. "
+                "Sua segurança é prioridade absoluta.\n\n"
+                "Se estiver em crise, ligue agora:\n"
+                "CVV (Centro de Valorização da Vida): 188\n"
+                "SAMU: 192\n"
                 "Chat: https://www.cvv.org.br\n\n"
-                f"Entre em contato tambem com *{nome_terapeuta}*"
+                f"Entre em contato também com {nome_terapeuta}"
             )
             if contato_terapeuta:
                 resposta_texto += f": {contato_terapeuta}"
-            resposta_texto += (
-                "\n\nA alquimia cuida do campo, mas a seguranca clinica vem primeiro. "
-                "Procure ajuda profissional imediata."
-            )
 
         elif modo == ModoOperacao.FORA_ESCOPO:
             resposta_texto = MENSAGEM_FORA_ESCOPO
 
         elif modo in (ModoOperacao.CONSULTA, ModoOperacao.CRIACAO_CONTEUDO, ModoOperacao.PESQUISA):
-            # Modos principais — usar RAG
             top_k_busca = 10 if modo == ModoOperacao.CONSULTA else 5
             contexto_chunks = await buscar_contexto(
-                pergunta=texto_mensagem,
-                terapeuta_id=terapeuta_id,
-                top_k=top_k_busca,
+                pergunta=texto_mensagem, terapeuta_id=terapeuta_id, top_k=top_k_busca,
             )
-
-            # Buscar histórico de conversa
             historico = _buscar_historico_conversa(
-                terapeuta_id=terapeuta_id,
-                paciente_numero=numero_paciente,
-                limite=20,
+                terapeuta_id=terapeuta_id, paciente_numero=numero_paciente, limite=20,
             )
-
-            # Contexto de aprendizado contínuo
             try:
                 ctx_aprendizado = await carregar_contexto_terapeuta(terapeuta_id)
                 ctx_formatado = formatar_contexto_personalizado(ctx_aprendizado)
             except Exception as e:
-                logger.warning(f"Falha ao carregar contexto de aprendizado (Meta): {e}")
+                logger.warning(f"Contexto de aprendizado indisponível (Meta): {e}")
                 ctx_formatado = None
 
-            # Gerar resposta com RAG
             resposta_texto = await gerar_resposta(
                 pergunta=texto_mensagem,
                 terapeuta_id=terapeuta_id,
@@ -651,13 +799,9 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                 historico_mensagens=historico if historico else None,
                 contexto_personalizado=ctx_formatado,
             )
-
         else:
-            # Fallback para RAG com modo PESQUISA
-            logger.warning(f"Modo não reconhecido (Meta): {modo} — tratando como PESQUISA")
             contexto_chunks = await buscar_contexto(
-                pergunta=texto_mensagem,
-                terapeuta_id=terapeuta_id,
+                pergunta=texto_mensagem, terapeuta_id=terapeuta_id,
             )
             resposta_texto = await gerar_resposta(
                 pergunta=texto_mensagem,
@@ -666,27 +810,18 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                 config_terapeuta=config_terapeuta,
             )
 
-        # 9. Humanizar e enviar resposta via Meta Cloud API
+        # 9. Enviar resposta
         if resposta_texto:
             if isinstance(resposta_texto, list):
-                # Boas-vindas em múltiplas mensagens separadas
-                for i, parte in enumerate(resposta_texto):
-                    if i > 0:
-                        await asyncio.sleep(1.5)
-                    await meta_client.send_text_message(
-                        phone_number=numero_paciente,
-                        message=parte,
-                    )
-                logger.info(f"Boas-vindas enviadas ({len(resposta_texto)} mensagens) para {numero_paciente} via Meta Cloud API")
+                await _enviar_sequencia_meta(resposta_texto, meta_client, numero_paciente)
             else:
                 resposta_texto = humanizar_resposta(resposta_texto)
                 await meta_client.send_text_message(
-                    phone_number=numero_paciente,
-                    message=resposta_texto,
+                    phone_number=numero_paciente, message=resposta_texto,
                 )
-                logger.info(f"Resposta enviada para {numero_paciente} via Meta Cloud API")
+            logger.info(f"Resposta enviada para {numero_paciente} via Meta")
 
-        # 10. Salvar conversa no banco
+        # 10. Salvar conversa
         resposta_salvar = " | ".join(resposta_texto) if isinstance(resposta_texto, list) else resposta_texto
         _salvar_conversa(
             terapeuta_id=terapeuta_id,
@@ -696,23 +831,22 @@ async def _processar_mensagem_meta(payload: dict) -> None:
             intencao=f"{modo.value}|{intencao.value if hasattr(intencao, 'value') else str(intencao)}",
         )
 
-        # 11. Análise de aprendizado em background
+        # 11. Aprendizado contínuo em background
         if modo in (ModoOperacao.CONSULTA, ModoOperacao.CRIACAO_CONTEUDO, ModoOperacao.PESQUISA):
             try:
                 asyncio.create_task(
                     analisar_conversa(
                         terapeuta_id=terapeuta_id,
                         mensagem=texto_mensagem,
-                        resposta=resposta_texto,
+                        resposta=resposta_salvar,
                         modo=modo.value,
                     )
                 )
-                logger.info(f"Análise de aprendizado disparada (Meta) para terapeuta {terapeuta_id}")
             except Exception as e:
-                logger.warning(f"Falha ao disparar análise de aprendizado (Meta): {e}")
+                logger.warning(f"Falha no aprendizado contínuo (Meta): {e}")
 
     except Exception as e:
-        logger.error(f"Erro ao processar mensagem Meta webhook: {e}", exc_info=True)
+        logger.error(f"Erro ao processar mensagem Meta: {e}", exc_info=True)
 
 
 # =============================================
