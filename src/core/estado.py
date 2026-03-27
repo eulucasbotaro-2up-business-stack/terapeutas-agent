@@ -14,6 +14,7 @@ Responsabilidades:
 
 import logging
 import re
+import requests
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -144,7 +145,7 @@ def gerar_msg_boas_vindas_nome(nome: str) -> str:
 
     variacoes = [
         f"{nome_fmt}, prazer! Pode mandar o que tiver. Caso clínico, dúvida conceitual, ou quer criar conteúdo pra redes? Tô aqui pra caminhar junto contigo.",
-        f"Prazer, {nome_fmt}. Pode trazer o que você precisar — análise de caso, pesquisa no método do Joel, ou produção de conteúdo. O que você traz hoje?",
+        f"Prazer, {nome_fmt}. Pode trazer o que você precisar: análise de caso, pesquisa no método do Joel, ou produção de conteúdo. O que você traz hoje?",
         f"{nome_fmt}! Bom ter você aqui. Caso clínico, dúvida sobre o método, criação de post... me conta o que está na sua cabeça.",
     ]
     return random.choice(variacoes)
@@ -162,19 +163,19 @@ def gerar_saudacao_ativo(nome: Optional[str]) -> list[str]:
     variacoes = [
         (
             f"{'Fala, ' + nome_fmt + '!' if nome_fmt else 'Fala!'} Pode trazer o que tiver.",
-            "Caso clínico pra analisar, dúvida sobre o método, ou quer criar um conteúdo? Tô aqui."
+            "É um caso pra analisar, quer entender algum conceito do método, ou ajuda na produção de conteúdo?"
         ),
         (
             f"{'Opa, ' + nome_fmt + '.' if nome_fmt else 'Opa.'} Que bom te ver aqui.",
-            "Me conta o que você traz hoje — um caso, uma dúvida do método, ou precisa de conteúdo pra redes?"
+            "Tem um caso, uma dúvida do método, ou precisa de conteúdo para as redes?"
         ),
         (
             f"{'E aí, ' + nome_fmt + '!' if nome_fmt else 'E aí!'} Tô por aqui.",
-            "Pode ser caso clínico, pesquisa nos materiais do Joel, ou criação de post. O que você precisa?"
+            "Pode ser caso clínico, pesquisa nos materiais do Joel, ou criação de post. O que você traz?"
         ),
         (
             f"{'Oi, ' + nome_fmt + '.' if nome_fmt else 'Oi.'} Que bom.",
-            "Tem um caso pra analisar, quer entender algum conceito do método, ou ajuda na produção de conteúdo?"
+            "Caso clínico, dúvida no método, ou produção de conteúdo, o que está na cabeça hoje?"
         ),
     ]
 
@@ -270,102 +271,96 @@ class EstadoChat:
 def obter_ou_criar_estado(
     terapeuta_id: str,
     numero_telefone: str,
-) -> tuple[EstadoChat, bool]:
+) -> tuple["EstadoChat", bool]:
     """
     Busca o estado do número no banco. Se não existir, cria com PENDENTE_CODIGO.
-
-    Auto-recuperação inteligente: se o número já tem histórico de conversas
-    (estado ATIVO perdido por migração/restart), restaura como ATIVO em vez de
-    mandar pedir código novamente — evita UX confusa.
-
-    Returns:
-        (EstadoChat, is_new) — is_new=True indica que acabou de ser criado
-        e o bot deve enviar a sequência de boas-vindas.
+    Returns: (EstadoChat, is_new)
     """
-    supabase = get_supabase()
+    from src.core.config import get_settings
+    settings = get_settings()
 
-    # 1. Verificar se já existe um estado no banco
-    busca = (
-        supabase.table("chat_estado")
-        .select("*")
-        .eq("terapeuta_id", terapeuta_id)
-        .eq("numero_telefone", numero_telefone)
-        .limit(1)
-        .execute()
+    headers = {
+        "apikey": settings.SUPABASE_SERVICE_KEY,
+        "Authorization": f"Bearer {settings.SUPABASE_SERVICE_KEY}",
+        "Content-Type": "application/json",
+        "Prefer": "return=representation",
+    }
+    base_url = settings.SUPABASE_URL.rstrip("/") + "/rest/v1"
+
+    # 1. Try to SELECT existing state
+    resp = requests.get(
+        f"{base_url}/chat_estado",
+        headers=headers,
+        params={
+            "terapeuta_id": f"eq.{terapeuta_id}",
+            "numero_telefone": f"eq.{numero_telefone}",
+            "limit": "1",
+        },
+        timeout=10,
     )
+    resp.raise_for_status()
+    rows = resp.json()
 
-    if busca.data:
-        # Estado já existe — retorna sem alterar
-        estado = EstadoChat(busca.data[0])
-        logger.info(
-            f"Estado encontrado: {estado.estado} | numero={numero_telefone}"
-        )
+    if rows:
+        estado = EstadoChat(rows[0])
+        logger.info(f"Estado encontrado: {estado.estado} | numero={numero_telefone}")
         return estado, False
 
-    # 2. Nenhum estado no banco — verificar se usuário já validou código alguma vez
-    # Só restaura ATIVO se existe registro de CODIGO_VALIDO — evita pular o fluxo
-    # de código em casos onde o estado foi manipulado manualmente (setup, migração etc.)
-    codigo_validado = (
-        supabase.table("conversas")
-        .select("id")
-        .eq("terapeuta_id", terapeuta_id)
-        .eq("paciente_numero", numero_telefone)
-        .eq("intencao", "CODIGO_VALIDO")
-        .limit(1)
-        .execute()
+    # 2. Check if user previously validated a code (auto-recovery)
+    resp2 = requests.get(
+        f"{base_url}/conversas",
+        headers=headers,
+        params={
+            "terapeuta_id": f"eq.{terapeuta_id}",
+            "paciente_numero": f"eq.{numero_telefone}",
+            "intencao": "eq.CODIGO_VALIDO",
+            "limit": "1",
+        },
+        timeout=10,
+    )
+    resp2.raise_for_status()
+    ja_validou = bool(resp2.json())
+
+    estado_inicial = "ATIVO" if ja_validou else "PENDENTE_CODIGO"
+    is_new = not ja_validou
+
+    if ja_validou:
+        logger.warning(f"Auto-recuperação ATIVO para {numero_telefone}")
+
+    # 3. INSERT new state
+    now_iso = datetime.now(timezone.utc).isoformat()
+    payload = {
+        "terapeuta_id": terapeuta_id,
+        "numero_telefone": numero_telefone,
+        "estado": estado_inicial,
+        "atualizado_em": now_iso,
+    }
+    resp3 = requests.post(
+        f"{base_url}/chat_estado",
+        headers={**headers, "Prefer": "return=representation,resolution=ignore-duplicates"},
+        json=payload,
+        timeout=10,
     )
 
-    ja_validou_codigo = bool(codigo_validado.data)
-
-    if ja_validou_codigo:
-        # Usuário já passou pelo fluxo completo — recupera ATIVO sem pedir código novamente
-        logger.warning(
-            f"Auto-recuperação: estado perdido para {numero_telefone} — "
-            f"restaurando como ATIVO (código foi validado anteriormente)"
-        )
-        estado_inicial = "ATIVO"
-        is_new = False
-    else:
-        # Novo usuário ou nunca validou código — fluxo completo obrigatório
-        estado_inicial = "PENDENTE_CODIGO"
-        is_new = True
-
-    # 3. Inserir o estado correto
-    insert_result = (
-        supabase.table("chat_estado")
-        .upsert(
-            {
-                "terapeuta_id": terapeuta_id,
-                "numero_telefone": numero_telefone,
-                "estado": estado_inicial,
-                "atualizado_em": datetime.now(timezone.utc).isoformat(),
-            },
-            on_conflict="terapeuta_id,numero_telefone",
-            ignore_duplicates=False,  # force upsert para garantir inserção
-        )
-        .execute()
+    # 4. SELECT after insert (handles race conditions)
+    resp4 = requests.get(
+        f"{base_url}/chat_estado",
+        headers=headers,
+        params={
+            "terapeuta_id": f"eq.{terapeuta_id}",
+            "numero_telefone": f"eq.{numero_telefone}",
+            "limit": "1",
+        },
+        timeout=10,
     )
+    resp4.raise_for_status()
+    rows4 = resp4.json()
 
-    # 4. Buscar o estado recém-criado
-    busca2 = (
-        supabase.table("chat_estado")
-        .select("*")
-        .eq("terapeuta_id", terapeuta_id)
-        .eq("numero_telefone", numero_telefone)
-        .limit(1)
-        .execute()
-    )
+    if not rows4:
+        raise RuntimeError(f"Falha crítica: não foi possível criar estado para {numero_telefone}")
 
-    if not busca2.data:
-        raise RuntimeError(
-            f"Falha crítica: não foi possível criar estado para {numero_telefone}"
-        )
-
-    estado = EstadoChat(busca2.data[0])
-    logger.info(
-        f"Estado criado: {estado.estado} | is_new={is_new} | "
-        f"numero={numero_telefone} | recuperado={ja_validou_codigo}"
-    )
+    estado = EstadoChat(rows4[0])
+    logger.info(f"Estado criado: {estado.estado} | is_new={is_new} | numero={numero_telefone}")
     return estado, is_new
 
 
