@@ -262,6 +262,111 @@ async def _enviar_sequencia_evolution(
         await evolution.enviar_mensagem(instance=instance, numero=numero, texto=msg)
 
 
+
+# Mapa completo de MIME types de áudio/vídeo → extensão para Whisper
+# Whisper aceita: flac, m4a, mp3, mp4, mpeg, mpga, oga, ogg, wav, webm
+_AUDIO_EXT_MAP: dict[str, str] = {
+    "audio/ogg": "ogg",           # WhatsApp padrão (OGG/OPUS)
+    "audio/mpeg": "mp3",
+    "audio/mp3": "mp3",
+    "audio/mp4": "mp4",
+    "audio/mp4a-latm": "mp4",
+    "audio/m4a": "m4a",
+    "audio/x-m4a": "m4a",
+    "audio/webm": "webm",
+    "audio/wav": "wav",
+    "audio/x-wav": "wav",
+    "audio/aac": "aac",
+    "audio/amr": "amr",
+    "audio/3gpp": "3gp",
+    "audio/flac": "flac",
+    "video/mp4": "mp4",
+    "video/3gpp": "3gp",
+    "video/webm": "webm",
+    "video/mpeg": "mpeg",
+    "video/quicktime": "mp4",
+}
+
+_MAX_AUDIO_BYTES = 24 * 1024 * 1024  # 24MB (Whisper limit is 25MB)
+
+
+def _extrair_audio_bytes(b64_data: str) -> bytes | None:
+    """
+    Decodifica base64 de mídia, removendo prefixo data-URI se presente.
+    Evolution API às vezes retorna: 'data:audio/ogg;base64,AAAA...'
+    Em vez de somente 'AAAA...'
+    """
+    import base64 as _b64
+    if not b64_data:
+        return None
+    # Remover prefixo data-URI (data:audio/ogg;base64,...)
+    if "base64," in b64_data:
+        b64_data = b64_data.split("base64,", 1)[1]
+    # Remover espaços/quebras de linha (alguns SDKs formatam o base64)
+    b64_data = b64_data.strip().replace("\n", "").replace("\r", "").replace(" ", "")
+    try:
+        return _b64.b64decode(b64_data, validate=False)
+    except Exception as e:
+        logger.error(f"Falha ao decodificar base64: {e} | primeiros 50 chars: {b64_data[:50]}")
+        return None
+
+
+def _normalizar_mime(raw_mime: str, fallback: str = "audio/ogg") -> str:
+    """Normaliza MIME type removendo parâmetros extras (;codecs=opus etc.)"""
+    if not raw_mime:
+        return fallback
+    base = raw_mime.split(";")[0].strip().lower()
+    return base if base else fallback
+
+
+async def _whisper_transcrever(
+    audio_bytes: bytes,
+    mime_type: str,
+    settings: object,
+) -> str:
+    """
+    Chama OpenAI Whisper com retry automático.
+    Tentativa 1: idioma forçado 'pt' (mais preciso para português)
+    Tentativa 2: detecção automática de idioma (fallback)
+    Retorna texto transcrito ou string vazia se ambas falharem.
+    """
+    from openai import AsyncOpenAI
+    oai = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)  # type: ignore[attr-defined]
+
+    base_ct = _normalizar_mime(mime_type)
+    ext = _AUDIO_EXT_MAP.get(base_ct, "ogg")
+    filename = f"audio.{ext}"
+
+    logger.info(
+        f"Whisper: mime={base_ct}, ext={ext}, "
+        f"tamanho={len(audio_bytes)//1024}KB"
+    )
+
+    for tentativa, lingua in enumerate(["pt", None], start=1):
+        try:
+            kwargs: dict = dict(
+                model="whisper-1",
+                file=(filename, io.BytesIO(audio_bytes), base_ct),
+                response_format="text",
+                prompt="Transcreva o áudio em português com pontuação correta.",
+            )
+            if lingua:
+                kwargs["language"] = lingua
+            transcript = await oai.audio.transcriptions.create(**kwargs)
+            texto = (transcript if isinstance(transcript, str) else transcript.text).strip()
+            if texto:
+                logger.info(
+                    f"Whisper OK (tentativa={tentativa}, lingua={lingua}): "
+                    f"'{texto[:100]}'"
+                )
+                return texto
+            logger.info(f"Whisper tentativa {tentativa}: transcrição vazia, tentando próxima...")
+        except Exception as e:
+            logger.warning(f"Whisper tentativa {tentativa} falhou ({type(e).__name__}): {e}")
+
+    return ""
+
+
 async def _transcrever_audio_evolution(
     evolution: "EvolutionClient",
     instance_name: str,
@@ -271,85 +376,246 @@ async def _transcrever_audio_evolution(
 ) -> str:
     """
     Baixa e transcreve áudio/vídeo via Evolution API + OpenAI Whisper.
-    Retorna o texto transcrito ou um marcador de erro.
+
+    Fluxo:
+    1. Envia feedback imediato ao usuário
+    2. Chama /message/download-media/{instance} com o objeto data do webhook
+    3. Extrai base64 (remove prefixo data-URI se presente)
+    4. Valida tamanho
+    5. Transcreve com Whisper (pt → auto, com retry)
+    6. Retorna texto prefixado com [Mensagem de áudio] ou marcador de erro
     """
     settings = get_settings()
 
-    # Feedback imediato antes de iniciar (latência Whisper ~3-10s)
+    # 1. Feedback imediato (Whisper demora 3-10s)
     try:
-        feedback = (
-            "Transcrevendo seu áudio..."
-            if msg_type == "audio"
-            else "Processando o áudio do vídeo..."
-        )
         await evolution.enviar_mensagem(
-            instance=instance_name, numero=numero_paciente, texto=feedback,
+            instance=instance_name,
+            numero=numero_paciente,
+            texto="Transcrevendo seu áudio..." if msg_type == "audio" else "Processando áudio do vídeo...",
         )
     except Exception:
-        pass  # Best-effort
+        pass  # Best-effort — não bloqueia o processamento
 
-    # Baixar mídia via Evolution API
+    # 2. Baixar mídia via Evolution API
+    mensagem_data = payload.get("data", {})
+    logger.info(
+        f"Evolution baixar_midia: instance={instance_name}, "
+        f"messageType={mensagem_data.get('messageType', '?')}"
+    )
+    try:
+        midia = await evolution.baixar_midia(instance_name, mensagem_data)
+    except Exception as e:
+        logger.error(f"Evolution baixar_midia falhou ({type(e).__name__}): {e}")
+        return "[AUDIO_DOWNLOAD_FALHOU]"
+
+    # Log do que a Evolution API retornou (sem o base64 para não poluir)
+    logger.info(
+        f"Evolution baixar_midia resposta: "
+        f"keys={list(midia.keys())}, "
+        f"mimeType={midia.get('mimeType', '?')}, "
+        f"mediaType={midia.get('mediaType', '?')}, "
+        f"base64_len={len(midia.get('base64', ''))}"
+    )
+
+    # 3. Extrair e decodificar base64 (com remoção de data-URI prefix)
+    b64_data = midia.get("base64", "")
+    if not b64_data:
+        logger.warning("Evolution baixar_midia: base64 vazio ou ausente")
+        return "[AUDIO_SEM_CONTEUDO]"
+
+    audio_bytes = _extrair_audio_bytes(b64_data)
+    if not audio_bytes:
+        logger.error("Falha ao decodificar base64 do áudio Evolution")
+        return "[AUDIO_SEM_CONTEUDO]"
+
+    # 4. Validar tamanho (Whisper aceita até 25MB)
+    if len(audio_bytes) > _MAX_AUDIO_BYTES:
+        logger.warning(
+            f"Áudio muito grande: {len(audio_bytes)/1024/1024:.1f}MB "
+            f"(limite {_MAX_AUDIO_BYTES//1024//1024}MB)"
+        )
+        return "[MIDIA_MUITO_GRANDE]"
+
+    # 5. Determinar MIME type (prioridade: mimeType do response > fileName > fallback ogg)
+    mime_raw = midia.get("mimeType", "") or midia.get("mimetype", "")
+    if not mime_raw:
+        # Tentar inferir pelo nome do arquivo
+        filename_resp = midia.get("fileName", "") or midia.get("filename", "")
+        if filename_resp.endswith(".mp3"):
+            mime_raw = "audio/mpeg"
+        elif filename_resp.endswith(".mp4"):
+            mime_raw = "audio/mp4"
+        elif filename_resp.endswith((".opus", ".ogg")):
+            mime_raw = "audio/ogg"
+        else:
+            mime_raw = "audio/ogg"  # WhatsApp padrão
+    mime_type = _normalizar_mime(mime_raw, "audio/ogg")
+
+    # 6. Transcrever com Whisper
+    texto_transcrito = await _whisper_transcrever(audio_bytes, mime_type, settings)
+
+    if texto_transcrito:
+        return f"[Mensagem de áudio] {texto_transcrito}"
+
+    logger.warning(f"Whisper: sem resultado após todas as tentativas para {numero_paciente}")
+    return "[AUDIO_SEM_CONTEUDO]"
+
+
+async def _processar_imagem_evolution(
+    evolution: "EvolutionClient",
+    instance_name: str,
+    numero_paciente: str,
+    payload: dict,
+) -> str:
+    """
+    Baixa imagem via Evolution API e descreve com Claude Vision.
+    Suporta mapas de cliente, fotos de materiais, capturas de tela.
+    """
+    settings = get_settings()
+
+    try:
+        await evolution.enviar_mensagem(
+            instance=instance_name,
+            numero=numero_paciente,
+            texto="Processando sua imagem...",
+        )
+    except Exception:
+        pass
+
     mensagem_data = payload.get("data", {})
     try:
         midia = await evolution.baixar_midia(instance_name, mensagem_data)
     except Exception as e:
-        logger.error(f"Evolution baixar_midia falhou: {e}")
-        return "[AUDIO_DOWNLOAD_FALHOU]"
+        logger.error(f"Evolution baixar_midia (imagem) falhou: {e}")
+        return "[IMAGEM_DOWNLOAD_FALHOU]"
 
     b64_data = midia.get("base64", "")
-    mime_type = midia.get("mimeType", "audio/ogg; codecs=opus")
     if not b64_data:
-        logger.warning(f"Evolution baixar_midia retornou base64 vazio")
-        return "[AUDIO_SEM_CONTEUDO]"
+        return "[IMAGEM_SEM_CONTEUDO]"
 
-    # Decodificar base64
-    import base64 as _b64
-    try:
-        audio_bytes = _b64.b64decode(b64_data)
-    except Exception as e:
-        logger.error(f"Erro ao decodificar base64 do áudio: {e}")
-        return "[AUDIO_SEM_CONTEUDO]"
+    image_bytes = _extrair_audio_bytes(b64_data)
+    if not image_bytes:
+        logger.error("Falha ao decodificar base64 da imagem Evolution")
+        return "[IMAGEM_SEM_CONTEUDO]"
 
-    if len(audio_bytes) > 16 * 1024 * 1024:
-        logger.warning(f"Áudio muito grande: {len(audio_bytes)//1024//1024}MB")
+    if len(image_bytes) > 20 * 1024 * 1024:
         return "[MIDIA_MUITO_GRANDE]"
 
-    # Detectar extensão
-    base_ct = mime_type.split(";")[0].strip().lower()
-    ext_map = {
-        "audio/ogg": "ogg", "audio/mpeg": "mp3", "audio/mp4": "mp4",
-        "audio/webm": "webm", "audio/wav": "wav", "audio/aac": "aac",
-        "audio/amr": "amr", "audio/3gpp": "3gp", "video/mp4": "mp4",
-    }
-    ext = ext_map.get(base_ct, "ogg")
+    # Determinar MIME type
+    mime_raw = midia.get("mimeType", "") or midia.get("mimetype", "")
+    if not mime_raw:
+        fname = midia.get("fileName", "") or midia.get("filename", "")
+        if fname.lower().endswith(".png"):
+            mime_raw = "image/png"
+        elif fname.lower().endswith((".webp",)):
+            mime_raw = "image/webp"
+        elif fname.lower().endswith(".gif"):
+            mime_raw = "image/gif"
+        else:
+            mime_raw = "image/jpeg"
+    mime_type = _normalizar_mime(mime_raw, "image/jpeg")
+    if mime_type not in ("image/jpeg", "image/png", "image/gif", "image/webp"):
+        mime_type = "image/jpeg"
 
-    # Transcrição via Whisper (com retry automático)
-    from openai import AsyncOpenAI
-    oai = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
-    texto_transcrito = ""
-    for tentativa, lingua in enumerate(["pt", None]):
-        try:
-            kwargs: dict = dict(
-                model="whisper-1",
-                file=(f"audio.{ext}", io.BytesIO(audio_bytes), base_ct or "audio/ogg"),
-                response_format="text",
+    try:
+        import anthropic as _ant
+        client_claude = _ant.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
+        img_b64 = base64.b64encode(image_bytes).decode()
+        resp = await client_claude.messages.create(
+            model=settings.CLAUDE_MODEL,
+            max_tokens=800,
+            messages=[{
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image",
+                        "source": {"type": "base64", "media_type": mime_type, "data": img_b64},
+                    },
+                    {
+                        "type": "text",
+                        "text": (
+                            "Descreva esta imagem de forma completa e objetiva em português. "
+                            "Se houver texto, transcreva-o integralmente. "
+                            "Se for um mapa mental, genograma, diagrama ou estrutura visual "
+                            "(mapa do cliente), descreva todos os elementos, "
+                            "conexões e relacionamentos presentes. "
+                            "Responda apenas com a descrição, sem introduções."
+                        ),
+                    },
+                ],
+            }],
+        )
+        descricao = resp.content[0].text.strip() if resp.content else ""
+        if descricao:
+            logger.info(
+                f"Claude Vision Evolution ({len(image_bytes)//1024}KB): '{descricao[:100]}'"
             )
-            if lingua:
-                kwargs["language"] = lingua
-            transcript = await oai.audio.transcriptions.create(**kwargs)
-            texto_transcrito = (transcript if isinstance(transcript, str) else transcript.text).strip()
-            if texto_transcrito:
-                break
-            logger.info(f"Whisper tentativa {tentativa+1} vazia, tentando sem forçar idioma...")
-        except Exception as e:
-            logger.warning(f"Whisper tentativa {tentativa+1} falhou: {e}")
+            return f"[Imagem recebida] {descricao}"
+        return "[IMAGEM_SEM_CONTEUDO]"
+    except Exception as e:
+        logger.error(f"Claude Vision falhou para imagem Evolution: {e}", exc_info=True)
+        return "[IMAGEM_FALHOU]"
 
-    if texto_transcrito:
-        logger.info(f"Whisper transcreveu ({len(audio_bytes)//1024}KB): '{texto_transcrito[:100]}'")
-        return f"[Mensagem de áudio] {texto_transcrito}"
 
-    logger.warning(f"Whisper: transcrição vazia após retry para {numero_paciente}")
-    return "[AUDIO_SEM_CONTEUDO]"
+async def _processar_pdf_evolution(
+    evolution: "EvolutionClient",
+    instance_name: str,
+    numero_paciente: str,
+    payload: dict,
+) -> str:
+    """
+    Baixa PDF via Evolution API e extrai texto com PyMuPDF.
+    Suporta protocolos, guias, materiais de terapia.
+    """
+    try:
+        await evolution.enviar_mensagem(
+            instance=instance_name,
+            numero=numero_paciente,
+            texto="Processando seu PDF...",
+        )
+    except Exception:
+        pass
+
+    mensagem_data = payload.get("data", {})
+    try:
+        midia = await evolution.baixar_midia(instance_name, mensagem_data)
+    except Exception as e:
+        logger.error(f"Evolution baixar_midia (PDF) falhou: {e}")
+        return "[PDF_DOWNLOAD_FALHOU]"
+
+    b64_data = midia.get("base64", "")
+    if not b64_data:
+        return "[PDF_SEM_CONTEUDO]"
+
+    pdf_bytes = _extrair_audio_bytes(b64_data)
+    if not pdf_bytes:
+        logger.error("Falha ao decodificar base64 do PDF Evolution")
+        return "[PDF_SEM_CONTEUDO]"
+
+    if len(pdf_bytes) > 50 * 1024 * 1024:
+        return "[MIDIA_MUITO_GRANDE]"
+
+    try:
+        import fitz  # PyMuPDF
+        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+        partes = [page.get_text() for page in doc]
+        doc.close()
+        texto_pdf = "\n".join(partes).strip()
+    except Exception as e:
+        logger.warning(f"PyMuPDF falhou ao extrair PDF Evolution: {e}")
+        return "[PDF_FALHOU]"
+
+    if texto_pdf:
+        texto_pdf = texto_pdf[:4000]
+        logger.info(
+            f"PyMuPDF Evolution: {len(texto_pdf)} chars "
+            f"({len(pdf_bytes)//1024}KB)"
+        )
+        return f"[PDF recebido]\n{texto_pdf}"
+
+    logger.warning("PDF Evolution sem texto extraível (possivelmente escaneado)")
+    return "[PDF_SEM_TEXTO]"
 
 
 async def _processar_mensagem(payload: dict) -> None:
@@ -382,20 +648,40 @@ async def _processar_mensagem(payload: dict) -> None:
 
         evolution = EvolutionClient()
 
-        # 3. Resolver mídia (áudio → Whisper, outros tipos pendentes → aviso)
+        # 3. Resolver mídia — cada tipo tem seu pipeline de processamento
+        # Marcadores de erro que geram aviso para o usuário e encerram o fluxo
         _avisos_evolution = {
-            "[AUDIO_DOWNLOAD_FALHOU]": "Não consegui baixar o áudio. Pode reenviar?",
-            "[AUDIO_SEM_CONTEUDO]": "Não consegui entender o áudio. Pode reenviar em voz mais alta ou escrever o que disse?",
-            "[MIDIA_MUITO_GRANDE]": "O arquivo é muito grande. Pode enviar uma versão menor ou escrever como texto?",
-            "[IMAGEM_EVOLUTION_PENDENTE]": "Recebi sua imagem, mas ainda não consigo processar imagens por aqui. Pode descrever o que está na imagem?",
-            "[VIDEO_EVOLUTION_PENDENTE]": "Recebi seu vídeo, mas ainda não consigo processar vídeos por aqui. Pode resumir o conteúdo como texto?",
-            "[DOCUMENTO_PDF_EVOLUTION_PENDENTE]": "Recebi seu PDF, mas ainda não consigo ler documentos por este canal. Pode copiar o trecho relevante como texto?",
+            "[AUDIO_DOWNLOAD_FALHOU]":   "Não consegui baixar o áudio. Pode reenviar?",
+            "[AUDIO_SEM_CONTEUDO]":      "Não consegui entender o áudio. Pode reenviar em voz mais alta ou escrever o que disse?",
+            "[IMAGEM_DOWNLOAD_FALHOU]":  "Não consegui baixar a imagem. Pode reenviar?",
+            "[IMAGEM_SEM_CONTEUDO]":     "Não consegui processar a imagem. Pode tentar outra?",
+            "[IMAGEM_FALHOU]":           "Tive problema ao descrever a imagem. Pode reenviar ou descrever como texto?",
+            "[PDF_DOWNLOAD_FALHOU]":     "Não consegui baixar o PDF. Pode reenviar?",
+            "[PDF_SEM_CONTEUDO]":        "Não consegui extrair texto do PDF. Pode reenviar?",
+            "[PDF_SEM_TEXTO]":           "O PDF parece ser uma imagem escaneada e não consegui ler o texto. Pode enviar uma versão com texto selecionável?",
+            "[PDF_FALHOU]":              "Tive problema ao processar o PDF. Pode reenviar?",
+            "[MIDIA_MUITO_GRANDE]":      "O arquivo é muito grande. Pode enviar uma versão menor ou escrever como texto?",
+            "[VIDEO_EVOLUTION_PENDENTE]":"Recebi seu vídeo, mas por enquanto só consigo processar o áudio. Se quiser, pode enviar só o áudio.",
+            "[DOCUMENTO_RECEBIDO]":      "Recebi seu documento, mas só consigo processar PDFs e imagens. Pode reenviar nesse formato?",
         }
 
+        # Áudio e vídeo → Whisper
         if texto_mensagem in ("[AUDIO_EVOLUTION_PENDENTE]", "[VIDEO_EVOLUTION_PENDENTE]"):
             msg_type = "audio" if texto_mensagem == "[AUDIO_EVOLUTION_PENDENTE]" else "video"
             texto_mensagem = await _transcrever_audio_evolution(
                 evolution, instance_name, numero_paciente, payload, msg_type
+            )
+
+        # Imagem → Claude Vision (mapa do cliente, fotos de materiais)
+        elif texto_mensagem == "[IMAGEM_EVOLUTION_PENDENTE]":
+            texto_mensagem = await _processar_imagem_evolution(
+                evolution, instance_name, numero_paciente, payload
+            )
+
+        # PDF → PyMuPDF (protocolos, guias, materiais)
+        elif texto_mensagem == "[DOCUMENTO_PDF_EVOLUTION_PENDENTE]":
+            texto_mensagem = await _processar_pdf_evolution(
+                evolution, instance_name, numero_paciente, payload
             )
 
         if texto_mensagem in _avisos_evolution:
@@ -954,20 +1240,20 @@ async def _resolver_media_meta(
     if not token or not media_id:
         return texto_atual
 
-    # Limite de tamanho para evitar timeouts/custos excessivos (16 MB)
-    _MAX_BYTES = 16 * 1024 * 1024
-
     try:
-        # 1. Obter URL de download da mídia
-        async with httpx.AsyncClient(timeout=30) as client:
-            r = await client.get(
-                f"https://graph.facebook.com/v22.0/{media_id}",
-                headers={"Authorization": f"Bearer {token}"},
-            )
+        # 1. Obter URL de download da mídia (timeout explícito)
+        async with httpx.AsyncClient(timeout=httpx.Timeout(30.0, connect=10.0)) as client:
+            try:
+                r = await client.get(
+                    f"https://graph.facebook.com/v22.0/{media_id}",
+                    headers={"Authorization": f"Bearer {token}"},
+                )
+            except httpx.TimeoutException:
+                logger.error(f"Timeout ao buscar URL da mídia Meta (media_id={media_id})")
+                return "[MIDIA_FALHOU]"
             if r.status_code == 401:
                 logger.error(
-                    f"Token Meta expirado ou inválido ao buscar mídia "
-                    f"(media_id={media_id}, status=401). "
+                    f"Token Meta expirado ao buscar mídia (media_id={media_id}). "
                     "Verifique META_WHATSAPP_TOKEN."
                 )
                 return "[MIDIA_TOKEN_INVALIDO]"
@@ -978,101 +1264,65 @@ async def _resolver_media_meta(
                 return texto_atual
 
             # 2. Baixar o arquivo de mídia
-            r2 = await client.get(
-                media_url,
-                headers={"Authorization": f"Bearer {token}"},
-            )
-            if r2.status_code == 401:
-                logger.error(
-                    f"Token Meta expirado ao baixar mídia (media_id={media_id}, status=401)"
+            try:
+                r2 = await client.get(
+                    media_url,
+                    headers={"Authorization": f"Bearer {token}"},
                 )
+            except httpx.TimeoutException:
+                logger.error(f"Timeout ao baixar mídia Meta (media_id={media_id})")
+                return "[MIDIA_FALHOU]"
+            if r2.status_code == 401:
+                logger.error(f"Token Meta expirado ao baixar mídia (media_id={media_id})")
                 return "[MIDIA_TOKEN_INVALIDO]"
             r2.raise_for_status()
             media_bytes = r2.content
             content_type = r2.headers.get("content-type", "")
 
-        # 3. Verificar tamanho
-        if len(media_bytes) > _MAX_BYTES:
+        # 3. Validar content-type — se Meta retornar HTML (URL expirada), abortar
+        base_ct_meta = _normalizar_mime(content_type, "")
+        if base_ct_meta.startswith("text/") or base_ct_meta == "application/xml":
+            logger.error(
+                f"Meta retornou content-type inesperado '{content_type}' "
+                f"para {media_id} — URL pode ter expirado"
+            )
+            return "[MIDIA_FALHOU]"
+
+        # 4. Verificar tamanho
+        if len(media_bytes) > _MAX_AUDIO_BYTES:
             logger.warning(
-                f"Mídia muito grande: {len(media_bytes) / 1024 / 1024:.1f} MB "
-                f"(limite {_MAX_BYTES // 1024 // 1024} MB) para {media_id}"
+                f"Mídia muito grande: {len(media_bytes)/1024/1024:.1f}MB "
+                f"(limite {_MAX_AUDIO_BYTES//1024//1024}MB) para {media_id}"
             )
             return "[MIDIA_MUITO_GRANDE]"
 
         if msg_type in ("audio", "video"):
-            # Enviar feedback imediato: usuário sabe que o bot está processando
+            # 5. Feedback imediato ao usuário
             if meta_client and numero_paciente:
                 try:
-                    msg_feedback = (
-                        "Recebi seu áudio, transcrevendo..."
-                        if msg_type == "audio"
-                        else "Recebi seu vídeo, processando o áudio..."
-                    )
                     await meta_client.send_text_message(
-                        phone_number=numero_paciente, message=msg_feedback,
+                        phone_number=numero_paciente,
+                        message=(
+                            "Recebi seu áudio, transcrevendo..."
+                            if msg_type == "audio"
+                            else "Recebi seu vídeo, processando o áudio..."
+                        ),
                     )
                 except Exception:
-                    pass  # Feedback é best-effort
+                    pass
 
-            # Transcrição via OpenAI Whisper
-            from openai import AsyncOpenAI
-            oai = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
-
-            # Detectar extensão correta (WhatsApp envia OGG/OPUS quase sempre)
-            # content-type pode vir como "audio/ogg; codecs=opus" — usar só a parte base
-            base_ct = content_type.split(";")[0].strip().lower()
-            ext_map = {
-                "audio/ogg": "ogg",
-                "audio/mpeg": "mp3",
-                "audio/mp4": "mp4",
-                "audio/mp4a-latm": "mp4",
-                "audio/webm": "webm",
-                "audio/wav": "wav",
-                "audio/x-wav": "wav",
-                "audio/aac": "aac",
-                "audio/amr": "amr",
-                "audio/3gpp": "3gp",
-                "video/mp4": "mp4",
-                "video/3gpp": "3gp",
-                "video/webm": "webm",
-            }
-            ext = ext_map.get(base_ct, "ogg")  # OGG é o padrão do WhatsApp
-            filename = f"audio.{ext}"
-
-            # Primeira tentativa de transcrição
-            texto_transcrito = ""
-            try:
-                transcript = await oai.audio.transcriptions.create(
-                    model="whisper-1",
-                    file=(filename, io.BytesIO(media_bytes), base_ct or "audio/ogg"),
-                    language="pt",
-                    response_format="text",
-                )
-                texto_transcrito = (transcript if isinstance(transcript, str) else transcript.text).strip()
-            except Exception as e_whisper:
-                logger.warning(f"Whisper primeira tentativa falhou: {e_whisper}")
-
-            # Retry automático se transcrição vazia (tenta sem forçar idioma)
-            if not texto_transcrito:
-                logger.info(f"Whisper: transcrição vazia, tentando sem forçar idioma...")
-                try:
-                    transcript2 = await oai.audio.transcriptions.create(
-                        model="whisper-1",
-                        file=(filename, io.BytesIO(media_bytes), base_ct or "audio/ogg"),
-                        response_format="text",
-                        # Sem language= para detecção automática
-                    )
-                    texto_transcrito = (transcript2 if isinstance(transcript2, str) else transcript2.text).strip()
-                except Exception as e_whisper2:
-                    logger.warning(f"Whisper segunda tentativa também falhou: {e_whisper2}")
+            # 6. Transcrever com Whisper (reutiliza a função central)
+            mime_type_meta = base_ct_meta if base_ct_meta else "audio/ogg"
+            texto_transcrito = await _whisper_transcrever(media_bytes, mime_type_meta, settings)
 
             if texto_transcrito:
-                # Prefixar com marcador de áudio para o LLM adaptar o tom
-                # (áudio é mais informal, pode ter erros de transcrição)
-                logger.info(f"Whisper transcreveu {msg_type} ({len(media_bytes)//1024}KB): '{texto_transcrito[:100]}'")
+                logger.info(
+                    f"Meta Whisper OK: {msg_type} "
+                    f"({len(media_bytes)//1024}KB): '{texto_transcrito[:100]}'"
+                )
                 return f"[Mensagem de áudio] {texto_transcrito}"
 
-            logger.warning(f"Whisper: transcrição vazia após retry para {msg_type} de {media_id}")
+            logger.warning(f"Meta Whisper: sem resultado para {msg_type}/{media_id}")
             return "[AUDIO_SEM_CONTEUDO]"
 
         elif msg_type == "image":
