@@ -364,7 +364,7 @@ def obter_ou_criar_estado(
     estado = EstadoChat(busca2.data[0])
     logger.info(
         f"Estado criado: {estado.estado} | is_new={is_new} | "
-        f"numero={numero_telefone} | recuperado={tem_historico}"
+        f"numero={numero_telefone} | recuperado={ja_validou_codigo}"
     )
     return estado, is_new
 

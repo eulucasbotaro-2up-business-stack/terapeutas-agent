@@ -4,7 +4,11 @@ Processa a mensagem com RAG e responde automaticamente ao paciente.
 """
 
 import asyncio
+import base64
+import io
 import logging
+import time
+from collections import OrderedDict
 from datetime import datetime, timezone
 from uuid import uuid4
 
@@ -70,6 +74,33 @@ from src.whatsapp.messages import (
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/webhook", tags=["Webhook WhatsApp"])
+
+# Deduplicação de mensagens Meta: evita processar o mesmo message_id duas vezes.
+# Armazena (message_id -> timestamp). Limpeza automática após 5 minutos.
+_PROCESSED_MESSAGE_IDS: "OrderedDict[str, float]" = OrderedDict()
+_DEDUP_TTL_SECONDS = 300
+_DEDUP_MAX_SIZE = 1000
+
+
+def _ja_processado(message_id: str) -> bool:
+    """Retorna True se o message_id já foi processado recentemente."""
+    if not message_id:
+        return False
+    agora = time.monotonic()
+    # Limpar entradas expiradas (FIFO — as mais antigas estão no início)
+    while _PROCESSED_MESSAGE_IDS:
+        oldest_id, oldest_ts = next(iter(_PROCESSED_MESSAGE_IDS.items()))
+        if agora - oldest_ts > _DEDUP_TTL_SECONDS:
+            _PROCESSED_MESSAGE_IDS.popitem(last=False)
+        else:
+            break
+    # Limitar tamanho máximo
+    while len(_PROCESSED_MESSAGE_IDS) >= _DEDUP_MAX_SIZE:
+        _PROCESSED_MESSAGE_IDS.popitem(last=False)
+    if message_id in _PROCESSED_MESSAGE_IDS:
+        return True
+    _PROCESSED_MESSAGE_IDS[message_id] = agora
+    return False
 
 
 # =============================================
@@ -613,28 +644,21 @@ def _buscar_terapeuta_por_phone_number_id(phone_number_id: str) -> dict | None:
     return None
 
 
-def _extrair_mensagem_meta(payload: dict) -> tuple[str, str, str, str]:
+def _extrair_mensagem_meta(payload: dict) -> tuple[str, str, str, str, str, str]:
     """
     Extrai dados da mensagem do payload da Meta WhatsApp Cloud API.
 
-    Args:
-        payload: Payload JSON recebido no webhook da Meta.
-
     Returns:
-        Tupla (phone_number_id, numero_remetente, texto_mensagem, message_id):
-        - phone_number_id: ID do número de telefone do business
-        - numero_remetente: Número do paciente que enviou a mensagem
-        - texto_mensagem: Conteúdo da mensagem em texto
-        - message_id: ID da mensagem (wamid.xxx) para marcar como lida
+        Tupla (phone_number_id, numero_remetente, texto_mensagem, message_id, msg_type, media_id)
     """
     try:
         entry = payload.get("entry", [])
         if not entry:
-            return "", "", "", ""
+            return "", "", "", "", "", ""
 
         changes = entry[0].get("changes", [])
         if not changes:
-            return "", "", "", ""
+            return "", "", "", "", "", ""
 
         value = changes[0].get("value", {})
         metadata = value.get("metadata", {})
@@ -642,29 +666,40 @@ def _extrair_mensagem_meta(payload: dict) -> tuple[str, str, str, str]:
 
         messages = value.get("messages", [])
         if not messages:
-            return phone_number_id, "", "", ""
+            return phone_number_id, "", "", "", "", ""
 
         msg = messages[0]
         numero_remetente = msg.get("from", "")
         message_id = msg.get("id", "")
         msg_type = msg.get("type", "")
+        media_id = ""
 
         # Extrair texto de acordo com o tipo de mensagem
         texto = ""
         if msg_type == "text":
             texto = msg.get("text", {}).get("body", "")
         elif msg_type == "image":
-            texto = msg.get("image", {}).get("caption", "[IMAGEM_RECEBIDA]")
+            media_id = msg.get("image", {}).get("id", "")
+            texto = msg.get("image", {}).get("caption", "")
             if not texto:
-                texto = "[IMAGEM_RECEBIDA]"
+                texto = "[IMAGEM_PENDENTE]"
         elif msg_type == "audio":
-            texto = "[AUDIO_NAO_SUPORTADO]"
+            media_id = msg.get("audio", {}).get("id", "")
+            texto = "[AUDIO_PENDENTE]"
+        elif msg_type == "video":
+            media_id = msg.get("video", {}).get("id", "")
+            texto = "[VIDEO_PENDENTE]"
         elif msg_type == "document":
-            texto = msg.get("document", {}).get("caption", "[DOCUMENTO_RECEBIDO]")
-            if not texto:
-                texto = "[DOCUMENTO_RECEBIDO]"
+            media_id = msg.get("document", {}).get("id", "")
+            filename = msg.get("document", {}).get("filename", "")
+            mime_type = msg.get("document", {}).get("mime_type", "")
+            caption = msg.get("document", {}).get("caption", "")
+            if mime_type == "application/pdf" or filename.lower().endswith(".pdf"):
+                texto = "[DOCUMENTO_PDF_PENDENTE]"
+            else:
+                texto = caption if caption else "[DOCUMENTO_RECEBIDO]"
+                media_id = ""  # não baixar documentos não-PDF
         elif msg_type == "interactive":
-            # Botões e listas interativas
             interactive = msg.get("interactive", {})
             if interactive.get("type") == "button_reply":
                 texto = interactive.get("button_reply", {}).get("title", "")
@@ -674,18 +709,144 @@ def _extrair_mensagem_meta(payload: dict) -> tuple[str, str, str, str]:
             texto = f"[TIPO_NAO_SUPORTADO:{msg_type}]"
 
         logger.info(
-            "Mensagem Meta recebida de %s: '%s' (tipo=%s, id=%s)",
+            "Mensagem Meta recebida de %s: '%s' (tipo=%s, id=%s, media_id=%s)",
             numero_remetente,
             texto[:50] + "..." if len(texto) > 50 else texto,
             msg_type,
             message_id,
+            media_id[:20] if media_id else "",
         )
 
-        return phone_number_id, numero_remetente, texto, message_id
+        return phone_number_id, numero_remetente, texto, message_id, msg_type, media_id
 
     except (KeyError, TypeError, IndexError, AttributeError) as exc:
         logger.error("Erro ao extrair dados do payload Meta: %s", exc)
-        return "", "", "", ""
+        return "", "", "", "", "", ""
+
+
+# =============================================
+# META CLOUD API — RESOLUÇÃO DE MÍDIA
+# =============================================
+
+async def _resolver_media_meta(msg_type: str, media_id: str, texto_atual: str) -> str:
+    """
+    Baixa mídia da Meta Graph API e converte para texto:
+    - audio/video  → transcrição via OpenAI Whisper
+    - image        → descrição via Claude claude-sonnet-4-6 vision
+    - document PDF → extração de texto via PyMuPDF
+
+    Retorna o texto extraído ou o texto_atual em caso de falha.
+    """
+    import httpx
+
+    settings = get_settings()
+    token = settings.META_WHATSAPP_TOKEN
+    if not token or not media_id:
+        return texto_atual
+
+    try:
+        # 1. Obter URL de download da mídia
+        async with httpx.AsyncClient(timeout=30) as client:
+            r = await client.get(
+                f"https://graph.facebook.com/v19.0/{media_id}",
+                headers={"Authorization": f"Bearer {token}"},
+            )
+            r.raise_for_status()
+            media_url = r.json().get("url", "")
+            if not media_url:
+                logger.warning(f"URL de mídia não encontrada para media_id={media_id}")
+                return texto_atual
+
+            # 2. Baixar o arquivo de mídia
+            r2 = await client.get(
+                media_url,
+                headers={"Authorization": f"Bearer {token}"},
+            )
+            r2.raise_for_status()
+            media_bytes = r2.content
+            content_type = r2.headers.get("content-type", "")
+
+        if msg_type in ("audio", "video"):
+            # Transcrição via OpenAI Whisper
+            from openai import AsyncOpenAI
+            oai = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+            # Determinar extensão pelo content-type
+            ext_map = {
+                "audio/ogg": "ogg", "audio/mpeg": "mp3", "audio/mp4": "mp4",
+                "audio/webm": "webm", "audio/wav": "wav", "audio/aac": "aac",
+                "video/mp4": "mp4", "video/3gpp": "3gp", "video/webm": "webm",
+            }
+            ext = ext_map.get(content_type.split(";")[0].strip(), "ogg")
+            filename = f"media.{ext}"
+            transcript = await oai.audio.transcriptions.create(
+                model="whisper-1",
+                file=(filename, io.BytesIO(media_bytes), content_type),
+                language="pt",
+            )
+            texto_transcrito = transcript.text.strip()
+            if texto_transcrito:
+                logger.info(f"Whisper transcreveu {msg_type}: '{texto_transcrito[:80]}...'")
+                return texto_transcrito
+            return texto_atual
+
+        elif msg_type == "image":
+            # Descrição via Claude vision
+            import anthropic
+            client_claude = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
+            img_b64 = base64.b64encode(media_bytes).decode()
+            media_type_claude = content_type.split(";")[0].strip() or "image/jpeg"
+            if media_type_claude not in ("image/jpeg", "image/png", "image/gif", "image/webp"):
+                media_type_claude = "image/jpeg"
+            resp = await client_claude.messages.create(
+                model=settings.CLAUDE_MODEL,
+                max_tokens=500,
+                messages=[{
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "image",
+                            "source": {
+                                "type": "base64",
+                                "media_type": media_type_claude,
+                                "data": img_b64,
+                            },
+                        },
+                        {
+                            "type": "text",
+                            "text": (
+                                "Descreva esta imagem de forma concisa e objetiva em português. "
+                                "Se houver texto na imagem, transcreva-o. "
+                                "Responda apenas com a descrição/transcrição, sem introduções."
+                            ),
+                        },
+                    ],
+                }],
+            )
+            descricao = resp.content[0].text.strip() if resp.content else ""
+            if descricao:
+                logger.info(f"Claude descreveu imagem: '{descricao[:80]}...'")
+                return f"[Imagem recebida] {descricao}"
+            return texto_atual
+
+        elif msg_type == "document":
+            # Extração de texto via PyMuPDF
+            import fitz  # PyMuPDF
+            doc = fitz.open(stream=media_bytes, filetype="pdf")
+            partes = []
+            for page in doc:
+                partes.append(page.get_text())
+            doc.close()
+            texto_pdf = "\n".join(partes).strip()
+            if texto_pdf:
+                # Limitar a 4000 chars para não explodir o prompt
+                texto_pdf = texto_pdf[:4000]
+                logger.info(f"PyMuPDF extraiu {len(texto_pdf)} chars do PDF")
+                return f"[PDF recebido]\n{texto_pdf}"
+            return texto_atual
+
+    except Exception as e:
+        logger.error(f"Falha ao resolver mídia ({msg_type}, media_id={media_id}): {e}", exc_info=True)
+        return texto_atual
 
 
 # =============================================
@@ -723,15 +884,20 @@ async def _processar_mensagem_meta(payload: dict) -> None:
         settings = get_settings()
 
         # 1. Extrair dados
-        phone_number_id, numero_paciente, texto_mensagem, message_id = _extrair_mensagem_meta(payload)
+        phone_number_id, numero_paciente, texto_mensagem, message_id, msg_type, media_id = _extrair_mensagem_meta(payload)
 
         if not numero_paciente or not texto_mensagem:
             logger.info("Payload Meta sem mensagem processável — ignorando")
             return
 
+        # 2. Deduplicação: descartar mensagens já processadas (Meta envia duplicatas)
+        if _ja_processado(message_id):
+            logger.info(f"Mensagem duplicada ignorada: message_id={message_id}")
+            return
+
         logger.info(f"Meta: mensagem de {numero_paciente} (phone_number_id={phone_number_id})")
 
-        # 2. Inicializar cliente Meta e marcar como lida
+        # 3. Inicializar cliente Meta e marcar como lida
         meta_client = MetaCloudClient()
         if message_id:
             try:
@@ -739,14 +905,12 @@ async def _processar_mensagem_meta(payload: dict) -> None:
             except Exception as e:
                 logger.warning(f"Falha ao marcar como lida: {e}")
 
-        # 3. Validar tipo de mensagem
-        if not texto_mensagem.strip():
-            return
+        # 4. Resolver mídia (áudio → Whisper, imagem → Claude vision, PDF → PyMuPDF)
+        if media_id and texto_mensagem in ("[AUDIO_PENDENTE]", "[VIDEO_PENDENTE]", "[IMAGEM_PENDENTE]", "[DOCUMENTO_PDF_PENDENTE]"):
+            texto_mensagem = await _resolver_media_meta(msg_type, media_id, texto_mensagem)
 
-        if texto_mensagem == "[AUDIO_NAO_SUPORTADO]":
-            await meta_client.send_text_message(
-                phone_number=numero_paciente, message=formatar_aviso_audio(),
-            )
+        # 5. Validar tipo de mensagem
+        if not texto_mensagem.strip():
             return
 
         if texto_mensagem.startswith("[") and texto_mensagem.endswith("]"):
