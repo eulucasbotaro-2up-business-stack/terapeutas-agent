@@ -21,6 +21,14 @@ from src.core.prompts import (
     ModoOperacao,
     MENSAGEM_FORA_ESCOPO,
 )
+from src.agents.router import rotear_mensagem
+from src.agents.specialists import (
+    get_prompt_agente_caso_clinico,
+    get_prompt_agente_metodo,
+    get_prompt_agente_conteudo,
+    get_prompt_agente_saudacao,
+)
+from src.agents.guardian import verificar_resposta
 from src.core.estado import (
     obter_ou_criar_estado,
     validar_codigo,
@@ -420,9 +428,13 @@ async def _processar_mensagem(payload: dict) -> None:
         else:
             texto_para_processar = texto_mensagem
 
-        # 8. Detectar modo e classificar intenção
-        modo = detectar_modo(texto_para_processar)
-        logger.info(f"Modo detectado: {modo.value}")
+        # 8. Rotear mensagem: Haiku para ambíguo, keywords para óbvio
+        modo = await rotear_mensagem(
+            texto_para_processar,
+            historico[-6:] if historico else [],
+            estado.nome_usuario,
+        )
+        logger.info(f"Modo roteado (Evolution): {modo.value}")
         intencao = await classificar_intencao(texto_para_processar)
 
         resposta_texto: str | list[str] = ""
@@ -506,6 +518,31 @@ async def _processar_mensagem(payload: dict) -> None:
                 logger.warning(f"Contexto de aprendizado indisponível: {e}")
                 ctx_formatado = None
 
+            # Montar texto dos chunks para injetar no prompt do especialista
+            chunks_texto = "\n\n".join(
+                c.get("conteudo", "") for c in contexto_chunks if c.get("conteudo")
+            )
+
+            # Selecionar prompt do agente especialista com fallback para None (usa genérico)
+            try:
+                if modo == ModoOperacao.CONSULTA:
+                    system_prompt_especialista = get_prompt_agente_caso_clinico(
+                        config_terapeuta, chunks_texto, memoria_fmt or ""
+                    )
+                elif modo == ModoOperacao.PESQUISA:
+                    system_prompt_especialista = get_prompt_agente_metodo(
+                        config_terapeuta, chunks_texto, memoria_fmt or ""
+                    )
+                elif modo == ModoOperacao.CRIACAO_CONTEUDO:
+                    system_prompt_especialista = get_prompt_agente_conteudo(
+                        config_terapeuta, chunks_texto, memoria_fmt or ""
+                    )
+                else:
+                    system_prompt_especialista = None
+            except Exception as e:
+                logger.warning(f"Falha ao montar prompt especialista (Evolution): {e}. Usando genérico.")
+                system_prompt_especialista = None
+
             try:
                 resposta_texto = await gerar_resposta(
                     pergunta=texto_para_processar,
@@ -515,6 +552,8 @@ async def _processar_mensagem(payload: dict) -> None:
                     historico_mensagens=historico if historico else None,
                     contexto_personalizado=ctx_formatado,
                     memoria_usuario=memoria_fmt,
+                    modo_override=modo,
+                    system_prompt_override=system_prompt_especialista,
                 )
             except Exception as e:
                 logger.error(f"Falha ao gerar resposta Claude (Evolution): {e}", exc_info=True)
@@ -565,13 +604,18 @@ async def _processar_mensagem(payload: dict) -> None:
             intencao=f"{modo.value}|{intencao.value if hasattr(intencao, 'value') else str(intencao)}",
         )
 
-        # 12. Background: timestamp + perfil + aprendizado
+        # 12. Background: timestamp + perfil + aprendizado + guardião
         asyncio.create_task(atualizar_timestamp_mensagem(terapeuta_id, numero_paciente))
         asyncio.create_task(
             atualizar_perfil_apos_interacao(
                 terapeuta_id, numero_paciente, estado.nome_usuario, texto_mensagem, modo.value
             )
         )
+        # Guardião: monitora resposta em background, nunca bloqueia o usuário
+        if resposta_salvar:
+            asyncio.create_task(
+                verificar_resposta(terapeuta_id, numero_paciente, texto_para_processar, resposta_salvar)
+            )
         if modo in (ModoOperacao.CONSULTA, ModoOperacao.CRIACAO_CONTEUDO, ModoOperacao.PESQUISA):
             try:
                 asyncio.create_task(
@@ -1110,9 +1154,13 @@ async def _processar_mensagem_meta(payload: dict) -> None:
         else:
             texto_para_processar = texto_mensagem
 
-        # 9. Detectar modo e classificar intenção
-        modo = detectar_modo(texto_para_processar)
-        logger.info(f"Modo detectado (Meta): {modo.value}")
+        # 9. Rotear mensagem: Haiku para ambíguo, keywords para óbvio
+        modo = await rotear_mensagem(
+            texto_para_processar,
+            historico[-6:] if historico else [],
+            estado.nome_usuario,
+        )
+        logger.info(f"Modo roteado (Meta): {modo.value}")
         intencao = await classificar_intencao(texto_para_processar)
 
         resposta_texto: str | list[str] = ""
@@ -1192,6 +1240,31 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                 logger.warning(f"Contexto de aprendizado indisponível (Meta): {e}")
                 ctx_formatado = None
 
+            # Montar texto dos chunks para injetar no prompt do especialista
+            chunks_texto = "\n\n".join(
+                c.get("conteudo", "") for c in contexto_chunks if c.get("conteudo")
+            )
+
+            # Selecionar prompt do agente especialista com fallback para None (usa genérico)
+            try:
+                if modo == ModoOperacao.CONSULTA:
+                    system_prompt_especialista = get_prompt_agente_caso_clinico(
+                        config_terapeuta, chunks_texto, memoria_fmt or ""
+                    )
+                elif modo == ModoOperacao.PESQUISA:
+                    system_prompt_especialista = get_prompt_agente_metodo(
+                        config_terapeuta, chunks_texto, memoria_fmt or ""
+                    )
+                elif modo == ModoOperacao.CRIACAO_CONTEUDO:
+                    system_prompt_especialista = get_prompt_agente_conteudo(
+                        config_terapeuta, chunks_texto, memoria_fmt or ""
+                    )
+                else:
+                    system_prompt_especialista = None
+            except Exception as e:
+                logger.warning(f"Falha ao montar prompt especialista (Meta): {e}. Usando genérico.")
+                system_prompt_especialista = None
+
             try:
                 resposta_texto = await gerar_resposta(
                     pergunta=texto_para_processar,
@@ -1201,6 +1274,8 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                     historico_mensagens=historico if historico else None,
                     contexto_personalizado=ctx_formatado,
                     memoria_usuario=memoria_fmt,
+                    modo_override=modo,
+                    system_prompt_override=system_prompt_especialista,
                 )
             except Exception as e:
                 logger.error(f"Falha ao gerar resposta Claude (Meta): {e}", exc_info=True)
@@ -1249,13 +1324,18 @@ async def _processar_mensagem_meta(payload: dict) -> None:
             intencao=f"{modo.value}|{intencao.value if hasattr(intencao, 'value') else str(intencao)}",
         )
 
-        # 13. Background: timestamp + perfil + aprendizado
+        # 13. Background: timestamp + perfil + aprendizado + guardião
         asyncio.create_task(atualizar_timestamp_mensagem(terapeuta_id, numero_paciente))
         asyncio.create_task(
             atualizar_perfil_apos_interacao(
                 terapeuta_id, numero_paciente, estado.nome_usuario, texto_mensagem, modo.value
             )
         )
+        # Guardião: monitora resposta em background, nunca bloqueia o usuário
+        if resposta_salvar:
+            asyncio.create_task(
+                verificar_resposta(terapeuta_id, numero_paciente, texto_para_processar, resposta_salvar)
+            )
         if modo in (ModoOperacao.CONSULTA, ModoOperacao.CRIACAO_CONTEUDO, ModoOperacao.PESQUISA):
             try:
                 asyncio.create_task(

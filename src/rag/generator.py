@@ -150,6 +150,7 @@ async def gerar_resposta(
     modo_override: ModoOperacao | None = None,
     contexto_personalizado: str | None = None,
     memoria_usuario: str | None = None,
+    system_prompt_override: str | None = None,
 ) -> str:
     """
     Gera resposta do agente usando Claude API com o system prompt da Alquimia.
@@ -171,6 +172,8 @@ async def gerar_resposta(
         modo_override: Se fornecido, forca um modo especifico.
         contexto_personalizado: Texto de contexto personalizado do aprendizado continuo.
             Gerado por aprendizado.formatar_contexto_personalizado().
+        system_prompt_override: Se fornecido, usa este system prompt diretamente em
+            vez de chamar montar_prompt(). Usado pelos agentes especialistas.
 
     Returns:
         Texto da resposta gerada pelo Claude, formatada para WhatsApp,
@@ -204,16 +207,24 @@ async def gerar_resposta(
                 f"{conteudo_preview}..."
             )
 
-    # Monta o system prompt da Alquimia com contexto organizado por nivel
-    system_prompt = montar_prompt(
-        terapeuta=config_terapeuta,
-        contexto_chunks=contexto_chunks,
-        mensagem=pergunta,
-        modo_override=modo_override,
-        historico_mensagens=historico_mensagens,
-        contexto_personalizado=contexto_personalizado,
-        memoria_usuario=memoria_usuario,
-    )
+    # Monta o system prompt: usa override de agente especialista se fornecido,
+    # caso contrario usa o prompt generico da Alquimia via montar_prompt()
+    if system_prompt_override:
+        system_prompt = system_prompt_override
+        logger.info(
+            f"[GENERATOR] Usando system_prompt_override (agente especialista) "
+            f"para terapeuta {terapeuta_id} | Modo: {modo.value}"
+        )
+    else:
+        system_prompt = montar_prompt(
+            terapeuta=config_terapeuta,
+            contexto_chunks=contexto_chunks,
+            mensagem=pergunta,
+            modo_override=modo_override,
+            historico_mensagens=historico_mensagens,
+            contexto_personalizado=contexto_personalizado,
+            memoria_usuario=memoria_usuario,
+        )
 
     try:
         logger.info(
