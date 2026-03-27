@@ -102,9 +102,25 @@ MSGS_ONBOARDING: list[str] = [
 
 # --- Código inválido ---
 MSG_CODIGO_INVALIDO = (
-    "Esse código não foi reconhecido. 🤔\n\n"
-    "Verifique o código recebido após a compra e tente novamente. "
-    "Precisa de ajuda? Fale com a equipe de suporte."
+    "Infelizmente esse código não é válido ou já está em uso.\n\n"
+    "Por gentileza, fale com o suporte para regularizar seu acesso."
+)
+
+# --- Acesso suspenso por assinatura ---
+MSG_ASSINATURA_EXPIRADA = (
+    "Seu acesso expirou. 📅\n\n"
+    "Renove sua assinatura para continuar utilizando o Alquimista Interior. "
+    "Fale com o suporte."
+)
+
+MSG_PAGAMENTO_FALHOU = (
+    "Seu acesso foi suspenso por falha no pagamento. 💳\n\n"
+    "Regularize o pagamento para reativar. Fale com o suporte."
+)
+
+MSG_ASSINATURA_CANCELADA = (
+    "Sua assinatura foi cancelada. \n\n"
+    "Para reativar o acesso, entre em contato com o suporte."
 )
 
 # --- Código válido: acesso liberado ---
@@ -154,7 +170,14 @@ def gerar_msg_bloqueio(contato_admin: str) -> str:
     )
 
 # --- Usuário já bloqueado tenta enviar mensagem ---
-def gerar_msg_ja_bloqueado(contato_admin: str) -> str:
+def gerar_msg_ja_bloqueado(contato_admin: str, motivo_bloqueio: str = "") -> str:
+    """Retorna mensagem adequada ao motivo do bloqueio."""
+    if motivo_bloqueio == "ASSINATURA_EXPIRADA":
+        return MSG_ASSINATURA_EXPIRADA
+    elif motivo_bloqueio == "PAGAMENTO_FALHOU":
+        return MSG_PAGAMENTO_FALHOU
+    elif motivo_bloqueio == "CANCELADO":
+        return MSG_ASSINATURA_CANCELADA
     return (
         f"Chat suspenso. "
         f"Fale com o administrador para reativar: {contato_admin}"
@@ -176,6 +199,7 @@ class EstadoChat:
         self.nome_usuario: Optional[str] = row.get("nome_usuario")
         self.codigo_usado: Optional[str] = row.get("codigo_usado")
         self.violacoes_conteudo: int = row.get("violacoes_conteudo", 0)
+        self.motivo_bloqueio: Optional[str] = row.get("motivo_bloqueio")
         self.criado_em: str = row.get("criado_em", "")
         self.atualizado_em: str = row.get("atualizado_em", "")
 
@@ -264,16 +288,21 @@ def validar_codigo(
     """
     Valida o código digitado contra o código de teste e a tabela codigos_liberacao.
 
-    Aceita:
-    - Código de teste "eu quero testar" (case-insensitive, sempre válido)
-    - Códigos ativos na tabela para este terapeuta (reutilizável ou uso único)
+    Regras:
+    1. Código de teste "eu quero testar" sempre válido (case-insensitive).
+    2. Códigos da tabela: status_assinatura IN ('disponivel', 'ativo').
+    3. data_expiracao: deve ser nula (sem prazo) ou no futuro.
+    4. numero_ativo: deve ser nulo (código não está em uso) OU o mesmo número atual.
+       → Se numero_ativo é diferente: código já está sendo usado por outro número.
+    5. Para reutilizavel=False: usado deve ser False OU número é o mesmo.
 
     Returns:
-        True se o código é válido.
+        True se o código é válido e o acesso deve ser liberado.
     """
+    from datetime import datetime, timezone
     codigo_norm = codigo_digitado.strip().lower()[:200]
 
-    # Código de teste universal
+    # Código de teste universal (sem expiração, sem restrição de usuário)
     if codigo_norm == CODIGO_TESTE:
         logger.info(f"Código de TESTE aceito para {numero_telefone}")
         return True
@@ -283,35 +312,71 @@ def validar_codigo(
     try:
         resultado = (
             supabase.table("codigos_liberacao")
-            .select("id, codigo, reutilizavel, usado")
+            .select("id, codigo, reutilizavel, usado, numero_ativo, data_expiracao, status_assinatura")
             .eq("terapeuta_id", terapeuta_id)
             .eq("ativo", True)
             .execute()
         )
 
-        for row in (resultado.data or []):
-            if row["codigo"].strip().lower() == codigo_norm:
-                if row["reutilizavel"]:
-                    return True
-                elif not row["usado"]:
-                    # Uso único: marcar como usado
-                    supabase.table("codigos_liberacao").update({
-                        "usado": True,
-                        "usado_por": numero_telefone,
-                        "usado_em": datetime.now(timezone.utc).isoformat(),
-                    }).eq("id", row["id"]).execute()
-                    logger.info(
-                        f"Código de uso único '{row['codigo'][:10]}' "
-                        f"marcado como usado por {numero_telefone}"
-                    )
-                    return True
-                else:
-                    logger.warning(
-                        f"Código '{row['codigo'][:10]}' já usado "
-                        f"por {row.get('usado_por', '?')}"
-                    )
-                    return False
+        agora = datetime.now(timezone.utc)
 
+        for row in (resultado.data or []):
+            if row["codigo"].strip().lower() != codigo_norm:
+                continue
+
+            # 1. Verificar status da assinatura
+            status = row.get("status_assinatura", "disponivel")
+            if status not in ("disponivel", "ativo"):
+                logger.warning(
+                    f"Código '{codigo_norm[:10]}' rejeitado: "
+                    f"status_assinatura={status}"
+                )
+                return False
+
+            # 2. Verificar expiração
+            data_expiracao = row.get("data_expiracao")
+            if data_expiracao:
+                try:
+                    expiracao = datetime.fromisoformat(data_expiracao)
+                    if expiracao < agora:
+                        logger.warning(
+                            f"Código '{codigo_norm[:10]}' expirado em "
+                            f"{expiracao.strftime('%d/%m/%Y')}"
+                        )
+                        return False
+                except (ValueError, TypeError):
+                    pass  # data inválida: deixar passar
+
+            # 3. Verificar 1 código = 1 usuário
+            numero_ativo = row.get("numero_ativo")
+            if numero_ativo and numero_ativo != numero_telefone:
+                logger.warning(
+                    f"Código '{codigo_norm[:10]}' já está em uso "
+                    f"por outro número"
+                )
+                return False
+
+            # 4. Para código de uso único: verificar se já foi usado por outro
+            if not row.get("reutilizavel") and row.get("usado") and numero_ativo != numero_telefone:
+                logger.warning(
+                    f"Código '{codigo_norm[:10]}' de uso único já foi utilizado"
+                )
+                return False
+
+            # Código válido: se reutilizavel=False, marcar como usado
+            if not row.get("reutilizavel") and not row.get("usado"):
+                supabase.table("codigos_liberacao").update({
+                    "usado": True,
+                    "usado_por": numero_telefone,
+                    "usado_em": agora.isoformat(),
+                }).eq("id", row["id"]).execute()
+
+            logger.info(
+                f"Código '{codigo_norm[:10]}' válido para {numero_telefone}"
+            )
+            return True
+
+        logger.info(f"Código '{codigo_norm[:10]}' não encontrado para terapeuta={terapeuta_id}")
         return False
 
     except Exception as e:

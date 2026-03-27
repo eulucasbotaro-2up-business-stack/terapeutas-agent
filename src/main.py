@@ -14,6 +14,7 @@ from fastapi.staticfiles import StaticFiles
 
 from src.core.config import get_settings
 from src.api.webhook import router as webhook_router
+from src.api.asaas_webhook import router as asaas_webhook_router
 from src.api.terapeutas import router as terapeutas_router
 from src.api.documentos import router as documentos_router
 from src.api.teste import router as teste_router
@@ -87,6 +88,7 @@ async def verificar_config():
         "openai_configurado": bool(settings.OPENAI_API_KEY),
         "supabase_configurado": bool(settings.SUPABASE_URL and settings.SUPABASE_SERVICE_KEY),
         "evolution_configurado": bool(settings.EVOLUTION_API_URL and settings.EVOLUTION_API_KEY),
+        "meta_cloud_configurado": bool(settings.META_WHATSAPP_TOKEN and settings.META_PHONE_NUMBER_ID),
         "asaas_configurado": bool(settings.ASAAS_API_KEY),
         "modelo_llm": settings.CLAUDE_MODEL,
         "modelo_embedding": settings.EMBEDDING_MODEL,
@@ -95,6 +97,7 @@ async def verificar_config():
 
 # Registrar routers (cada um já define seu próprio prefix internamente)
 app.include_router(webhook_router)
+app.include_router(asaas_webhook_router)
 app.include_router(terapeutas_router)
 app.include_router(documentos_router)
 app.include_router(teste_router)

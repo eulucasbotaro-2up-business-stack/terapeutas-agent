@@ -1,10 +1,11 @@
 """
-Módulo de integração WhatsApp via Evolution API v2.
+Módulo de integração WhatsApp via Evolution API v2 e Meta WhatsApp Cloud API.
 
-Exporta o cliente da API e utilitários de mensagens.
+Exporta os clientes das APIs e utilitários de mensagens.
 """
 
 from src.whatsapp.evolution import EvolutionClient, EvolutionAPIError
+from src.whatsapp.meta_cloud import MetaCloudClient, MetaCloudAPIError
 from src.whatsapp.messages import (
     extrair_numero_mensagem,
     eh_mensagem_valida,
@@ -19,6 +20,8 @@ from src.whatsapp.messages import (
 __all__ = [
     "EvolutionClient",
     "EvolutionAPIError",
+    "MetaCloudClient",
+    "MetaCloudAPIError",
     "extrair_numero_mensagem",
     "eh_mensagem_valida",
     "formatar_agendamento",

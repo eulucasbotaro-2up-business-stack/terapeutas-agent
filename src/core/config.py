@@ -50,6 +50,8 @@ class Settings(BaseSettings):
 
     # --- Asaas (cobrança e pagamentos) ---
     ASAAS_API_KEY: str = ""
+    # Token de validação dos webhooks do Asaas (configure no painel Asaas → Webhooks)
+    ASAAS_WEBHOOK_TOKEN: str = ""
 
     # --- Controle de acesso ---
     # Contato exibido ao usuário quando o chat é bloqueado

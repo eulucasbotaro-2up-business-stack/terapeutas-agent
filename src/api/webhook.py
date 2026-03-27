@@ -34,6 +34,7 @@ from src.core.estado import (
     MSG_AVISO_1,
     MSG_AVISO_2,
 )
+from src.core.assinatura import ativar_acesso_com_codigo
 from src.rag.retriever import buscar_contexto
 from src.rag.generator import gerar_resposta, classificar_intencao
 from src.rag.aprendizado import (
@@ -248,7 +249,7 @@ async def _processar_mensagem(payload: dict) -> None:
         if estado.is_bloqueado:
             await evolution.enviar_mensagem(
                 instance=instance_name, numero=numero_paciente,
-                texto=gerar_msg_ja_bloqueado(settings.CONTATO_ADMIN),
+                texto=gerar_msg_ja_bloqueado(settings.CONTATO_ADMIN, estado.motivo_bloqueio or ""),
             )
             return
 
@@ -270,6 +271,8 @@ async def _processar_mensagem(payload: dict) -> None:
                 # Já recebeu boas-vindas: tentar validar como código
                 if validar_codigo(terapeuta_id, numero_paciente, texto_mensagem):
                     liberar_acesso(terapeuta_id, numero_paciente, texto_mensagem)
+                    # Ativar assinatura: define data_expiracao com base nos meses comprados
+                    ativar_acesso_com_codigo(terapeuta_id, texto_mensagem, numero_paciente)
                     await _enviar_sequencia_evolution(
                         MSGS_ACESSO_LIBERADO, evolution, instance_name, numero_paciente,
                     )
@@ -667,7 +670,7 @@ async def _processar_mensagem_meta(payload: dict) -> None:
         if estado.is_bloqueado:
             await meta_client.send_text_message(
                 phone_number=numero_paciente,
-                message=gerar_msg_ja_bloqueado(settings.CONTATO_ADMIN),
+                message=gerar_msg_ja_bloqueado(settings.CONTATO_ADMIN, estado.motivo_bloqueio or ""),
             )
             return
 
@@ -687,6 +690,8 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                 # Já recebeu boas-vindas: tentar como código de liberação
                 if validar_codigo(terapeuta_id, numero_paciente, texto_mensagem):
                     liberar_acesso(terapeuta_id, numero_paciente, texto_mensagem)
+                    # Ativar assinatura: define data_expiracao com base nos meses comprados
+                    ativar_acesso_com_codigo(terapeuta_id, texto_mensagem, numero_paciente)
                     await _enviar_sequencia_meta(
                         MSGS_ACESSO_LIBERADO, meta_client, numero_paciente,
                     )
