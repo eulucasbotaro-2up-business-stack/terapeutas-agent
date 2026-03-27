@@ -43,6 +43,7 @@ from src.core.estado import (
     gerar_msg_bloqueio,
     gerar_msg_ja_bloqueado,
     gerar_saudacao_ativo,
+    gerar_resposta_confusao,
     gerar_msg_boas_vindas_nome,
     gerar_msg_confirmar_nome,
     MSG_PEDIR_NOME_NOVAMENTE,
@@ -402,16 +403,92 @@ def _normalizar_mime(raw_mime: str, fallback: str = "audio/ogg") -> str:
     return base if base else fallback
 
 
+# Alucinações conhecidas do Whisper para silêncio/ruído de fundo.
+# Whisper tende a gerar estas frases quando o áudio é muito curto, silencioso
+# ou contém apenas ruído de fundo sem fala real.
+_WHISPER_ALUCINACOES = {
+    "Obrigado.",
+    "Obrigado",
+    "Obrigada.",
+    "Obrigada",
+    "Legendas por",
+    "Transcrição por",
+    "Inscreva-se no canal",
+    "Inscreva-se",
+    "Se inscreva no canal",
+    "Curta e se inscreva",
+    "...",
+    "…",
+    ".",
+    ",",
+    "- -",
+    "♪",
+    "♫",
+    "[Música]",
+    "[música]",
+    "[Aplausos]",
+    "[aplausos]",
+    "[Silêncio]",
+    "[silêncio]",
+    "[Inaudível]",
+    "[inaudível]",
+}
+
+
+def _eh_transcricao_valida(texto: str) -> bool:
+    """
+    Valida se a transcrição do Whisper é utilizável.
+
+    Retorna False nos casos:
+    - Texto vazio ou apenas espaços
+    - Menos de 3 palavras (provável ruído ou áudio muito curto)
+    - Apenas pontuação ou caractere único
+    - Texto é uma alucinação conhecida do Whisper para silêncio/ruído
+
+    Retorna True se a transcrição parece conteúdo real.
+    """
+    if not texto or not texto.strip():
+        return False
+
+    texto_limpo = texto.strip()
+
+    # Apenas pontuação ou caractere único
+    if len(texto_limpo) <= 1:
+        return False
+
+    # Somente pontuação/símbolos (sem nenhuma letra ou dígito)
+    if not any(c.isalnum() for c in texto_limpo):
+        return False
+
+    # Alucinação conhecida (comparação exata e também prefixo para capturar variantes)
+    if texto_limpo in _WHISPER_ALUCINACOES:
+        return False
+    for alucinacao in _WHISPER_ALUCINACOES:
+        if len(alucinacao) > 4 and texto_limpo.startswith(alucinacao):
+            return False
+
+    # Menos de 3 palavras — muito curto para ser fala real
+    palavras = texto_limpo.split()
+    if len(palavras) < 3:
+        return False
+
+    return True
+
+
 async def _whisper_transcrever(
     audio_bytes: bytes,
     mime_type: str,
     settings: object,
 ) -> str:
     """
-    Chama OpenAI Whisper com retry automático.
-    Tentativa 1: idioma forçado 'pt' (mais preciso para português)
-    Tentativa 2: detecção automática de idioma (fallback)
-    Retorna texto transcrito ou string vazia se ambas falharem.
+    Chama OpenAI Whisper com retry automático e validação de qualidade.
+
+    Tentativa 1: idioma forçado 'pt' (mais preciso para português).
+                 Se o resultado for inválido (< 3 palavras, alucinação conhecida),
+                 descarta e passa para tentativa 2 sem forçar idioma.
+    Tentativa 2: detecção automática de idioma (fallback para áudios ambíguos).
+
+    Retorna texto transcrito validado ou string vazia se ambas falharem.
     """
     from openai import AsyncOpenAI
     oai = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)  # type: ignore[attr-defined]
@@ -437,13 +514,24 @@ async def _whisper_transcrever(
                 kwargs["language"] = lingua
             transcript = await oai.audio.transcriptions.create(**kwargs)
             texto = (transcript if isinstance(transcript, str) else transcript.text).strip()
-            if texto:
-                logger.info(
-                    f"Whisper OK (tentativa={tentativa}, lingua={lingua}): "
-                    f"'{texto[:100]}'"
+
+            if not texto:
+                logger.info(f"Whisper tentativa {tentativa}: transcrição vazia, tentando próxima...")
+                continue
+
+            if not _eh_transcricao_valida(texto):
+                logger.warning(
+                    f"Whisper tentativa {tentativa} (lingua={lingua}): "
+                    f"transcrição inválida/alucinação descartada: '{texto[:80]}'"
                 )
-                return texto
-            logger.info(f"Whisper tentativa {tentativa}: transcrição vazia, tentando próxima...")
+                continue
+
+            logger.info(
+                f"Whisper OK (tentativa={tentativa}, lingua={lingua}): "
+                f"'{texto[:100]}'"
+            )
+            return texto
+
         except Exception as e:
             logger.warning(f"Whisper tentativa {tentativa} falhou ({type(e).__name__}): {e}")
 
@@ -461,26 +549,18 @@ async def _transcrever_audio_evolution(
     Baixa e transcreve áudio/vídeo via Evolution API + OpenAI Whisper.
 
     Fluxo:
-    1. Envia feedback imediato ao usuário
-    2. Chama /message/download-media/{instance} com o objeto data do webhook
-    3. Extrai base64 (remove prefixo data-URI se presente)
-    4. Valida tamanho
-    5. Transcreve com Whisper (pt → auto, com retry)
-    6. Retorna texto prefixado com [Mensagem de áudio] ou marcador de erro
+    1. Chama /message/download-media/{instance} com o objeto data do webhook
+    2. Extrai base64 (remove prefixo data-URI se presente)
+    3. Valida tamanho mínimo (< 1KB) e máximo (> 24MB)
+    4. Transcreve com Whisper (pt → auto, com retry + validação de qualidade)
+    5. Retorna texto prefixado com [Mensagem de áudio] ou marcador de erro
+
+    NOTA: Não envia mensagem intermediária "Transcrevendo..." — resposta direta
+    após transcrição proporciona melhor UX (sem mensagens fantasmas).
     """
     settings = get_settings()
 
-    # 1. Feedback imediato (Whisper demora 3-10s)
-    try:
-        await evolution.enviar_mensagem(
-            instance=instance_name,
-            numero=numero_paciente,
-            texto="Transcrevendo seu áudio..." if msg_type == "audio" else "Processando áudio do vídeo...",
-        )
-    except Exception:
-        pass  # Best-effort — não bloqueia o processamento
-
-    # 2. Baixar mídia via Evolution API
+    # 1. Baixar mídia via Evolution API
     mensagem_data = payload.get("data", {})
     logger.info(
         f"Evolution baixar_midia: instance={instance_name}, "
@@ -501,7 +581,7 @@ async def _transcrever_audio_evolution(
         f"base64_len={len(midia.get('base64', ''))}"
     )
 
-    # 3. Extrair e decodificar base64 (com remoção de data-URI prefix)
+    # 2. Extrair e decodificar base64 (com remoção de data-URI prefix)
     b64_data = midia.get("base64", "")
     if not b64_data:
         logger.warning("Evolution baixar_midia: base64 vazio ou ausente")
@@ -512,7 +592,15 @@ async def _transcrever_audio_evolution(
         logger.error("Falha ao decodificar base64 do áudio Evolution")
         return "[AUDIO_SEM_CONTEUDO]"
 
-    # 4. Validar tamanho (Whisper aceita até 25MB)
+    # 3. Validar tamanho mínimo (< 1KB → provavelmente não é áudio real)
+    if len(audio_bytes) < 1024:
+        logger.warning(
+            f"Áudio muito pequeno: {len(audio_bytes)} bytes "
+            f"(< 1KB) para {numero_paciente} — descartando"
+        )
+        return "[AUDIO_SEM_CONTEUDO]"
+
+    # 3b. Validar tamanho máximo (Whisper aceita até 25MB)
     if len(audio_bytes) > _MAX_AUDIO_BYTES:
         logger.warning(
             f"Áudio muito grande: {len(audio_bytes)/1024/1024:.1f}MB "
@@ -520,7 +608,7 @@ async def _transcrever_audio_evolution(
         )
         return "[MIDIA_MUITO_GRANDE]"
 
-    # 5. Determinar MIME type (prioridade: mimeType do response > fileName > fallback ogg)
+    # 4. Determinar MIME type (prioridade: mimeType do response > fileName > fallback ogg)
     mime_raw = midia.get("mimeType", "") or midia.get("mimetype", "")
     if not mime_raw:
         # Tentar inferir pelo nome do arquivo
@@ -535,14 +623,18 @@ async def _transcrever_audio_evolution(
             mime_raw = "audio/ogg"  # WhatsApp padrão
     mime_type = _normalizar_mime(mime_raw, "audio/ogg")
 
-    # 6. Transcrever com Whisper
+    # 5. Transcrever com Whisper (com validação de qualidade interna)
     texto_transcrito = await _whisper_transcrever(audio_bytes, mime_type, settings)
 
     if texto_transcrito:
         return f"[Mensagem de áudio] {texto_transcrito}"
 
-    logger.warning(f"Whisper: sem resultado após todas as tentativas para {numero_paciente}")
-    return "[AUDIO_SEM_CONTEUDO]"
+    logger.warning(
+        f"Whisper: sem resultado válido após todas as tentativas para {numero_paciente} "
+        f"({len(audio_bytes)//1024}KB, mime={mime_type})"
+    )
+    # Marcador específico: áudio recebido mas transcrição falhou completamente
+    return "[AUDIO_TRANSCRICAO_FALHOU]"
 
 
 async def _processar_imagem_evolution(
@@ -734,18 +826,19 @@ async def _processar_mensagem(payload: dict) -> None:
         # 3. Resolver mídia — cada tipo tem seu pipeline de processamento
         # Marcadores de erro que geram aviso para o usuário e encerram o fluxo
         _avisos_evolution = {
-            "[AUDIO_DOWNLOAD_FALHOU]":   "Não consegui baixar o áudio. Pode reenviar?",
-            "[AUDIO_SEM_CONTEUDO]":      "Não consegui entender o áudio. Pode reenviar em voz mais alta ou escrever o que disse?",
-            "[IMAGEM_DOWNLOAD_FALHOU]":  "Não consegui baixar a imagem. Pode reenviar?",
-            "[IMAGEM_SEM_CONTEUDO]":     "Não consegui processar a imagem. Pode tentar outra?",
-            "[IMAGEM_FALHOU]":           "Tive problema ao descrever a imagem. Pode reenviar ou descrever como texto?",
-            "[PDF_DOWNLOAD_FALHOU]":     "Não consegui baixar o PDF. Pode reenviar?",
-            "[PDF_SEM_CONTEUDO]":        "Não consegui extrair texto do PDF. Pode reenviar?",
-            "[PDF_SEM_TEXTO]":           "O PDF parece ser uma imagem escaneada e não consegui ler o texto. Pode enviar uma versão com texto selecionável?",
-            "[PDF_FALHOU]":              "Tive problema ao processar o PDF. Pode reenviar?",
-            "[MIDIA_MUITO_GRANDE]":      "O arquivo é muito grande. Pode enviar uma versão menor ou escrever como texto?",
-            "[VIDEO_EVOLUTION_PENDENTE]":"Recebi seu vídeo, mas por enquanto só consigo processar o áudio. Se quiser, pode enviar só o áudio.",
-            "[DOCUMENTO_RECEBIDO]":      "Recebi seu documento, mas só consigo processar PDFs e imagens. Pode reenviar nesse formato?",
+            "[AUDIO_DOWNLOAD_FALHOU]":    "Não consegui baixar o áudio. Pode reenviar?",
+            "[AUDIO_SEM_CONTEUDO]":       "Não consegui entender o áudio. Pode reenviar em voz mais alta ou escrever o que disse?",
+            "[AUDIO_TRANSCRICAO_FALHOU]": "Recebi o áudio, mas não consegui transcrever com clareza suficiente. Pode falar um pouco mais devagar e em voz mais alta, ou escrever o que queria dizer?",
+            "[IMAGEM_DOWNLOAD_FALHOU]":   "Não consegui baixar a imagem. Pode reenviar?",
+            "[IMAGEM_SEM_CONTEUDO]":      "Não consegui processar a imagem. Pode tentar outra?",
+            "[IMAGEM_FALHOU]":            "Tive problema ao descrever a imagem. Pode reenviar ou descrever como texto?",
+            "[PDF_DOWNLOAD_FALHOU]":      "Não consegui baixar o PDF. Pode reenviar?",
+            "[PDF_SEM_CONTEUDO]":         "Não consegui extrair texto do PDF. Pode reenviar?",
+            "[PDF_SEM_TEXTO]":            "O PDF parece ser uma imagem escaneada e não consegui ler o texto. Pode enviar uma versão com texto selecionável?",
+            "[PDF_FALHOU]":               "Tive problema ao processar o PDF. Pode reenviar?",
+            "[MIDIA_MUITO_GRANDE]":       "O arquivo é muito grande. Pode enviar uma versão menor ou escrever como texto?",
+            "[VIDEO_EVOLUTION_PENDENTE]": "Recebi seu vídeo, mas por enquanto só consigo processar o áudio. Se quiser, pode enviar só o áudio.",
+            "[DOCUMENTO_RECEBIDO]":       "Recebi seu documento, mas só consigo processar PDFs e imagens. Pode reenviar nesse formato?",
         }
 
         # Áudio e vídeo → Whisper
@@ -868,7 +961,12 @@ async def _processar_mensagem(payload: dict) -> None:
         # 5a. Aguardando confirmação do nome sugerido
         if estado.aguardando_confirmacao_nome:
             texto_limpo = _extrair_texto_para_codigo(texto_mensagem).lower().strip()
-            confirmou = any(p in texto_limpo for p in ["sim", "pode", "yes", "ok", "isso", "correto", "certo", "é isso", "tá", "ta"])
+            # Detectar sinais de correção antes de checar confirmação:
+            # "meu nome é X", "na verdade", "ops" indicam que o usuário está corrigindo,
+            # não confirmando — mesmo que a mensagem contenha palavras como "certo".
+            _sinais_correcao = any(s in texto_limpo for s in ["meu nome é", "na verdade", "ops", "é o certo", "é certo", "errei"])
+            # "certo" e "correto" foram removidos pois aparecem em correções ("X é o certo")
+            confirmou = not _sinais_correcao and any(p in texto_limpo for p in ["sim", "pode", "yes", "ok", "isso", "é isso", "tá", "ta"])
             rejeitou = any(p in texto_limpo for p in ["não", "nao", "no", "errado", "errada", "outro", "outra"])
             nome_sugerido = estado.nome_sugerido or ""
 
@@ -890,9 +988,18 @@ async def _processar_mensagem(payload: dict) -> None:
                     mensagem_paciente=texto_mensagem, resposta_agente=MSG_PEDIR_NOME_NOVAMENTE, intencao="NOME_REJEITADO",
                 )
             else:
-                # Tratou como novo nome — sugerir este
+                # Usuário enviou um novo nome (correção).
+                # Tentar regex primeiro ("meu nome é X") antes de chamar o LLM.
+                import re as _re
                 texto_nome = _extrair_texto_para_codigo(texto_mensagem)
-                novo_nome = await _extrair_nome_com_llm(texto_nome, settings)
+                _match_nome = _re.search(
+                    r"(?:meu nome é|me chamo|pode me chamar de)\s+([A-Za-zÀ-ú]+(?:\s+[A-Za-zÀ-ú]+){0,2})",
+                    texto_nome,
+                    _re.IGNORECASE,
+                )
+                novo_nome = _match_nome.group(1).strip() if _match_nome else None
+                if not novo_nome:
+                    novo_nome = await _extrair_nome_com_llm(texto_nome, settings)
                 if novo_nome:
                     await asyncio.to_thread(salvar_nome_sugerido, terapeuta_id, numero_paciente, novo_nome)
                     msg_confirmar = gerar_msg_confirmar_nome(novo_nome)
@@ -983,8 +1090,12 @@ async def _processar_mensagem(payload: dict) -> None:
 
         # 9. Saudação quando ATIVO
         if modo == ModoOperacao.SAUDACAO:
+            # Mensagem muito curta com histórico = sinal de confusão (ex: "uê", "hm", "?")
+            # → não repetir pergunta sobre caso/conteúdo; resposta simples de continuidade
+            if len(texto_para_processar.strip()) <= 5 and historico:
+                resposta_texto = gerar_resposta_confusao(estado.nome_usuario)
             # Se nova sessão E tem histórico: retomar o que foi discutido
-            if memoria.get("is_nova_sessao") and memoria.get("resumos_sessoes"):
+            elif memoria.get("is_nova_sessao") and memoria.get("resumos_sessoes"):
                 msg_retomada = gerar_msg_retomada_sessao(
                     memoria["resumos_sessoes"], estado.nome_usuario
                 )
@@ -997,9 +1108,9 @@ async def _processar_mensagem(payload: dict) -> None:
                         )
                     )
                 else:
-                    resposta_texto = gerar_saudacao_ativo(estado.nome_usuario)
+                    resposta_texto = gerar_saudacao_ativo(estado.nome_usuario, tem_historico_recente=bool(historico))
             else:
-                resposta_texto = gerar_saudacao_ativo(estado.nome_usuario)
+                resposta_texto = gerar_saudacao_ativo(estado.nome_usuario, tem_historico_recente=bool(historico))
                 if memoria.get("is_nova_sessao") and historico:
                     # Primeira vez com histórico mas sem resumo ainda: gerar em background
                     asyncio.create_task(
@@ -1342,14 +1453,19 @@ async def _resolver_media_meta(
         return texto_atual
 
     try:
-        # 1. Obter URL de download + baixar mídia (com retry automático)
-        # Meta URLs expiram rapidamente — retry com backoff resolve race conditions
+        # 1. Obter URL de download + baixar mídia (com retry + exponential backoff)
+        # Meta URLs expiram rapidamente — backoff resolve race conditions e sobrecargas.
+        # Backoff: 1s antes da tentativa 2, 2s antes da tentativa 3 (se adicionada).
         media_bytes = b""
         content_type = ""
         async with httpx.AsyncClient(timeout=httpx.Timeout(30.0, connect=10.0)) as client:
-            # Tentar obter URL de download (até 2 tentativas)
+            # Tentar obter URL de download (até 2 tentativas com backoff)
             media_url = ""
             for tentativa_url in range(2):
+                if tentativa_url > 0:
+                    backoff = tentativa_url  # 1s, 2s, ...
+                    logger.info(f"Meta URL retry {tentativa_url}: aguardando {backoff}s (media_id={media_id})")
+                    await asyncio.sleep(backoff)
                 try:
                     r = await client.get(
                         f"https://graph.facebook.com/v22.0/{media_id}",
@@ -1359,7 +1475,6 @@ async def _resolver_media_meta(
                     logger.warning(f"Timeout URL mídia Meta tentativa {tentativa_url+1} (media_id={media_id})")
                     if tentativa_url == 1:
                         return "[MIDIA_FALHOU]"
-                    await asyncio.sleep(1)
                     continue
                 if r.status_code == 401:
                     logger.error(f"Token Meta expirado (media_id={media_id}). Verifique META_WHATSAPP_TOKEN.")
@@ -1369,14 +1484,17 @@ async def _resolver_media_meta(
                 if media_url:
                     break
                 logger.warning(f"URL de mídia vazia tentativa {tentativa_url+1} (media_id={media_id})")
-                await asyncio.sleep(1)
 
             if not media_url:
                 logger.warning(f"URL de mídia não encontrada após retries para media_id={media_id}")
                 return texto_atual
 
-            # 2. Baixar o arquivo de mídia (até 2 tentativas)
+            # 2. Baixar o arquivo de mídia (até 2 tentativas com backoff)
             for tentativa_dl in range(2):
+                if tentativa_dl > 0:
+                    backoff = tentativa_dl * 2  # 2s, 4s, ...
+                    logger.info(f"Meta download retry {tentativa_dl}: aguardando {backoff}s (media_id={media_id})")
+                    await asyncio.sleep(backoff)
                 try:
                     r2 = await client.get(
                         media_url,
@@ -1386,7 +1504,6 @@ async def _resolver_media_meta(
                     logger.warning(f"Timeout download mídia Meta tentativa {tentativa_dl+1} (media_id={media_id})")
                     if tentativa_dl == 1:
                         return "[MIDIA_FALHOU]"
-                    await asyncio.sleep(1)
                     continue
                 if r2.status_code == 401:
                     logger.error(f"Token Meta expirado ao baixar mídia (media_id={media_id})")
@@ -1394,6 +1511,10 @@ async def _resolver_media_meta(
                 r2.raise_for_status()
                 media_bytes = r2.content
                 content_type = r2.headers.get("content-type", "")
+                logger.info(
+                    f"Meta mídia baixada: content-type='{content_type}', "
+                    f"tamanho={len(media_bytes)//1024}KB, media_id={media_id}"
+                )
                 break
 
         # 3. Validar content-type — se Meta retornar HTML (URL expirada), abortar
@@ -1405,7 +1526,15 @@ async def _resolver_media_meta(
             )
             return "[MIDIA_FALHOU]"
 
-        # 4. Verificar tamanho
+        # 4. Verificar tamanho mínimo (< 1KB → provavelmente não é mídia real)
+        if msg_type in ("audio", "video") and len(media_bytes) < 1024:
+            logger.warning(
+                f"Mídia muito pequena: {len(media_bytes)} bytes "
+                f"(< 1KB) para {media_id} — descartando"
+            )
+            return "[AUDIO_SEM_CONTEUDO]"
+
+        # 4b. Verificar tamanho máximo
         if len(media_bytes) > _MAX_AUDIO_BYTES:
             logger.warning(
                 f"Mídia muito grande: {len(media_bytes)/1024/1024:.1f}MB "
@@ -1414,7 +1543,7 @@ async def _resolver_media_meta(
             return "[MIDIA_MUITO_GRANDE]"
 
         if msg_type in ("audio", "video"):
-            # Transcrever com Whisper (sem mensagem de espera ao usuário)
+            # Transcrever com Whisper (com validação de qualidade interna)
             mime_type_meta = base_ct_meta if base_ct_meta else "audio/ogg"
             texto_transcrito = await _whisper_transcrever(media_bytes, mime_type_meta, settings)
 
@@ -1425,8 +1554,11 @@ async def _resolver_media_meta(
                 )
                 return f"[Mensagem de áudio] {texto_transcrito}"
 
-            logger.warning(f"Meta Whisper: sem resultado para {msg_type}/{media_id}")
-            return "[AUDIO_SEM_CONTEUDO]"
+            logger.warning(
+                f"Meta Whisper: sem resultado válido para {msg_type}/{media_id} "
+                f"({len(media_bytes)//1024}KB, content-type={content_type})"
+            )
+            return "[AUDIO_TRANSCRICAO_FALHOU]"
 
         elif msg_type == "image":
             # Descrição via Claude vision
@@ -1568,6 +1700,11 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                 "Não consegui entender o áudio. "
                 "Pode reenviar em voz mais alta ou escrever o que disse?"
             ),
+            "[AUDIO_TRANSCRICAO_FALHOU]": (
+                "Recebi o áudio, mas não consegui transcrever com clareza suficiente. "
+                "Pode falar um pouco mais devagar e em voz mais alta, "
+                "ou escrever o que queria dizer?"
+            ),
             "[MIDIA_FALHOU]": (
                 "Tive problema ao processar o arquivo. "
                 "Pode reenviar ou escrever como texto?"
@@ -1683,7 +1820,12 @@ async def _processar_mensagem_meta(payload: dict) -> None:
         # 6a. Aguardando confirmação do nome sugerido
         if estado.aguardando_confirmacao_nome:
             texto_limpo = _extrair_texto_para_codigo(texto_mensagem).lower().strip()
-            confirmou = any(p in texto_limpo for p in ["sim", "pode", "yes", "ok", "isso", "correto", "certo", "é isso", "tá", "ta"])
+            # Detectar sinais de correção antes de checar confirmação:
+            # "meu nome é X", "na verdade", "ops" indicam que o usuário está corrigindo,
+            # não confirmando — mesmo que a mensagem contenha palavras como "certo".
+            _sinais_correcao = any(s in texto_limpo for s in ["meu nome é", "na verdade", "ops", "é o certo", "é certo", "errei"])
+            # "certo" e "correto" foram removidos pois aparecem em correções ("X é o certo")
+            confirmou = not _sinais_correcao and any(p in texto_limpo for p in ["sim", "pode", "yes", "ok", "isso", "é isso", "tá", "ta"])
             rejeitou = any(p in texto_limpo for p in ["não", "nao", "no", "errado", "errada", "outro", "outra"])
             nome_sugerido = estado.nome_sugerido or ""
 
@@ -1703,8 +1845,18 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                     mensagem_paciente=texto_mensagem, resposta_agente=MSG_PEDIR_NOME_NOVAMENTE, intencao="NOME_REJEITADO",
                 )
             else:
+                # Usuário enviou um novo nome (correção).
+                # Tentar regex primeiro ("meu nome é X") antes de chamar o LLM.
+                import re as _re
                 texto_nome = _extrair_texto_para_codigo(texto_mensagem)
-                novo_nome = await _extrair_nome_com_llm(texto_nome, settings)
+                _match_nome = _re.search(
+                    r"(?:meu nome é|me chamo|pode me chamar de)\s+([A-Za-zÀ-ú]+(?:\s+[A-Za-zÀ-ú]+){0,2})",
+                    texto_nome,
+                    _re.IGNORECASE,
+                )
+                novo_nome = _match_nome.group(1).strip() if _match_nome else None
+                if not novo_nome:
+                    novo_nome = await _extrair_nome_com_llm(texto_nome, settings)
                 if novo_nome:
                     await asyncio.to_thread(salvar_nome_sugerido, terapeuta_id, numero_paciente, novo_nome)
                     msg_confirmar = gerar_msg_confirmar_nome(novo_nome)
@@ -1791,7 +1943,11 @@ async def _processar_mensagem_meta(payload: dict) -> None:
 
         # 10. Saudação quando ATIVO
         if modo == ModoOperacao.SAUDACAO:
-            if memoria.get("is_nova_sessao") and memoria.get("resumos_sessoes"):
+            # Mensagem muito curta com histórico = sinal de confusão (ex: "uê", "hm", "?")
+            # → não repetir pergunta sobre caso/conteúdo; resposta simples de continuidade
+            if len(texto_para_processar.strip()) <= 5 and historico:
+                resposta_texto = gerar_resposta_confusao(estado.nome_usuario)
+            elif memoria.get("is_nova_sessao") and memoria.get("resumos_sessoes"):
                 msg_retomada = gerar_msg_retomada_sessao(
                     memoria["resumos_sessoes"], estado.nome_usuario
                 )
@@ -1803,9 +1959,9 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                         )
                     )
                 else:
-                    resposta_texto = gerar_saudacao_ativo(estado.nome_usuario)
+                    resposta_texto = gerar_saudacao_ativo(estado.nome_usuario, tem_historico_recente=bool(historico))
             else:
-                resposta_texto = gerar_saudacao_ativo(estado.nome_usuario)
+                resposta_texto = gerar_saudacao_ativo(estado.nome_usuario, tem_historico_recente=bool(historico))
                 if memoria.get("is_nova_sessao") and historico:
                     asyncio.create_task(
                         processar_fim_sessao_em_background(

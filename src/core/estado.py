@@ -171,15 +171,31 @@ def gerar_msg_boas_vindas_nome(nome: str) -> str:
     return random.choice(variacoes)
 
 # --- Usuário já ativo diz "oi" de novo ---
-def gerar_saudacao_ativo(nome: Optional[str]) -> list[str]:
+def gerar_saudacao_ativo(nome: Optional[str], tem_historico_recente: bool = False) -> list[str]:
     """
     Retorna saudação natural para usuário já ativo.
-    Menciona as 3 frentes sem bullet points nem cara de IA.
-    Varia o texto para não repetir sempre o mesmo padrão.
+
+    Se tem_historico_recente=True, a conversa já está em andamento —
+    não pergunta "no que posso ajudar?" nem lista as 3 frentes de novo.
+    Responde apenas com uma saudação curta e aguarda o terapeuta continuar.
+
+    Se tem_historico_recente=False (padrão), menciona as 3 frentes
+    de forma natural para orientar o terapeuta no início da sessão.
     """
     import random
     nome_fmt = nome.strip().split()[0].capitalize() if nome else ""
 
+    if tem_historico_recente:
+        # Conversa já em andamento — saudação mínima, sem listar as 3 frentes
+        variacoes_curtas = [
+            f"{'Fala, ' + nome_fmt + '!' if nome_fmt else 'Fala!'} Pode trazer.",
+            f"{'Opa, ' + nome_fmt + '.' if nome_fmt else 'Opa.'} Tô por aqui.",
+            f"{'E aí, ' + nome_fmt + '!' if nome_fmt else 'E aí!'} Me conta.",
+            f"{'Oi, ' + nome_fmt + '.' if nome_fmt else 'Oi.'} O que você traz?",
+        ]
+        return [random.choice(variacoes_curtas)]
+
+    # Início de sessão nova — apresenta as 3 frentes
     variacoes = [
         (
             f"{'Fala, ' + nome_fmt + '!' if nome_fmt else 'Fala!'} Pode trazer o que tiver.",
@@ -201,6 +217,40 @@ def gerar_saudacao_ativo(nome: Optional[str]) -> list[str]:
 
     escolha = random.choice(variacoes)
     return list(escolha)
+
+# --- Sinal de confusão (mensagem muito curta ou ambígua em conversa ativa) ---
+def gerar_resposta_confusao(nome: Optional[str]) -> str:
+    """
+    Resposta curta para sinais de confusão (ex: 'uê', 'hm', '?', 'né?', 'pois é').
+    Não repete a pergunta sobre caso/dúvida/conteúdo — apenas convida a continuar
+    de onde a conversa estava.
+    """
+    import random
+    nome_fmt = nome.strip().split()[0].capitalize() if nome else ""
+
+    variacoes = [
+        f"{'Pode continuar, ' + nome_fmt + '.' if nome_fmt else 'Pode continuar.'} Fico à disposição.",
+        f"{'Pode falar, ' + nome_fmt + '.' if nome_fmt else 'Pode falar.'} Estou aqui.",
+        "Tô aqui. Pode mandar.",
+        "Me conta mais. Estou de olho no que você trouxe.",
+    ]
+    return random.choice(variacoes)
+
+
+# --- Falha na transcrição de áudio ---
+def gerar_msg_audio_incompreensivel(nome: Optional[str]) -> str:
+    """
+    Mensagem quando a transcrição de áudio retornou conteúdo vazio ou incompreensível.
+    Sugere alternativas específicas sem frustrar o terapeuta.
+    """
+    nome_fmt = nome.strip().split()[0].capitalize() if nome else ""
+    saudacao = f"{nome_fmt}, o" if nome_fmt else "O"
+    return (
+        f"{saudacao} áudio não ficou claro na transcrição. "
+        "Pode tentar de novo num ambiente mais silencioso, "
+        "ou se preferir, me manda por texto mesmo — às vezes é mais rápido."
+    )
+
 
 # --- Moderação: aviso 1 ---
 MSG_AVISO_1 = (

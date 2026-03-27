@@ -34,11 +34,22 @@ _KEYWORDS_OBVIAS_CONSULTA = {
     "paciente", "caso", "anamnese", "diagnostico", "diagnóstico",
     "meu paciente", "minha paciente", "protocolo para", "floral para",
     "queixa", "sintoma", "atendi", "atendendo",
+    # Expansão: termos clínicos adicionais
+    "cliente", "atendimento", "sessão", "sessao", "consulta",
+    "histórico", "historico", "trauma", "bloqueio", "padrão", "padrao",
+    "família", "familia", "relacionamento", "ansiedade", "depressão", "depressao",
+    "dificuldade", "problema", "quero trazer", "vou trazer", "trouxe um",
+    "situação", "situacao", "moça", "moca", "rapaz", "pessoa que",
+    "ela não consegue", "ele não consegue", "está passando", "tá passando",
 }
 _KEYWORDS_OBVIAS_PESQUISA = {
     "o que e", "o que é", "explica", "me explica", "me fala sobre",
     "como funciona", "quero entender", "diferenca entre", "diferença entre",
     "significado", "conceito",
+    # Expansão: termos metodológicos e formas de pesquisa
+    "método", "metodo", "alquimia", "alquímico", "joel", "aleixo",
+    "técnica", "tecnica", "ferramenta", "abordagem", "terapia",
+    "o que é", "como se aplica", "me conta sobre", "fala sobre",
 }
 _KEYWORDS_OBVIAS_CONTEUDO = {
     "criar post", "cria post", "criar conteudo", "cria conteúdo",
@@ -237,6 +248,14 @@ async def _classificar_com_haiku(
         "- SAUDACAO: cumprimento simples, início de conversa, sem pedido específico\n"
         "- EMERGENCIA: menciona risco de vida, suicídio, crise severa\n"
         "- FORA_ESCOPO: completamente fora da Escola de Alquimia\n\n"
+        "Exemplos:\n"
+        "- \"Tenho uma paciente que não consegue se relacionar\" → CONSULTA_CASO\n"
+        "- \"Quero trazer um caso de uma moça com bloqueios\" → CONSULTA_CASO\n"
+        "- \"O que é o método alquímico?\" → PESQUISA_METODO\n"
+        "- \"Me explica sobre trauma ancestral\" → PESQUISA_METODO\n"
+        "- \"Cria um post sobre ansiedade\" → CRIACAO_CONTEUDO\n"
+        "- \"Oi tudo bem\" → SAUDACAO\n"
+        "- \"Receita de bolo\" → FORA_ESCOPO\n\n"
         "Responda APENAS com a categoria, sem explicação."
         + _aviso_audio
     )
