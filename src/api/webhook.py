@@ -43,6 +43,7 @@ from src.core.estado import (
     gerar_msg_boas_vindas_nome,
     MSGS_ONBOARDING,
     MSG_CODIGO_INVALIDO,
+    MSG_CODIGO_INVALIDO_FINAL,
     MSGS_ACESSO_LIBERADO,
     MSG_AVISO_1,
     MSG_AVISO_2,
@@ -328,6 +329,35 @@ def _extrair_texto_para_codigo(texto: str) -> str:
         if texto.startswith(prefixo):
             return texto[len(prefixo):]
     return texto
+
+
+def _contar_tentativas_codigo(terapeuta_id: str, numero_paciente: str) -> int:
+    """Conta quantas tentativas inválidas de código este número já fez."""
+    from src.core.config import get_settings
+    import requests as _req
+    settings = get_settings()
+    headers = {
+        "apikey": settings.SUPABASE_SERVICE_KEY,
+        "Authorization": f"Bearer {settings.SUPABASE_SERVICE_KEY}",
+    }
+    base_url = f"{settings.SUPABASE_URL}/rest/v1"
+    try:
+        resp = _req.get(
+            f"{base_url}/conversas",
+            headers={**headers, "Prefer": "count=exact"},
+            params={
+                "terapeuta_id": f"eq.{terapeuta_id}",
+                "paciente_numero": f"eq.{numero_paciente}",
+                "intencao": "eq.CODIGO_INVALIDO",
+                "select": "id",
+            },
+            timeout=5,
+        )
+        content_range = resp.headers.get("Content-Range", "0/0")
+        total = int(content_range.split("/")[-1]) if "/" in content_range else 0
+        return total
+    except Exception:
+        return 0
 
 
 def _normalizar_mime(raw_mime: str, fallback: str = "audio/ogg") -> str:
@@ -781,16 +811,21 @@ async def _processar_mensagem(payload: dict) -> None:
                         MSGS_ACESSO_LIBERADO, evolution, instance_name, numero_paciente,
                     )
                 else:
+                    # Contar tentativas ANTERIORES (já salvas) para escolher mensagem
+                    tentativas = await asyncio.to_thread(
+                        _contar_tentativas_codigo, terapeuta_id, numero_paciente
+                    )
+                    msg_invalido = MSG_CODIGO_INVALIDO_FINAL if tentativas >= 4 else MSG_CODIGO_INVALIDO
                     await _salvar_conversa(
                         terapeuta_id=terapeuta_id,
                         paciente_numero=numero_paciente,
                         mensagem_paciente=texto_mensagem,
-                        resposta_agente=MSG_CODIGO_INVALIDO,
+                        resposta_agente=msg_invalido,
                         intencao="CODIGO_INVALIDO",
                     )
                     await evolution.enviar_mensagem(
                         instance=instance_name, numero=numero_paciente,
-                        texto=MSG_CODIGO_INVALIDO,
+                        texto=msg_invalido,
                     )
             return
 
@@ -798,7 +833,10 @@ async def _processar_mensagem(payload: dict) -> None:
 
         # 5a. Coletar nome se ainda não temos
         if estado.aguardando_nome:
-            nome = await asyncio.to_thread(registrar_nome_usuario, terapeuta_id, numero_paciente, texto_mensagem)
+            # Strip de prefixo de mídia: áudio vira "[Mensagem de áudio] Lucas"
+            # sem o strip, o nome salvo seria "[Mensagem" e a saudação ficaria errada
+            texto_nome = _extrair_texto_para_codigo(texto_mensagem)
+            nome = await asyncio.to_thread(registrar_nome_usuario, terapeuta_id, numero_paciente, texto_nome)
             msg_nome = gerar_msg_boas_vindas_nome(nome)
             await evolution.enviar_mensagem(
                 instance=instance_name, numero=numero_paciente, texto=msg_nome,
@@ -1579,15 +1617,20 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                         MSGS_ACESSO_LIBERADO, meta_client, numero_paciente,
                     )
                 else:
+                    # Contar tentativas ANTERIORES (já salvas) para escolher mensagem
+                    tentativas = await asyncio.to_thread(
+                        _contar_tentativas_codigo, terapeuta_id, numero_paciente
+                    )
+                    msg_invalido = MSG_CODIGO_INVALIDO_FINAL if tentativas >= 4 else MSG_CODIGO_INVALIDO
                     await _salvar_conversa(
                         terapeuta_id=terapeuta_id,
                         paciente_numero=numero_paciente,
                         mensagem_paciente=texto_mensagem,
-                        resposta_agente=MSG_CODIGO_INVALIDO,
+                        resposta_agente=msg_invalido,
                         intencao="CODIGO_INVALIDO",
                     )
                     await meta_client.send_text_message(
-                        phone_number=numero_paciente, message=MSG_CODIGO_INVALIDO,
+                        phone_number=numero_paciente, message=msg_invalido,
                     )
             return
 
@@ -1595,7 +1638,10 @@ async def _processar_mensagem_meta(payload: dict) -> None:
 
         # 6a. Coletar nome se ainda não temos
         if estado.aguardando_nome:
-            nome = await asyncio.to_thread(registrar_nome_usuario, terapeuta_id, numero_paciente, texto_mensagem)
+            # Strip de prefixo de mídia: áudio vira "[Mensagem de áudio] Lucas"
+            # sem o strip, o nome salvo seria "[Mensagem" e a saudação ficaria errada
+            texto_nome = _extrair_texto_para_codigo(texto_mensagem)
+            nome = await asyncio.to_thread(registrar_nome_usuario, terapeuta_id, numero_paciente, texto_nome)
             msg_nome = gerar_msg_boas_vindas_nome(nome)
             await meta_client.send_text_message(
                 phone_number=numero_paciente, message=msg_nome,
