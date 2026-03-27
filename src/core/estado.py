@@ -85,13 +85,16 @@ _REGEX_NONSENSE = re.compile(r"^[^a-záàâãéèêíìîóòôõúùûçA-Z\s]{
 # =============================================================================
 
 # --- Onboarding: primeira mensagem ever (pedido de código) ---
+# NOTA: Este assistente é posicionado como ferramenta especializada do consultório
+# (não como IA de propósito geral) — conformidade com política Meta jan/2026.
 MSGS_ONBOARDING: list[str] = [
-    "Olá! Seja bem-vindo(a) ao Alquimista Interior — a inteligência da Escola de Alquimia do Joel Aleixo 🙏",
+    "Olá! Seja bem-vindo(a) ao Alquimista Interior — o assistente especializado da Escola de Alquimia do Joel Aleixo 🙏",
     (
-        "Estou aqui para te apoiar em três frentes:\n\n"
-        "• Dúvidas e pesquisas sobre o método alquímico\n"
-        "• Discussão e análise de casos clínicos\n"
-        "• Produção de conteúdo (posts, materiais, roteiros)"
+        "Aqui você encontra apoio em três frentes específicas do método alquímico:\n\n"
+        "• Dúvidas e pesquisas sobre os ensinamentos da escola\n"
+        "• Discussão e análise de casos clínicos com base nos materiais do Joel\n"
+        "• Produção de conteúdo (posts, materiais, roteiros)\n\n"
+        "Este assistente não substitui atendimento clínico. Para consultas terapêuticas, agende com o Joel."
     ),
     (
         "Para iniciar, confirme seu acesso com o código de liberação "

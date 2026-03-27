@@ -35,6 +35,7 @@ from src.core.estado import (
     MSG_AVISO_2,
 )
 from src.core.assinatura import ativar_acesso_com_codigo
+from src.core.rate_limiter import aguardar_antes_de_enviar
 from src.rag.retriever import buscar_contexto
 from src.rag.generator import gerar_resposta, classificar_intencao
 from src.rag.aprendizado import (
@@ -181,10 +182,15 @@ async def _enviar_sequencia_evolution(
     evolution: "EvolutionClient",
     instance: str,
     numero: str,
-    delay: float = 1.5,
+    delay: float = 3.0,
 ) -> None:
-    """Envia uma lista de mensagens com delay entre elas (Evolution API)."""
+    """
+    Envia uma lista de mensagens com rate limiting (Evolution API).
+    Delay padrão: 3s — acima do mínimo oficial da Meta (6s por usuário),
+    conservador o suficiente para respostas sequenciais sem risco de ban.
+    """
     for i, msg in enumerate(msgs):
+        await aguardar_antes_de_enviar(numero, sequencial=True)
         if i > 0:
             await asyncio.sleep(delay)
         await evolution.enviar_mensagem(instance=instance, numero=numero, texto=msg)
@@ -397,7 +403,7 @@ async def _processar_mensagem(payload: dict) -> None:
                 config_terapeuta=config_terapeuta,
             )
 
-        # 8. Enviar resposta
+        # 8. Enviar resposta (com rate limiting anti-ban)
         if resposta_texto:
             if isinstance(resposta_texto, list):
                 await _enviar_sequencia_evolution(
@@ -405,6 +411,7 @@ async def _processar_mensagem(payload: dict) -> None:
                 )
             else:
                 resposta_texto = humanizar_resposta(resposta_texto)
+                await aguardar_antes_de_enviar(numero_paciente, sequencial=False)
                 await evolution.enviar_mensagem(
                     instance=instance_name, numero=numero_paciente, texto=resposta_texto,
                 )
@@ -595,10 +602,15 @@ async def _enviar_sequencia_meta(
     msgs: list[str],
     meta_client: "MetaCloudClient",
     numero: str,
-    delay: float = 1.5,
+    delay: float = 3.0,
 ) -> None:
-    """Envia uma lista de mensagens com delay entre elas (Meta Cloud API)."""
+    """
+    Envia uma lista de mensagens com rate limiting (Meta Cloud API).
+    Delay padrão: 3s — conservador para respostas sequenciais sem risco de ban.
+    O rate limiter global garante mínimo de 3s entre qualquer envio ao mesmo número.
+    """
     for i, msg in enumerate(msgs):
+        await aguardar_antes_de_enviar(numero, sequencial=True)
         if i > 0:
             await asyncio.sleep(delay)
         await meta_client.send_text_message(phone_number=numero, message=msg)
@@ -815,12 +827,13 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                 config_terapeuta=config_terapeuta,
             )
 
-        # 9. Enviar resposta
+        # 9. Enviar resposta (com rate limiting anti-ban)
         if resposta_texto:
             if isinstance(resposta_texto, list):
                 await _enviar_sequencia_meta(resposta_texto, meta_client, numero_paciente)
             else:
                 resposta_texto = humanizar_resposta(resposta_texto)
+                await aguardar_antes_de_enviar(numero_paciente, sequencial=False)
                 await meta_client.send_text_message(
                     phone_number=numero_paciente, message=resposta_texto,
                 )
