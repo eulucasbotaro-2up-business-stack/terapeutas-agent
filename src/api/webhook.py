@@ -1,5 +1,5 @@
 """
-Rota de webhook para receber mensagens do WhatsApp via Evolution API.
+Rota de webhook para receber mensagens do WhatsApp via Evolution API e Meta Cloud API.
 Processa a mensagem com RAG e responde automaticamente ao paciente.
 """
 
@@ -8,8 +8,9 @@ import logging
 from datetime import datetime, timezone
 from uuid import uuid4
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Request
 
+from src.core.config import get_settings
 from src.core.supabase_client import get_supabase
 from src.core.prompts import (
     detectar_modo,
@@ -25,6 +26,7 @@ from src.rag.aprendizado import (
     formatar_contexto_personalizado,
 )
 from src.whatsapp.evolution import EvolutionClient
+from src.whatsapp.meta_cloud import MetaCloudClient
 from src.core.ux_rules import humanizar_resposta
 from src.whatsapp.messages import (
     extrair_numero_mensagem,
@@ -308,21 +310,33 @@ async def _processar_mensagem(payload: dict) -> None:
 
         # 7. Humanizar resposta antes de enviar (regras UX do Lucas)
         if resposta_texto:
-            resposta_texto = humanizar_resposta(resposta_texto)
-
-            await evolution.enviar_mensagem(
-                instance=instance_name,
-                numero=numero_paciente,
-                texto=resposta_texto,
-            )
-            logger.info(f"Resposta enviada para {numero_paciente}")
+            if isinstance(resposta_texto, list):
+                # Boas-vindas em múltiplas mensagens separadas
+                for i, parte in enumerate(resposta_texto):
+                    if i > 0:
+                        await asyncio.sleep(1.5)
+                    await evolution.enviar_mensagem(
+                        instance=instance_name,
+                        numero=numero_paciente,
+                        texto=parte,
+                    )
+                logger.info(f"Boas-vindas enviadas ({len(resposta_texto)} mensagens) para {numero_paciente}")
+            else:
+                resposta_texto = humanizar_resposta(resposta_texto)
+                await evolution.enviar_mensagem(
+                    instance=instance_name,
+                    numero=numero_paciente,
+                    texto=resposta_texto,
+                )
+                logger.info(f"Resposta enviada para {numero_paciente}")
 
         # 8. Salvar conversa no banco (registra tanto o modo quanto a intencao LLM)
+        resposta_salvar = " | ".join(resposta_texto) if isinstance(resposta_texto, list) else resposta_texto
         _salvar_conversa(
             terapeuta_id=terapeuta_id,
             paciente_numero=numero_paciente,
             mensagem_paciente=texto_mensagem,
-            resposta_agente=resposta_texto,
+            resposta_agente=resposta_salvar,
             intencao=f"{modo.value}|{intencao.value if hasattr(intencao, 'value') else str(intencao)}",
         )
 
@@ -389,3 +403,406 @@ async def receber_webhook_whatsapp(
 
     # Responder 200 OK imediatamente para a Evolution API
     return {"status": "recebido", "instancia": instance_name}
+
+
+# =============================================
+# META WHATSAPP CLOUD API — FUNÇÕES AUXILIARES
+# =============================================
+
+def _buscar_terapeuta_por_phone_number_id(phone_number_id: str) -> dict | None:
+    """
+    Busca o terapeuta associado ao phone_number_id da Meta Cloud API.
+    No MVP single-tenant retorna sempre o primeiro terapeuta ativo.
+    """
+    supabase = get_supabase()
+
+    # MVP: usa o primeiro terapeuta ativo (single-tenant)
+    resultado = (
+        supabase.table("terapeutas")
+        .select("*")
+        .eq("ativo", True)
+        .limit(1)
+        .execute()
+    )
+
+    if resultado.data and len(resultado.data) > 0:
+        logger.info(
+            f"Terapeuta ativo encontrado: {resultado.data[0].get('nome', 'N/A')} "
+            f"(phone_number_id={phone_number_id})"
+        )
+        return resultado.data[0]
+
+    return None
+
+
+def _extrair_mensagem_meta(payload: dict) -> tuple[str, str, str, str]:
+    """
+    Extrai dados da mensagem do payload da Meta WhatsApp Cloud API.
+
+    Args:
+        payload: Payload JSON recebido no webhook da Meta.
+
+    Returns:
+        Tupla (phone_number_id, numero_remetente, texto_mensagem, message_id):
+        - phone_number_id: ID do número de telefone do business
+        - numero_remetente: Número do paciente que enviou a mensagem
+        - texto_mensagem: Conteúdo da mensagem em texto
+        - message_id: ID da mensagem (wamid.xxx) para marcar como lida
+    """
+    try:
+        entry = payload.get("entry", [])
+        if not entry:
+            return "", "", "", ""
+
+        changes = entry[0].get("changes", [])
+        if not changes:
+            return "", "", "", ""
+
+        value = changes[0].get("value", {})
+        metadata = value.get("metadata", {})
+        phone_number_id = metadata.get("phone_number_id", "")
+
+        messages = value.get("messages", [])
+        if not messages:
+            return phone_number_id, "", "", ""
+
+        msg = messages[0]
+        numero_remetente = msg.get("from", "")
+        message_id = msg.get("id", "")
+        msg_type = msg.get("type", "")
+
+        # Extrair texto de acordo com o tipo de mensagem
+        texto = ""
+        if msg_type == "text":
+            texto = msg.get("text", {}).get("body", "")
+        elif msg_type == "image":
+            texto = msg.get("image", {}).get("caption", "[IMAGEM_RECEBIDA]")
+            if not texto:
+                texto = "[IMAGEM_RECEBIDA]"
+        elif msg_type == "audio":
+            texto = "[AUDIO_NAO_SUPORTADO]"
+        elif msg_type == "document":
+            texto = msg.get("document", {}).get("caption", "[DOCUMENTO_RECEBIDO]")
+            if not texto:
+                texto = "[DOCUMENTO_RECEBIDO]"
+        elif msg_type == "interactive":
+            # Botões e listas interativas
+            interactive = msg.get("interactive", {})
+            if interactive.get("type") == "button_reply":
+                texto = interactive.get("button_reply", {}).get("title", "")
+            elif interactive.get("type") == "list_reply":
+                texto = interactive.get("list_reply", {}).get("title", "")
+        else:
+            texto = f"[TIPO_NAO_SUPORTADO:{msg_type}]"
+
+        logger.info(
+            "Mensagem Meta recebida de %s: '%s' (tipo=%s, id=%s)",
+            numero_remetente,
+            texto[:50] + "..." if len(texto) > 50 else texto,
+            msg_type,
+            message_id,
+        )
+
+        return phone_number_id, numero_remetente, texto, message_id
+
+    except (KeyError, TypeError, IndexError, AttributeError) as exc:
+        logger.error("Erro ao extrair dados do payload Meta: %s", exc)
+        return "", "", "", ""
+
+
+# =============================================
+# META CLOUD API — PROCESSAMENTO EM BACKGROUND
+# =============================================
+
+async def _processar_mensagem_meta(payload: dict) -> None:
+    """
+    Processa a mensagem recebida da Meta WhatsApp Cloud API em background.
+    Fluxo: extrair dados → buscar terapeuta → RAG pipeline → responder via Meta Cloud API.
+
+    Args:
+        payload: Payload JSON completo do webhook da Meta.
+    """
+    try:
+        # 1. Extrair dados do payload Meta
+        phone_number_id, numero_paciente, texto_mensagem, message_id = _extrair_mensagem_meta(payload)
+
+        if not numero_paciente or not texto_mensagem:
+            logger.info("Payload Meta sem mensagem de texto processável — ignorando")
+            return
+
+        logger.info(
+            f"Processando mensagem Meta de {numero_paciente} "
+            f"(phone_number_id={phone_number_id})"
+        )
+
+        # 2. Inicializar cliente Meta Cloud API
+        meta_client = MetaCloudClient()
+
+        # 3. Marcar mensagem como lida (double blue check)
+        if message_id:
+            try:
+                await meta_client.mark_as_read(message_id)
+            except Exception as e:
+                logger.warning(f"Falha ao marcar mensagem como lida: {e}")
+
+        # 4. Validar que temos texto para processar
+        if not texto_mensagem.strip():
+            logger.info("Mensagem Meta sem texto — ignorando")
+            return
+
+        # Tratar mensagens de áudio com aviso específico
+        if texto_mensagem == "[AUDIO_NAO_SUPORTADO]":
+            await meta_client.send_text_message(
+                phone_number=numero_paciente,
+                message=formatar_aviso_audio(),
+            )
+            return
+
+        # Ignorar outros tipos não suportados
+        if texto_mensagem.startswith("[") and texto_mensagem.endswith("]"):
+            logger.info(f"Tipo de mensagem Meta não suportado: {texto_mensagem} — ignorando")
+            return
+
+        # 5. Identificar o terapeuta pelo phone_number_id
+        terapeuta = _buscar_terapeuta_por_phone_number_id(phone_number_id)
+        if not terapeuta:
+            logger.warning(
+                f"Nenhum terapeuta encontrado para phone_number_id '{phone_number_id}'"
+            )
+            return
+
+        terapeuta_id = terapeuta["id"]
+        nome_terapeuta = terapeuta.get("nome", "Terapeuta")
+        contato_terapeuta = terapeuta.get("telefone", "")
+        especialidade = terapeuta.get("especialidade", "Terapia Holística")
+        tom_voz = terapeuta.get("tom_de_voz", "profissional e acolhedor")
+
+        config_terapeuta = {
+            "nome_terapeuta": nome_terapeuta,
+            "especialidade": especialidade,
+            "tom_voz": tom_voz,
+            "contato": contato_terapeuta,
+        }
+
+        # 6. Detectar modo de operação
+        modo = detectar_modo(texto_mensagem)
+        logger.info(f"Modo de operação detectado (Meta): {modo.value}")
+
+        # 7. Classificar intenção (via LLM, para logging)
+        intencao = await classificar_intencao(texto_mensagem)
+        logger.info(f"Intenção classificada (Meta/LLM): {intencao}")
+
+        resposta_texto = ""
+
+        # 8. Processar de acordo com o modo detectado (mesmo fluxo do Evolution)
+        if modo == ModoOperacao.SAUDACAO:
+            resposta_texto = gerar_boas_vindas(config_terapeuta)
+
+        elif modo == ModoOperacao.EMERGENCIA:
+            resposta_texto = (
+                "Percebo que voce pode estar lidando com uma situacao delicada. "
+                "Sua seguranca e prioridade absoluta.\n\n"
+                "*Se estiver em crise, ligue agora:*\n"
+                "CVV (Centro de Valorizacao da Vida): *188*\n"
+                "SAMU: *192*\n"
+                "Chat: https://www.cvv.org.br\n\n"
+                f"Entre em contato tambem com *{nome_terapeuta}*"
+            )
+            if contato_terapeuta:
+                resposta_texto += f": {contato_terapeuta}"
+            resposta_texto += (
+                "\n\nA alquimia cuida do campo, mas a seguranca clinica vem primeiro. "
+                "Procure ajuda profissional imediata."
+            )
+
+        elif modo == ModoOperacao.FORA_ESCOPO:
+            resposta_texto = MENSAGEM_FORA_ESCOPO
+
+        elif modo in (ModoOperacao.CONSULTA, ModoOperacao.CRIACAO_CONTEUDO, ModoOperacao.PESQUISA):
+            # Modos principais — usar RAG
+            top_k_busca = 10 if modo == ModoOperacao.CONSULTA else 5
+            contexto_chunks = await buscar_contexto(
+                pergunta=texto_mensagem,
+                terapeuta_id=terapeuta_id,
+                top_k=top_k_busca,
+            )
+
+            # Buscar histórico de conversa
+            historico = _buscar_historico_conversa(
+                terapeuta_id=terapeuta_id,
+                paciente_numero=numero_paciente,
+                limite=20,
+            )
+
+            # Contexto de aprendizado contínuo
+            try:
+                ctx_aprendizado = await carregar_contexto_terapeuta(terapeuta_id)
+                ctx_formatado = formatar_contexto_personalizado(ctx_aprendizado)
+            except Exception as e:
+                logger.warning(f"Falha ao carregar contexto de aprendizado (Meta): {e}")
+                ctx_formatado = None
+
+            # Gerar resposta com RAG
+            resposta_texto = await gerar_resposta(
+                pergunta=texto_mensagem,
+                terapeuta_id=terapeuta_id,
+                contexto_chunks=contexto_chunks,
+                config_terapeuta=config_terapeuta,
+                historico_mensagens=historico if historico else None,
+                contexto_personalizado=ctx_formatado,
+            )
+
+        else:
+            # Fallback para RAG com modo PESQUISA
+            logger.warning(f"Modo não reconhecido (Meta): {modo} — tratando como PESQUISA")
+            contexto_chunks = await buscar_contexto(
+                pergunta=texto_mensagem,
+                terapeuta_id=terapeuta_id,
+            )
+            resposta_texto = await gerar_resposta(
+                pergunta=texto_mensagem,
+                terapeuta_id=terapeuta_id,
+                contexto_chunks=contexto_chunks,
+                config_terapeuta=config_terapeuta,
+            )
+
+        # 9. Humanizar e enviar resposta via Meta Cloud API
+        if resposta_texto:
+            if isinstance(resposta_texto, list):
+                # Boas-vindas em múltiplas mensagens separadas
+                for i, parte in enumerate(resposta_texto):
+                    if i > 0:
+                        await asyncio.sleep(1.5)
+                    await meta_client.send_text_message(
+                        phone_number=numero_paciente,
+                        message=parte,
+                    )
+                logger.info(f"Boas-vindas enviadas ({len(resposta_texto)} mensagens) para {numero_paciente} via Meta Cloud API")
+            else:
+                resposta_texto = humanizar_resposta(resposta_texto)
+                await meta_client.send_text_message(
+                    phone_number=numero_paciente,
+                    message=resposta_texto,
+                )
+                logger.info(f"Resposta enviada para {numero_paciente} via Meta Cloud API")
+
+        # 10. Salvar conversa no banco
+        resposta_salvar = " | ".join(resposta_texto) if isinstance(resposta_texto, list) else resposta_texto
+        _salvar_conversa(
+            terapeuta_id=terapeuta_id,
+            paciente_numero=numero_paciente,
+            mensagem_paciente=texto_mensagem,
+            resposta_agente=resposta_salvar,
+            intencao=f"{modo.value}|{intencao.value if hasattr(intencao, 'value') else str(intencao)}",
+        )
+
+        # 11. Análise de aprendizado em background
+        if modo in (ModoOperacao.CONSULTA, ModoOperacao.CRIACAO_CONTEUDO, ModoOperacao.PESQUISA):
+            try:
+                asyncio.create_task(
+                    analisar_conversa(
+                        terapeuta_id=terapeuta_id,
+                        mensagem=texto_mensagem,
+                        resposta=resposta_texto,
+                        modo=modo.value,
+                    )
+                )
+                logger.info(f"Análise de aprendizado disparada (Meta) para terapeuta {terapeuta_id}")
+            except Exception as e:
+                logger.warning(f"Falha ao disparar análise de aprendizado (Meta): {e}")
+
+    except Exception as e:
+        logger.error(f"Erro ao processar mensagem Meta webhook: {e}", exc_info=True)
+
+
+# =============================================
+# META CLOUD API — ROTAS
+# =============================================
+
+@router.get("/meta", summary="Verificação do webhook Meta (challenge)")
+async def verificar_webhook_meta(
+    request: Request,
+):
+    """
+    Endpoint de verificação do webhook da Meta WhatsApp Cloud API.
+    A Meta envia um GET com hub.mode, hub.verify_token e hub.challenge.
+    Se o verify_token bater, retorna o hub.challenge para confirmar o webhook.
+    """
+    settings = get_settings()
+    params = request.query_params
+
+    mode = params.get("hub.mode", "")
+    token = params.get("hub.verify_token", "")
+    challenge = params.get("hub.challenge", "")
+
+    logger.info(
+        f"Webhook Meta verificação recebida — mode={mode}, "
+        f"token={'***' if token else 'vazio'}, challenge={challenge[:20]}..."
+    )
+
+    if mode == "subscribe" and token == settings.META_VERIFY_TOKEN:
+        logger.info("Webhook Meta verificado com sucesso!")
+        # Meta espera o challenge como resposta em texto puro
+        from fastapi.responses import PlainTextResponse
+        return PlainTextResponse(content=challenge)
+
+    logger.warning(
+        f"Webhook Meta verificação falhou — token inválido "
+        f"(recebido: {token[:10]}..., esperado: {settings.META_VERIFY_TOKEN[:10]}...)"
+    )
+    raise HTTPException(status_code=403, detail="Token de verificação inválido")
+
+
+@router.post("/meta", summary="Recebe webhook da Meta WhatsApp Cloud API")
+async def receber_webhook_meta(
+    request: Request,
+    background_tasks: BackgroundTasks,
+):
+    """
+    Endpoint que recebe os webhooks da Meta WhatsApp Cloud API quando uma
+    mensagem chega no WhatsApp. Processa em background para responder rápido (200 OK).
+
+    A Meta envia o payload com object='whatsapp_business_account' e as mensagens
+    dentro de entry[].changes[].value.messages[].
+    """
+    try:
+        body = await request.json()
+    except Exception:
+        logger.warning("Webhook Meta recebeu payload inválido (não é JSON)")
+        raise HTTPException(status_code=400, detail="Payload inválido — esperado JSON")
+
+    # Verificar se é um payload válido do WhatsApp
+    if body.get("object") != "whatsapp_business_account":
+        logger.debug(f"Webhook Meta ignorado — object: {body.get('object')}")
+        return {"status": "ignorado"}
+
+    # Verificar se contém mensagens (e não apenas status updates)
+    entry = body.get("entry", [])
+    if not entry:
+        return {"status": "ignorado", "motivo": "sem entries"}
+
+    changes = entry[0].get("changes", [])
+    if not changes:
+        return {"status": "ignorado", "motivo": "sem changes"}
+
+    value = changes[0].get("value", {})
+    messages = value.get("messages", [])
+
+    # Se não tem mensagens, pode ser um status update (delivered, read, etc.)
+    if not messages:
+        statuses = value.get("statuses", [])
+        if statuses:
+            logger.debug(f"Status update Meta recebido: {statuses[0].get('status', 'N/A')}")
+        return {"status": "ignorado", "motivo": "sem mensagens (status update)"}
+
+    # Processar a mensagem em background (não travar o webhook)
+    background_tasks.add_task(_processar_mensagem_meta, body)
+
+    numero_remetente = messages[0].get("from", "desconhecido")
+    logger.info(
+        f"Webhook Meta recebido — remetente={numero_remetente}, "
+        f"tipo={messages[0].get('type', 'N/A')}"
+    )
+
+    # Meta espera 200 OK imediatamente
+    return {"status": "recebido", "origem": "meta_cloud_api"}

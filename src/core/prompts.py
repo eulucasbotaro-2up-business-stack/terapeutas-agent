@@ -95,10 +95,10 @@ PALAVRAS_MODO: dict[ModoOperacao, list[str]] = {
         "conceito de", "definicao de", "significado de",
     ],
     ModoOperacao.SAUDACAO: [
-        "oi", "ola", "bom dia", "boa tarde", "boa noite",
-        "hey", "eae", "fala", "salve", "tudo bem",
-        "como vai", "hello", "test", "teste", "alo",
-        "hi", "boas", "e ai", "opa",
+        "oi", "ola", "olá", "bom dia", "boa tarde", "boa noite",
+        "hey", "eae", "e aí", "e ai", "fala", "salve", "tudo bem",
+        "como vai", "hello", "test", "teste", "alo", "alô",
+        "hi", "boas", "opa", "oii", "oiii",
     ],
     ModoOperacao.EMERGENCIA: [
         # Termos especificos de risco real (nao usar termos ambiguos como "crise")
@@ -623,9 +623,11 @@ NAO tente resolver com alquimia. Isso REQUER atendimento profissional. Se a tera
 # MENSAGENS PADRAO
 # =============================================================================
 
-MENSAGEM_BOAS_VINDAS = """Ola, muito prazer! Eu sou o facilitador para seus atendimentos aqui na Escola de Alquimia do Joel Aleixo.
-
-Ja vamos comecar. Primeiro, como eu posso te chamar?"""
+MENSAGENS_BOAS_VINDAS = [
+    "Olá! Que bom ter você por aqui 🙏",
+    "Sou o assistente da Escola de Alquimia do Joel Aleixo. Estou aqui para te apoiar com consultas, conteúdos e pesquisas alquímicas.",
+    "Antes de começarmos, como eu posso te chamar?",
+]
 
 MENSAGEM_ENCAMINHAMENTO = """Essa questao pede um olhar mais profundo. Me traz mais detalhes do caso que eu consigo te ajudar melhor.
 
@@ -1183,17 +1185,17 @@ def extrair_fontes_resposta(chunks: list[dict]) -> str:
     return ""
 
 
-def gerar_boas_vindas(terapeuta: dict) -> str:
+def gerar_boas_vindas(terapeuta: dict) -> list[str]:
     """
-    Gera a mensagem de boas-vindas personalizada para a terapeuta.
+    Gera as mensagens de boas-vindas em 3 partes separadas.
 
     Args:
         terapeuta: Dicionario com dados do terapeuta.
 
     Returns:
-        Mensagem de boas-vindas formatada.
+        Lista com 3 mensagens para enviar em sequência.
     """
-    return MENSAGEM_BOAS_VINDAS
+    return MENSAGENS_BOAS_VINDAS
 
 
 def gerar_encaminhamento(terapeuta: dict) -> str:
