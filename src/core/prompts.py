@@ -607,15 +607,14 @@ Se a terapeuta perguntou algo avancado e perceber que precisa de base anterior, 
 
 Use exemplos praticos quando possivel. Explique na linguagem do Joel: claro, direto, sem simplificar demais nem complicar. Entregue tudo de uma vez.""",
 
-    ModoOperacao.SAUDACAO: """A pessoa enviou uma saudacao. Responda em 2-3 linhas, tom direto e caloroso.
+    ModoOperacao.SAUDACAO: """A pessoa enviou uma saudacao. Responda em 2 mensagens curtas, tom direto e caloroso.
 
-Mencione NATURALMENTE as tres frentes que voce cobre — sem listar, sem bullet points:
-1. Apoio em casos clinicos (anamnese, diagnostico, protocolo)
-2. Pesquisa e aprofundamento nos ensinamentos do Joel
-3. Criacao de conteudo (posts, stories, reels, roteiros para redes sociais)
+OBRIGATORIO: A pergunta final DEVE mencionar as tres frentes, assim:
+"E um caso pra analisar, quer entender algum conceito do metodo, ou ajuda na producao de conteudo?"
 
-Escreva como se fosse um colega de trabalho que acabou de chegar. Nao como um assistente apresentando servicos.
-Termine com uma pergunta aberta e direta. Sem saudacoes formais, sem "Ola!", sem apresentacao robotica.""",
+Voce pode variar o inicio da frase, mas as tres opcoes (caso clinico / conceito do metodo / producao de conteudo) precisam aparecer SEMPRE na pergunta final.
+
+Escreva como colega de trabalho, nao como assistente. Sem "Ola!", sem apresentacao robotica.""",
 
     ModoOperacao.FORA_ESCOPO: """A mensagem esta fora do escopo da Escola de Alquimia Joel Aleixo.
 Responda com respeito e firmeza. Nao tente responder sobre outros temas.

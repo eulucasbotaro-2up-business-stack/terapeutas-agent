@@ -174,7 +174,7 @@ def gerar_saudacao_ativo(nome: Optional[str]) -> list[str]:
         ),
         (
             f"{'Oi, ' + nome_fmt + '.' if nome_fmt else 'Oi.'} Que bom.",
-            "Tem um caso pra analisar, uma dúvida sobre o método, ou quer aprofundar algum conceito específico?"
+            "Tem um caso pra analisar, quer entender algum conceito do método, ou ajuda na produção de conteúdo?"
         ),
     ]
 
