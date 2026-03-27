@@ -274,32 +274,17 @@ def obter_ou_criar_estado(
     """
     Busca o estado do número no banco. Se não existir, cria com PENDENTE_CODIGO.
 
+    Auto-recuperação inteligente: se o número já tem histórico de conversas
+    (estado ATIVO perdido por migração/restart), restaura como ATIVO em vez de
+    mandar pedir código novamente — evita UX confusa.
+
     Returns:
         (EstadoChat, is_new) — is_new=True indica que acabou de ser criado
         e o bot deve enviar a sequência de boas-vindas.
     """
     supabase = get_supabase()
 
-    # Tenta inserir — se já existe, ignora (ON CONFLICT DO NOTHING)
-    insert_result = (
-        supabase.table("chat_estado")
-        .upsert(
-            {
-                "terapeuta_id": terapeuta_id,
-                "numero_telefone": numero_telefone,
-                "estado": "PENDENTE_CODIGO",
-                "atualizado_em": datetime.now(timezone.utc).isoformat(),
-            },
-            on_conflict="terapeuta_id,numero_telefone",
-            ignore_duplicates=True,
-        )
-        .execute()
-    )
-
-    # is_new = True se o upsert retornou dados (linha foi criada agora)
-    is_new = bool(insert_result.data)
-
-    # Busca o estado atual (recém-criado ou pré-existente)
+    # 1. Verificar se já existe um estado no banco
     busca = (
         supabase.table("chat_estado")
         .select("*")
@@ -309,15 +294,75 @@ def obter_ou_criar_estado(
         .execute()
     )
 
-    if not busca.data:
+    if busca.data:
+        # Estado já existe — retorna sem alterar
+        estado = EstadoChat(busca.data[0])
+        logger.info(
+            f"Estado encontrado: {estado.estado} | numero={numero_telefone}"
+        )
+        return estado, False
+
+    # 2. Nenhum estado no banco — verificar histórico de conversas para auto-recuperação
+    historico = (
+        supabase.table("conversas")
+        .select("id,intencao")
+        .eq("terapeuta_id", terapeuta_id)
+        .eq("paciente_numero", numero_telefone)
+        .neq("intencao", "ONBOARDING")  # exclui mensagens do fluxo de code
+        .limit(1)
+        .execute()
+    )
+
+    tem_historico = bool(historico.data)
+
+    if tem_historico:
+        # Usuário já teve acesso ATIVO — recuperar estado sem pedir código novamente
+        logger.warning(
+            f"Auto-recuperação: estado perdido para {numero_telefone} — "
+            f"restaurando como ATIVO (tem histórico de conversas)"
+        )
+        estado_inicial = "ATIVO"
+        is_new = False  # não é realmente novo — não envia ONBOARDING
+    else:
+        # Usuário genuinamente novo
+        estado_inicial = "PENDENTE_CODIGO"
+        is_new = True
+
+    # 3. Inserir o estado correto
+    insert_result = (
+        supabase.table("chat_estado")
+        .upsert(
+            {
+                "terapeuta_id": terapeuta_id,
+                "numero_telefone": numero_telefone,
+                "estado": estado_inicial,
+                "atualizado_em": datetime.now(timezone.utc).isoformat(),
+            },
+            on_conflict="terapeuta_id,numero_telefone",
+            ignore_duplicates=False,  # force upsert para garantir inserção
+        )
+        .execute()
+    )
+
+    # 4. Buscar o estado recém-criado
+    busca2 = (
+        supabase.table("chat_estado")
+        .select("*")
+        .eq("terapeuta_id", terapeuta_id)
+        .eq("numero_telefone", numero_telefone)
+        .limit(1)
+        .execute()
+    )
+
+    if not busca2.data:
         raise RuntimeError(
             f"Falha crítica: não foi possível criar estado para {numero_telefone}"
         )
 
-    estado = EstadoChat(busca.data[0])
+    estado = EstadoChat(busca2.data[0])
     logger.info(
-        f"Estado={estado.estado} | is_new={is_new} | "
-        f"numero={numero_telefone} | terapeuta={terapeuta_id}"
+        f"Estado criado: {estado.estado} | is_new={is_new} | "
+        f"numero={numero_telefone} | recuperado={tem_historico}"
     )
     return estado, is_new
 

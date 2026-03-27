@@ -277,10 +277,7 @@ async def _processar_mensagem(payload: dict) -> None:
         # ── PENDENTE_CODIGO ────────────────────────────────────────────────────
         if estado.is_pendente:
             if is_new:
-                # Primeira mensagem ever: enviar boas-vindas + pedir código
-                await _enviar_sequencia_evolution(
-                    MSGS_ONBOARDING, evolution, instance_name, numero_paciente,
-                )
+                # Primeira mensagem ever: salvar ANTES de enviar (garante rastreabilidade)
                 _salvar_conversa(
                     terapeuta_id=terapeuta_id,
                     paciente_numero=numero_paciente,
@@ -288,15 +285,15 @@ async def _processar_mensagem(payload: dict) -> None:
                     resposta_agente=" | ".join(MSGS_ONBOARDING),
                     intencao="ONBOARDING",
                 )
+                await _enviar_sequencia_evolution(
+                    MSGS_ONBOARDING, evolution, instance_name, numero_paciente,
+                )
             else:
                 # Já recebeu boas-vindas: tentar validar como código
                 if validar_codigo(terapeuta_id, numero_paciente, texto_mensagem):
                     liberar_acesso(terapeuta_id, numero_paciente, texto_mensagem)
                     # Ativar assinatura: define data_expiracao com base nos meses comprados
                     ativar_acesso_com_codigo(terapeuta_id, texto_mensagem, numero_paciente)
-                    await _enviar_sequencia_evolution(
-                        MSGS_ACESSO_LIBERADO, evolution, instance_name, numero_paciente,
-                    )
                     _salvar_conversa(
                         terapeuta_id=terapeuta_id,
                         paciente_numero=numero_paciente,
@@ -304,17 +301,20 @@ async def _processar_mensagem(payload: dict) -> None:
                         resposta_agente=" | ".join(MSGS_ACESSO_LIBERADO),
                         intencao="CODIGO_VALIDO",
                     )
-                else:
-                    await evolution.enviar_mensagem(
-                        instance=instance_name, numero=numero_paciente,
-                        texto=MSG_CODIGO_INVALIDO,
+                    await _enviar_sequencia_evolution(
+                        MSGS_ACESSO_LIBERADO, evolution, instance_name, numero_paciente,
                     )
+                else:
                     _salvar_conversa(
                         terapeuta_id=terapeuta_id,
                         paciente_numero=numero_paciente,
                         mensagem_paciente=texto_mensagem,
                         resposta_agente=MSG_CODIGO_INVALIDO,
                         intencao="CODIGO_INVALIDO",
+                    )
+                    await evolution.enviar_mensagem(
+                        instance=instance_name, numero=numero_paciente,
+                        texto=MSG_CODIGO_INVALIDO,
                     )
             return
 
@@ -783,8 +783,7 @@ async def _processar_mensagem_meta(payload: dict) -> None:
         # ── PENDENTE_CODIGO ────────────────────────────────────────────────────
         if estado.is_pendente:
             if is_new:
-                # Primeira mensagem ever: enviar sequência de boas-vindas + pedir código
-                await _enviar_sequencia_meta(MSGS_ONBOARDING, meta_client, numero_paciente)
+                # Primeira mensagem ever: salvar ANTES de enviar (garante rastreabilidade)
                 _salvar_conversa(
                     terapeuta_id=terapeuta_id,
                     paciente_numero=numero_paciente,
@@ -792,15 +791,13 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                     resposta_agente=" | ".join(MSGS_ONBOARDING),
                     intencao="ONBOARDING",
                 )
+                await _enviar_sequencia_meta(MSGS_ONBOARDING, meta_client, numero_paciente)
             else:
                 # Já recebeu boas-vindas: tentar como código de liberação
                 if validar_codigo(terapeuta_id, numero_paciente, texto_mensagem):
                     liberar_acesso(terapeuta_id, numero_paciente, texto_mensagem)
                     # Ativar assinatura: define data_expiracao com base nos meses comprados
                     ativar_acesso_com_codigo(terapeuta_id, texto_mensagem, numero_paciente)
-                    await _enviar_sequencia_meta(
-                        MSGS_ACESSO_LIBERADO, meta_client, numero_paciente,
-                    )
                     _salvar_conversa(
                         terapeuta_id=terapeuta_id,
                         paciente_numero=numero_paciente,
@@ -808,16 +805,19 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                         resposta_agente=" | ".join(MSGS_ACESSO_LIBERADO),
                         intencao="CODIGO_VALIDO",
                     )
-                else:
-                    await meta_client.send_text_message(
-                        phone_number=numero_paciente, message=MSG_CODIGO_INVALIDO,
+                    await _enviar_sequencia_meta(
+                        MSGS_ACESSO_LIBERADO, meta_client, numero_paciente,
                     )
+                else:
                     _salvar_conversa(
                         terapeuta_id=terapeuta_id,
                         paciente_numero=numero_paciente,
                         mensagem_paciente=texto_mensagem,
                         resposta_agente=MSG_CODIGO_INVALIDO,
                         intencao="CODIGO_INVALIDO",
+                    )
+                    await meta_client.send_text_message(
+                        phone_number=numero_paciente, message=MSG_CODIGO_INVALIDO,
                     )
             return
 
