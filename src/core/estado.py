@@ -306,33 +306,19 @@ def obter_ou_criar_estado(
         logger.info(f"Estado encontrado: {estado.estado} | numero={numero_telefone}")
         return estado, False
 
-    # 2. Check if user previously validated a code (auto-recovery)
-    resp2 = requests.get(
-        f"{base_url}/conversas",
-        headers=headers,
-        params={
-            "terapeuta_id": f"eq.{terapeuta_id}",
-            "paciente_numero": f"eq.{numero_telefone}",
-            "intencao": "eq.CODIGO_VALIDO",
-            "limit": "1",
-        },
-        timeout=10,
-    )
-    resp2.raise_for_status()
-    ja_validou = bool(resp2.json())
-
-    estado_inicial = "ATIVO" if ja_validou else "PENDENTE_CODIGO"
-    is_new = not ja_validou
-
-    if ja_validou:
-        logger.warning(f"Auto-recuperação ATIVO para {numero_telefone}")
+    # 2. Não existe estado: criar sempre como PENDENTE_CODIGO.
+    # O auto-recovery via tabela `conversas` foi removido intencionalmente:
+    # ele permitia bypass total do fluxo de código quando chat_estado era
+    # perdido/zerado mas conversas ainda tinha registros CODIGO_VALIDO.
+    # Comportamento correto: se o estado foi perdido, o usuário recomeça do zero.
+    is_new = True
 
     # 3. INSERT new state
     now_iso = datetime.now(timezone.utc).isoformat()
     payload = {
         "terapeuta_id": terapeuta_id,
         "numero_telefone": numero_telefone,
-        "estado": estado_inicial,
+        "estado": "PENDENTE_CODIGO",
         "atualizado_em": now_iso,
     }
     resp3 = requests.post(
