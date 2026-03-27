@@ -153,7 +153,7 @@ MSGS_ACESSO_LIBERADO: list[str] = [
 # --- Confirmação de nome ---
 def gerar_msg_confirmar_nome(nome: str) -> str:
     nome_fmt = nome.strip().split()[0].capitalize()
-    return f"Posso te chamar de *{nome_fmt}*? 😊"
+    return f"Perfeito, *{nome_fmt}*! Me confirma se você escreveu seu nome certo por gentileza."
 
 MSG_PEDIR_NOME_NOVAMENTE = "Tudo bem! Como você prefere ser chamado(a)?"
 MSG_NOME_NAO_IDENTIFICADO = "Qual é o seu nome? Como posso te chamar?"

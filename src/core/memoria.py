@@ -194,13 +194,22 @@ def detectar_mudanca_assunto(
         if m.get("role") in ("terapeuta", "user")
     ]
 
-    if len(msgs_usuario) < 2:
+    # Filtrar mensagens de onboarding (código, nome, saudação curta).
+    # Só mensagens com conteúdo real (>= 25 chars após strip de prefixo de mídia)
+    # são usadas como "tópico anterior" — evita comparar áudio clínico com "Olá/Lucas/Sim".
+    msgs_reais = [
+        m for m in msgs_usuario
+        if len(_limpar_msg_para_topico(m).strip()) >= 25
+    ]
+
+    # Sem pelo menos 2 mensagens reais no histórico, não há tópico estabelecido
+    if len(msgs_reais) < 2:
         return False, ""
 
-    similaridade = calcular_similaridade_topico(msgs_usuario, nova_mensagem_limpa)
+    similaridade = calcular_similaridade_topico(msgs_reais, nova_mensagem_limpa)
 
     if similaridade < LIMIAR_MUDANCA_TOPICO:  # similaridade Jaccard abaixo do limiar = assuntos diferentes
-        topico = _resumo_topico(msgs_usuario)
+        topico = _resumo_topico(msgs_reais)
         logger.info(
             f"Mudança de assunto detectada | similaridade={similaridade:.2f} | "
             f"tópico anterior: '{topico}'"
