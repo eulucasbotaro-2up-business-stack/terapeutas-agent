@@ -302,29 +302,31 @@ def obter_ou_criar_estado(
         )
         return estado, False
 
-    # 2. Nenhum estado no banco — verificar histórico de conversas para auto-recuperação
-    historico = (
+    # 2. Nenhum estado no banco — verificar se usuário já validou código alguma vez
+    # Só restaura ATIVO se existe registro de CODIGO_VALIDO — evita pular o fluxo
+    # de código em casos onde o estado foi manipulado manualmente (setup, migração etc.)
+    codigo_validado = (
         supabase.table("conversas")
-        .select("id,intencao")
+        .select("id")
         .eq("terapeuta_id", terapeuta_id)
         .eq("paciente_numero", numero_telefone)
-        .neq("intencao", "ONBOARDING")  # exclui mensagens do fluxo de code
+        .eq("intencao", "CODIGO_VALIDO")
         .limit(1)
         .execute()
     )
 
-    tem_historico = bool(historico.data)
+    ja_validou_codigo = bool(codigo_validado.data)
 
-    if tem_historico:
-        # Usuário já teve acesso ATIVO — recuperar estado sem pedir código novamente
+    if ja_validou_codigo:
+        # Usuário já passou pelo fluxo completo — recupera ATIVO sem pedir código novamente
         logger.warning(
             f"Auto-recuperação: estado perdido para {numero_telefone} — "
-            f"restaurando como ATIVO (tem histórico de conversas)"
+            f"restaurando como ATIVO (código foi validado anteriormente)"
         )
         estado_inicial = "ATIVO"
-        is_new = False  # não é realmente novo — não envia ONBOARDING
+        is_new = False
     else:
-        # Usuário genuinamente novo
+        # Novo usuário ou nunca validou código — fluxo completo obrigatório
         estado_inicial = "PENDENTE_CODIGO"
         is_new = True
 
