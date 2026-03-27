@@ -481,11 +481,16 @@ def liberar_acesso(
     numero_telefone: str,
     codigo_usado: str,
 ) -> None:
-    """Muda o estado do número para ATIVO após código válido."""
+    """
+    Muda o estado do número para ATIVO após código válido.
+    Limpa nome_usuario para garantir que o passo de coleta de nome
+    sempre aconteça após cada nova validação de código.
+    """
     supabase = get_supabase()
     supabase.table("chat_estado").update({
         "estado": "ATIVO",
         "codigo_usado": codigo_usado.strip().lower()[:200],
+        "nome_usuario": None,  # Sempre re-coleta o nome após nova validação
         "atualizado_em": datetime.now(timezone.utc).isoformat(),
     }).eq("terapeuta_id", terapeuta_id).eq(
         "numero_telefone", numero_telefone

@@ -814,14 +814,24 @@ def _extrair_mensagem_meta(payload: dict) -> tuple[str, str, str, str, str, str]
 # META CLOUD API — RESOLUÇÃO DE MÍDIA
 # =============================================
 
-async def _resolver_media_meta(msg_type: str, media_id: str, texto_atual: str) -> str:
+async def _resolver_media_meta(
+    msg_type: str,
+    media_id: str,
+    texto_atual: str,
+    meta_client: "MetaCloudClient | None" = None,
+    numero_paciente: str = "",
+) -> str:
     """
     Baixa mídia da Meta Graph API e converte para texto:
-    - audio/video  → transcrição via OpenAI Whisper
-    - image        → descrição via Claude claude-sonnet-4-6 vision
+    - audio/video  → transcrição via OpenAI Whisper (com retry automático)
+    - image        → descrição via Claude vision
     - document PDF → extração de texto via PyMuPDF
 
-    Retorna o texto extraído ou o texto_atual em caso de falha.
+    Parâmetros extras:
+        meta_client: se fornecido, envia feedback "Transcrevendo..." durante o processamento
+        numero_paciente: número para enviar o feedback
+
+    Retorna o texto extraído ou um marcador de erro.
     """
     import httpx
 
@@ -829,6 +839,9 @@ async def _resolver_media_meta(msg_type: str, media_id: str, texto_atual: str) -
     token = settings.META_WHATSAPP_TOKEN
     if not token or not media_id:
         return texto_atual
+
+    # Limite de tamanho para evitar timeouts/custos excessivos (16 MB)
+    _MAX_BYTES = 16 * 1024 * 1024
 
     try:
         # 1. Obter URL de download da mídia
@@ -843,7 +856,7 @@ async def _resolver_media_meta(msg_type: str, media_id: str, texto_atual: str) -
                     f"(media_id={media_id}, status=401). "
                     "Verifique META_WHATSAPP_TOKEN."
                 )
-                return texto_atual
+                return "[MIDIA_TOKEN_INVALIDO]"
             r.raise_for_status()
             media_url = r.json().get("url", "")
             if not media_url:
@@ -859,34 +872,93 @@ async def _resolver_media_meta(msg_type: str, media_id: str, texto_atual: str) -
                 logger.error(
                     f"Token Meta expirado ao baixar mídia (media_id={media_id}, status=401)"
                 )
-                return texto_atual
+                return "[MIDIA_TOKEN_INVALIDO]"
             r2.raise_for_status()
             media_bytes = r2.content
             content_type = r2.headers.get("content-type", "")
 
+        # 3. Verificar tamanho
+        if len(media_bytes) > _MAX_BYTES:
+            logger.warning(
+                f"Mídia muito grande: {len(media_bytes) / 1024 / 1024:.1f} MB "
+                f"(limite {_MAX_BYTES // 1024 // 1024} MB) para {media_id}"
+            )
+            return "[MIDIA_MUITO_GRANDE]"
+
         if msg_type in ("audio", "video"):
+            # Enviar feedback imediato: usuário sabe que o bot está processando
+            if meta_client and numero_paciente:
+                try:
+                    msg_feedback = (
+                        "Recebi seu áudio, transcrevendo..."
+                        if msg_type == "audio"
+                        else "Recebi seu vídeo, processando o áudio..."
+                    )
+                    await meta_client.send_text_message(
+                        phone_number=numero_paciente, message=msg_feedback,
+                    )
+                except Exception:
+                    pass  # Feedback é best-effort
+
             # Transcrição via OpenAI Whisper
             from openai import AsyncOpenAI
             oai = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
-            # Determinar extensão pelo content-type
+
+            # Detectar extensão correta (WhatsApp envia OGG/OPUS quase sempre)
+            # content-type pode vir como "audio/ogg; codecs=opus" — usar só a parte base
+            base_ct = content_type.split(";")[0].strip().lower()
             ext_map = {
-                "audio/ogg": "ogg", "audio/mpeg": "mp3", "audio/mp4": "mp4",
-                "audio/webm": "webm", "audio/wav": "wav", "audio/aac": "aac",
-                "video/mp4": "mp4", "video/3gpp": "3gp", "video/webm": "webm",
+                "audio/ogg": "ogg",
+                "audio/mpeg": "mp3",
+                "audio/mp4": "mp4",
+                "audio/mp4a-latm": "mp4",
+                "audio/webm": "webm",
+                "audio/wav": "wav",
+                "audio/x-wav": "wav",
+                "audio/aac": "aac",
+                "audio/amr": "amr",
+                "audio/3gpp": "3gp",
+                "video/mp4": "mp4",
+                "video/3gpp": "3gp",
+                "video/webm": "webm",
             }
-            ext = ext_map.get(content_type.split(";")[0].strip(), "ogg")
-            filename = f"media.{ext}"
-            transcript = await oai.audio.transcriptions.create(
-                model="whisper-1",
-                file=(filename, io.BytesIO(media_bytes), content_type),
-                language="pt",
-            )
-            texto_transcrito = transcript.text.strip()
+            ext = ext_map.get(base_ct, "ogg")  # OGG é o padrão do WhatsApp
+            filename = f"audio.{ext}"
+
+            # Primeira tentativa de transcrição
+            texto_transcrito = ""
+            try:
+                transcript = await oai.audio.transcriptions.create(
+                    model="whisper-1",
+                    file=(filename, io.BytesIO(media_bytes), base_ct or "audio/ogg"),
+                    language="pt",
+                    response_format="text",
+                )
+                texto_transcrito = (transcript if isinstance(transcript, str) else transcript.text).strip()
+            except Exception as e_whisper:
+                logger.warning(f"Whisper primeira tentativa falhou: {e_whisper}")
+
+            # Retry automático se transcrição vazia (tenta sem forçar idioma)
+            if not texto_transcrito:
+                logger.info(f"Whisper: transcrição vazia, tentando sem forçar idioma...")
+                try:
+                    transcript2 = await oai.audio.transcriptions.create(
+                        model="whisper-1",
+                        file=(filename, io.BytesIO(media_bytes), base_ct or "audio/ogg"),
+                        response_format="text",
+                        # Sem language= para detecção automática
+                    )
+                    texto_transcrito = (transcript2 if isinstance(transcript2, str) else transcript2.text).strip()
+                except Exception as e_whisper2:
+                    logger.warning(f"Whisper segunda tentativa também falhou: {e_whisper2}")
+
             if texto_transcrito:
-                logger.info(f"Whisper transcreveu {msg_type}: '{texto_transcrito[:80]}...'")
-                return texto_transcrito
-            # Áudio transcrito como vazio: avisar o usuário em vez de retornar placeholder
-            logger.warning(f"Whisper retornou transcrição vazia para {msg_type} de {media_id}")
+                # Prefixar com marcador de áudio para o LLM adaptar o tom
+                # (áudio é mais informal, pode ter erros de transcrição)
+                logger.info(f"Whisper transcreveu {msg_type} ({len(media_bytes)//1024}KB): '{texto_transcrito[:100]}'")
+                return f"[Mensagem de áudio] {texto_transcrito}"
+
+            logger.warning(f"Whisper: transcrição vazia após retry para {msg_type} de {media_id}")
             return "[AUDIO_SEM_CONTEUDO]"
 
         elif msg_type == "image":
@@ -915,8 +987,8 @@ async def _resolver_media_meta(msg_type: str, media_id: str, texto_atual: str) -
                             "type": "text",
                             "text": (
                                 "Descreva esta imagem de forma concisa e objetiva em português. "
-                                "Se houver texto na imagem, transcreva-o. "
-                                "Responda apenas com a descrição/transcrição, sem introduções."
+                                "Se houver texto na imagem, transcreva-o integralmente. "
+                                "Responda apenas com a descrição/transcrição, sem introduções ou comentários."
                             ),
                         },
                     ],
@@ -924,30 +996,35 @@ async def _resolver_media_meta(msg_type: str, media_id: str, texto_atual: str) -
             )
             descricao = resp.content[0].text.strip() if resp.content else ""
             if descricao:
-                logger.info(f"Claude descreveu imagem: '{descricao[:80]}...'")
+                logger.info(f"Claude descreveu imagem ({len(media_bytes)//1024}KB): '{descricao[:80]}'")
                 return f"[Imagem recebida] {descricao}"
             return texto_atual
 
         elif msg_type == "document":
             # Extração de texto via PyMuPDF
             import fitz  # PyMuPDF
-            doc = fitz.open(stream=media_bytes, filetype="pdf")
-            partes = []
-            for page in doc:
-                partes.append(page.get_text())
-            doc.close()
-            texto_pdf = "\n".join(partes).strip()
+            try:
+                doc = fitz.open(stream=media_bytes, filetype="pdf")
+                partes = []
+                for page in doc:
+                    partes.append(page.get_text())
+                doc.close()
+                texto_pdf = "\n".join(partes).strip()
+            except Exception as e_pdf:
+                logger.warning(f"PyMuPDF falhou ao extrair texto: {e_pdf}")
+                return "[MIDIA_FALHOU]"
+
             if texto_pdf:
                 # Limitar a 4000 chars para não explodir o prompt
                 texto_pdf = texto_pdf[:4000]
-                logger.info(f"PyMuPDF extraiu {len(texto_pdf)} chars do PDF")
+                logger.info(f"PyMuPDF extraiu {len(texto_pdf)} chars do PDF ({len(media_bytes)//1024}KB)")
                 return f"[PDF recebido]\n{texto_pdf}"
-            return texto_atual
+            # PDF sem texto selecionável (pode ser escaneado)
+            logger.warning(f"PDF sem texto extraível para media_id={media_id}")
+            return "[PDF_SEM_TEXTO]"
 
     except Exception as e:
         logger.error(f"Falha ao resolver mídia ({msg_type}, media_id={media_id}): {e}", exc_info=True)
-        # Retornar marcador específico de falha para que o chamador possa
-        # informar o usuário graciosamente em vez de ignorar silenciosamente
         return "[MIDIA_FALHOU]"
 
 
@@ -1009,34 +1086,47 @@ async def _processar_mensagem_meta(payload: dict) -> None:
 
         # 4. Resolver mídia (áudio → Whisper, imagem → Claude vision, PDF → PyMuPDF)
         if media_id and texto_mensagem in ("[AUDIO_PENDENTE]", "[VIDEO_PENDENTE]", "[IMAGEM_PENDENTE]", "[DOCUMENTO_PDF_PENDENTE]"):
-            texto_mensagem = await _resolver_media_meta(msg_type, media_id, texto_mensagem)
+            texto_mensagem = await _resolver_media_meta(
+                msg_type, media_id, texto_mensagem,
+                meta_client=meta_client, numero_paciente=numero_paciente,
+            )
 
         # 5. Validar tipo de mensagem
         if not texto_mensagem.strip():
             return
 
-        if texto_mensagem == "[AUDIO_SEM_CONTEUDO]":
-            # Whisper não conseguiu transcrever — avisar o usuário antes de ignorar
-            logger.info(f"Áudio sem conteúdo detectado para {numero_paciente} — enviando aviso")
+        # Tratar marcadores de erro de mídia com mensagens específicas
+        _avisos_midia = {
+            "[AUDIO_SEM_CONTEUDO]": (
+                "Não consegui entender o áudio. "
+                "Pode reenviar em voz mais alta ou escrever o que disse?"
+            ),
+            "[MIDIA_FALHOU]": (
+                "Tive problema ao processar o arquivo. "
+                "Pode reenviar ou escrever como texto?"
+            ),
+            "[MIDIA_TOKEN_INVALIDO]": (
+                "Estou com problema técnico para acessar mídias agora. "
+                "Por favor, escreva sua mensagem como texto."
+            ),
+            "[MIDIA_MUITO_GRANDE]": (
+                "O arquivo é muito grande para eu processar. "
+                "Pode enviar uma versão menor ou escrever como texto?"
+            ),
+            "[PDF_SEM_TEXTO]": (
+                "O PDF parece ser uma imagem escaneada e não consigo ler o texto. "
+                "Pode enviar uma versão com texto selecionável?"
+            ),
+        }
+        if texto_mensagem in _avisos_midia:
+            logger.info(f"Marcador de mídia: {texto_mensagem} para {numero_paciente}")
             try:
                 await meta_client.send_text_message(
                     phone_number=numero_paciente,
-                    message="Não consegui entender o áudio. Pode reenviar como texto?",
+                    message=_avisos_midia[texto_mensagem],
                 )
             except Exception as e:
-                logger.warning(f"Falha ao enviar aviso de áudio vazio: {e}")
-            return
-
-        if texto_mensagem == "[MIDIA_FALHOU]":
-            # Falha ao baixar ou processar a mídia — avisar o usuário
-            logger.info(f"Falha de mídia para {numero_paciente} — enviando aviso")
-            try:
-                await meta_client.send_text_message(
-                    phone_number=numero_paciente,
-                    message="Não consegui processar o arquivo enviado. Pode tentar novamente ou reenviar como texto?",
-                )
-            except Exception as e:
-                logger.warning(f"Falha ao enviar aviso de falha de mídia: {e}")
+                logger.warning(f"Falha ao enviar aviso de mídia: {e}")
             return
 
         if texto_mensagem.startswith("[") and texto_mensagem.endswith("]"):

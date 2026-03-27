@@ -135,8 +135,13 @@ def _classificar_localmente(texto: str) -> Optional[ModoOperacao]:
     if num_palavras > 3:
         return None
 
-    # Mensagem muito curta sem nada reconhecível: tratar como saudação/FORA_ESCOPO
-    # Usar o detectar_modo existente como fallback final
+    # Mensagem muito curta (1 palavra ≤15 chars) sem keyword reconhecível
+    # → quase sempre é um nome ou saudação informal — tratar como SAUDACAO
+    # sem chamar LLM (economiza custo + latência)
+    if num_palavras == 1 and len(texto) <= 15:
+        logger.info(f"[ROUTER] Mensagem muito curta/nome-like → SAUDACAO local: '{texto}'")
+        return ModoOperacao.SAUDACAO
+
     return None
 
 
