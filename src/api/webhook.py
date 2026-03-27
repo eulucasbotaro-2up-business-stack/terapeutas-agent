@@ -35,12 +35,18 @@ from src.core.estado import (
     validar_codigo,
     liberar_acesso,
     registrar_nome_usuario,
+    salvar_nome_sugerido,
+    confirmar_nome_sugerido,
+    rejeitar_nome_sugerido,
     detectar_profanidade,
     registrar_violacao,
     gerar_msg_bloqueio,
     gerar_msg_ja_bloqueado,
     gerar_saudacao_ativo,
     gerar_msg_boas_vindas_nome,
+    gerar_msg_confirmar_nome,
+    MSG_PEDIR_NOME_NOVAMENTE,
+    MSG_NOME_NAO_IDENTIFICADO,
     MSGS_ONBOARDING,
     MSG_CODIGO_INVALIDO,
     MSG_CODIGO_INVALIDO_FINAL,
@@ -358,6 +364,40 @@ def _contar_tentativas_codigo(terapeuta_id: str, numero_paciente: str) -> int:
         return total
     except Exception:
         return 0
+
+
+async def _extrair_nome_com_llm(texto: str, settings) -> str:
+    """
+    Usa Claude Haiku para extrair o nome próprio de uma mensagem conversacional.
+    Ex: "Oi, bom dia! Meu nome é Fulana de Tal" → "Fulana de Tal"
+    Ex: "Lucas" → "Lucas"
+    Retorna string vazia se não encontrar nome claro.
+    """
+    import anthropic
+    client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
+    prompt = (
+        "Extraia apenas o nome próprio da pessoa nesta mensagem.\n"
+        "Responda SOMENTE com o nome (pode ser primeiro nome + sobrenome).\n"
+        "Se a mensagem não contiver um nome, responda com: SEM_NOME\n\n"
+        f"Mensagem: {texto}\n\n"
+        "Nome:"
+    )
+    try:
+        resp = await client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=30,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        nome = resp.content[0].text.strip()
+        if nome.upper() == "SEM_NOME" or not nome or len(nome) > 60:
+            return ""
+        # Garantir que é texto com letras (não lixo)
+        if not any(c.isalpha() for c in nome):
+            return ""
+        return nome
+    except Exception as e:
+        logger.warning(f"LLM name extraction falhou: {e}")
+        return ""
 
 
 def _normalizar_mime(raw_mime: str, fallback: str = "audio/ogg") -> str:
@@ -831,24 +871,74 @@ async def _processar_mensagem(payload: dict) -> None:
 
         # ── ATIVO ──────────────────────────────────────────────────────────────
 
-        # 5a. Coletar nome se ainda não temos
-        if estado.aguardando_nome:
-            # Strip de prefixo de mídia: áudio vira "[Mensagem de áudio] Lucas"
-            # sem o strip, o nome salvo seria "[Mensagem" e a saudação ficaria errada
-            texto_nome = _extrair_texto_para_codigo(texto_mensagem)
-            nome = await asyncio.to_thread(registrar_nome_usuario, terapeuta_id, numero_paciente, texto_nome)
-            msg_nome = gerar_msg_boas_vindas_nome(nome)
-            await evolution.enviar_mensagem(
-                instance=instance_name, numero=numero_paciente, texto=msg_nome,
-            )
-            await _salvar_conversa(
-                terapeuta_id=terapeuta_id, paciente_numero=numero_paciente,
-                mensagem_paciente=texto_mensagem, resposta_agente=msg_nome,
-                intencao="NOME_REGISTRADO",
-            )
+        # 5a. Aguardando confirmação do nome sugerido
+        if estado.aguardando_confirmacao_nome:
+            texto_limpo = _extrair_texto_para_codigo(texto_mensagem).lower().strip()
+            confirmou = any(p in texto_limpo for p in ["sim", "pode", "yes", "ok", "isso", "correto", "certo", "é isso", "tá", "ta"])
+            rejeitou = any(p in texto_limpo for p in ["não", "nao", "no", "errado", "errada", "outro", "outra"])
+            nome_sugerido = estado.nome_sugerido or ""
+
+            if confirmou:
+                # Confirmar nome e dar boas-vindas
+                nome = await asyncio.to_thread(confirmar_nome_sugerido, terapeuta_id, numero_paciente, nome_sugerido)
+                msg_nome = gerar_msg_boas_vindas_nome(nome)
+                await evolution.enviar_mensagem(instance=instance_name, numero=numero_paciente, texto=msg_nome)
+                await _salvar_conversa(
+                    terapeuta_id=terapeuta_id, paciente_numero=numero_paciente,
+                    mensagem_paciente=texto_mensagem, resposta_agente=msg_nome, intencao="NOME_CONFIRMADO",
+                )
+            elif rejeitou:
+                # Usuário rejeitou — pedir de novo
+                await asyncio.to_thread(rejeitar_nome_sugerido, terapeuta_id, numero_paciente)
+                await evolution.enviar_mensagem(instance=instance_name, numero=numero_paciente, texto=MSG_PEDIR_NOME_NOVAMENTE)
+                await _salvar_conversa(
+                    terapeuta_id=terapeuta_id, paciente_numero=numero_paciente,
+                    mensagem_paciente=texto_mensagem, resposta_agente=MSG_PEDIR_NOME_NOVAMENTE, intencao="NOME_REJEITADO",
+                )
+            else:
+                # Tratou como novo nome — sugerir este
+                texto_nome = _extrair_texto_para_codigo(texto_mensagem)
+                novo_nome = await _extrair_nome_com_llm(texto_nome, settings)
+                if novo_nome:
+                    await asyncio.to_thread(salvar_nome_sugerido, terapeuta_id, numero_paciente, novo_nome)
+                    msg_confirmar = gerar_msg_confirmar_nome(novo_nome)
+                    await evolution.enviar_mensagem(instance=instance_name, numero=numero_paciente, texto=msg_confirmar)
+                    await _salvar_conversa(
+                        terapeuta_id=terapeuta_id, paciente_numero=numero_paciente,
+                        mensagem_paciente=texto_mensagem, resposta_agente=msg_confirmar, intencao="NOME_NOVO_SUGERIDO",
+                    )
+                else:
+                    await asyncio.to_thread(rejeitar_nome_sugerido, terapeuta_id, numero_paciente)
+                    await evolution.enviar_mensagem(instance=instance_name, numero=numero_paciente, texto=MSG_NOME_NAO_IDENTIFICADO)
+                    await _salvar_conversa(
+                        terapeuta_id=terapeuta_id, paciente_numero=numero_paciente,
+                        mensagem_paciente=texto_mensagem, resposta_agente=MSG_NOME_NAO_IDENTIFICADO, intencao="NOME_NAO_IDENTIFICADO",
+                    )
             return
 
-        # 5b. Moderação: detectar profanidade ANTES do RAG
+        # 5b. Coletar nome se ainda não temos
+        if estado.aguardando_nome:
+            texto_nome = _extrair_texto_para_codigo(texto_mensagem)
+            nome_extraido = await _extrair_nome_com_llm(texto_nome, settings)
+            if nome_extraido:
+                # Salvar sugestão e pedir confirmação
+                await asyncio.to_thread(salvar_nome_sugerido, terapeuta_id, numero_paciente, nome_extraido)
+                msg_confirmar = gerar_msg_confirmar_nome(nome_extraido)
+                await evolution.enviar_mensagem(instance=instance_name, numero=numero_paciente, texto=msg_confirmar)
+                await _salvar_conversa(
+                    terapeuta_id=terapeuta_id, paciente_numero=numero_paciente,
+                    mensagem_paciente=texto_mensagem, resposta_agente=msg_confirmar, intencao="NOME_SUGERIDO",
+                )
+            else:
+                # Não identificou nome — pedir explicitamente
+                await evolution.enviar_mensagem(instance=instance_name, numero=numero_paciente, texto=MSG_NOME_NAO_IDENTIFICADO)
+                await _salvar_conversa(
+                    terapeuta_id=terapeuta_id, paciente_numero=numero_paciente,
+                    mensagem_paciente=texto_mensagem, resposta_agente=MSG_NOME_NAO_IDENTIFICADO, intencao="NOME_NAO_IDENTIFICADO",
+                )
+            return
+
+        # 5c. Moderação: detectar profanidade ANTES do RAG
         if detectar_profanidade(texto_mensagem):
             violacoes = await asyncio.to_thread(registrar_violacao, terapeuta_id, numero_paciente)
             aviso = MSG_AVISO_1 if violacoes == 1 else (
@@ -1636,24 +1726,69 @@ async def _processar_mensagem_meta(payload: dict) -> None:
 
         # ── ATIVO ──────────────────────────────────────────────────────────────
 
-        # 6a. Coletar nome se ainda não temos
-        if estado.aguardando_nome:
-            # Strip de prefixo de mídia: áudio vira "[Mensagem de áudio] Lucas"
-            # sem o strip, o nome salvo seria "[Mensagem" e a saudação ficaria errada
-            texto_nome = _extrair_texto_para_codigo(texto_mensagem)
-            nome = await asyncio.to_thread(registrar_nome_usuario, terapeuta_id, numero_paciente, texto_nome)
-            msg_nome = gerar_msg_boas_vindas_nome(nome)
-            await meta_client.send_text_message(
-                phone_number=numero_paciente, message=msg_nome,
-            )
-            await _salvar_conversa(
-                terapeuta_id=terapeuta_id, paciente_numero=numero_paciente,
-                mensagem_paciente=texto_mensagem, resposta_agente=msg_nome,
-                intencao="NOME_REGISTRADO",
-            )
+        # 6a. Aguardando confirmação do nome sugerido
+        if estado.aguardando_confirmacao_nome:
+            texto_limpo = _extrair_texto_para_codigo(texto_mensagem).lower().strip()
+            confirmou = any(p in texto_limpo for p in ["sim", "pode", "yes", "ok", "isso", "correto", "certo", "é isso", "tá", "ta"])
+            rejeitou = any(p in texto_limpo for p in ["não", "nao", "no", "errado", "errada", "outro", "outra"])
+            nome_sugerido = estado.nome_sugerido or ""
+
+            if confirmou:
+                nome = await asyncio.to_thread(confirmar_nome_sugerido, terapeuta_id, numero_paciente, nome_sugerido)
+                msg_nome = gerar_msg_boas_vindas_nome(nome)
+                await meta_client.send_text_message(phone_number=numero_paciente, message=msg_nome)
+                await _salvar_conversa(
+                    terapeuta_id=terapeuta_id, paciente_numero=numero_paciente,
+                    mensagem_paciente=texto_mensagem, resposta_agente=msg_nome, intencao="NOME_CONFIRMADO",
+                )
+            elif rejeitou:
+                await asyncio.to_thread(rejeitar_nome_sugerido, terapeuta_id, numero_paciente)
+                await meta_client.send_text_message(phone_number=numero_paciente, message=MSG_PEDIR_NOME_NOVAMENTE)
+                await _salvar_conversa(
+                    terapeuta_id=terapeuta_id, paciente_numero=numero_paciente,
+                    mensagem_paciente=texto_mensagem, resposta_agente=MSG_PEDIR_NOME_NOVAMENTE, intencao="NOME_REJEITADO",
+                )
+            else:
+                texto_nome = _extrair_texto_para_codigo(texto_mensagem)
+                novo_nome = await _extrair_nome_com_llm(texto_nome, settings)
+                if novo_nome:
+                    await asyncio.to_thread(salvar_nome_sugerido, terapeuta_id, numero_paciente, novo_nome)
+                    msg_confirmar = gerar_msg_confirmar_nome(novo_nome)
+                    await meta_client.send_text_message(phone_number=numero_paciente, message=msg_confirmar)
+                    await _salvar_conversa(
+                        terapeuta_id=terapeuta_id, paciente_numero=numero_paciente,
+                        mensagem_paciente=texto_mensagem, resposta_agente=msg_confirmar, intencao="NOME_NOVO_SUGERIDO",
+                    )
+                else:
+                    await asyncio.to_thread(rejeitar_nome_sugerido, terapeuta_id, numero_paciente)
+                    await meta_client.send_text_message(phone_number=numero_paciente, message=MSG_NOME_NAO_IDENTIFICADO)
+                    await _salvar_conversa(
+                        terapeuta_id=terapeuta_id, paciente_numero=numero_paciente,
+                        mensagem_paciente=texto_mensagem, resposta_agente=MSG_NOME_NAO_IDENTIFICADO, intencao="NOME_NAO_IDENTIFICADO",
+                    )
             return
 
-        # 6b. Moderação: detectar profanidade ANTES do RAG
+        # 6b. Coletar nome se ainda não temos
+        if estado.aguardando_nome:
+            texto_nome = _extrair_texto_para_codigo(texto_mensagem)
+            nome_extraido = await _extrair_nome_com_llm(texto_nome, settings)
+            if nome_extraido:
+                await asyncio.to_thread(salvar_nome_sugerido, terapeuta_id, numero_paciente, nome_extraido)
+                msg_confirmar = gerar_msg_confirmar_nome(nome_extraido)
+                await meta_client.send_text_message(phone_number=numero_paciente, message=msg_confirmar)
+                await _salvar_conversa(
+                    terapeuta_id=terapeuta_id, paciente_numero=numero_paciente,
+                    mensagem_paciente=texto_mensagem, resposta_agente=msg_confirmar, intencao="NOME_SUGERIDO",
+                )
+            else:
+                await meta_client.send_text_message(phone_number=numero_paciente, message=MSG_NOME_NAO_IDENTIFICADO)
+                await _salvar_conversa(
+                    terapeuta_id=terapeuta_id, paciente_numero=numero_paciente,
+                    mensagem_paciente=texto_mensagem, resposta_agente=MSG_NOME_NAO_IDENTIFICADO, intencao="NOME_NAO_IDENTIFICADO",
+                )
+            return
+
+        # 6c. Moderação: detectar profanidade ANTES do RAG
         if detectar_profanidade(texto_mensagem):
             violacoes = await asyncio.to_thread(registrar_violacao, terapeuta_id, numero_paciente)
             aviso = MSG_AVISO_1 if violacoes == 1 else (

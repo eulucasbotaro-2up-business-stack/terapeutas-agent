@@ -143,6 +143,14 @@ MSGS_ACESSO_LIBERADO: list[str] = [
     "Antes de começar, como posso te chamar?",
 ]
 
+# --- Confirmação de nome ---
+def gerar_msg_confirmar_nome(nome: str) -> str:
+    nome_fmt = nome.strip().split()[0].capitalize()
+    return f"Posso te chamar de *{nome_fmt}*? 😊"
+
+MSG_PEDIR_NOME_NOVAMENTE = "Tudo bem! Como você prefere ser chamado(a)?"
+MSG_NOME_NAO_IDENTIFICADO = "Qual é o seu nome? Como posso te chamar?"
+
 # --- Nome registrado: iniciar conversa ---
 def gerar_msg_boas_vindas_nome(nome: str) -> str:
     import random
@@ -244,6 +252,11 @@ class EstadoChat:
         # --- Campos de memória e sessão (schema_memoria.sql) ---
         self.ultima_mensagem_em: Optional[str] = row.get("ultima_mensagem_em")
         self.sessao_atual_inicio: Optional[str] = row.get("sessao_atual_inicio")
+        # Confirmação de nome
+        self.aguardando_confirmacao_nome: bool = bool(
+            row.get("aguardando_confirmacao_nome", False)
+        )
+        self.nome_sugerido: Optional[str] = row.get("nome_sugerido")
         # Confirmação de mudança de tópico
         self.aguardando_confirmacao_topico: bool = bool(
             row.get("aguardando_confirmacao_topico", False)
@@ -265,8 +278,8 @@ class EstadoChat:
 
     @property
     def aguardando_nome(self) -> bool:
-        """True quando ATIVO mas ainda não coletamos o nome."""
-        return self.is_ativo and not self.nome_usuario
+        """True quando ATIVO, sem nome confirmado e sem confirmação de nome pendente."""
+        return self.is_ativo and not self.nome_usuario and not self.aguardando_confirmacao_nome
 
 
 # =============================================================================
@@ -515,6 +528,67 @@ def registrar_nome_usuario(
 
     logger.info(f"Nome registrado: '{nome}' para {numero_telefone}")
     return nome
+
+
+def salvar_nome_sugerido(
+    terapeuta_id: str,
+    numero_telefone: str,
+    nome_sugerido: str,
+) -> None:
+    """
+    Salva um nome sugerido (extraído pelo LLM) e sinaliza que estamos aguardando confirmação.
+    Não grava em nome_usuario ainda — só em nome_sugerido.
+    """
+    supabase = get_supabase()
+    supabase.table("chat_estado").update({
+        "nome_sugerido": nome_sugerido,
+        "aguardando_confirmacao_nome": True,
+        "atualizado_em": datetime.now(timezone.utc).isoformat(),
+    }).eq("terapeuta_id", terapeuta_id).eq(
+        "numero_telefone", numero_telefone
+    ).execute()
+    logger.info(f"Nome sugerido salvo: '{nome_sugerido}' para {numero_telefone}")
+
+
+def confirmar_nome_sugerido(
+    terapeuta_id: str,
+    numero_telefone: str,
+    nome_sugerido: str,
+) -> str:
+    """
+    Confirma o nome sugerido: salva em nome_usuario e limpa os campos de sugestão.
+    Returns o nome formatado (primeira palavra, capitalizado).
+    """
+    nome_fmt = nome_sugerido.strip().split()[0].capitalize()
+    supabase = get_supabase()
+    supabase.table("chat_estado").update({
+        "nome_usuario": nome_fmt,
+        "nome_sugerido": None,
+        "aguardando_confirmacao_nome": False,
+        "atualizado_em": datetime.now(timezone.utc).isoformat(),
+    }).eq("terapeuta_id", terapeuta_id).eq(
+        "numero_telefone", numero_telefone
+    ).execute()
+    logger.info(f"Nome confirmado: '{nome_fmt}' para {numero_telefone}")
+    return nome_fmt
+
+
+def rejeitar_nome_sugerido(
+    terapeuta_id: str,
+    numero_telefone: str,
+) -> None:
+    """
+    Usuário rejeitou o nome sugerido. Limpa sugestão e volta a pedir o nome.
+    """
+    supabase = get_supabase()
+    supabase.table("chat_estado").update({
+        "nome_sugerido": None,
+        "aguardando_confirmacao_nome": False,
+        "atualizado_em": datetime.now(timezone.utc).isoformat(),
+    }).eq("terapeuta_id", terapeuta_id).eq(
+        "numero_telefone", numero_telefone
+    ).execute()
+    logger.info(f"Nome sugerido rejeitado para {numero_telefone}")
 
 
 def detectar_profanidade(texto: str) -> bool:
