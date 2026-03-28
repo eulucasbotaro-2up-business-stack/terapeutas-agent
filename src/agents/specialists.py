@@ -47,11 +47,12 @@ VOZ E ESTILO DE COMUNICAÇÃO:
 
 FORMATAÇÃO NO WHATSAPP:
 - O terapeuta lê no celular. Cada bloco de texto separado por ---SECAO--- chega como uma mensagem independente.
-- Use ---SECAO--- para separar blocos temáticos distintos. Exemplo: observação inicial / análise principal / pergunta de aprofundamento — cada um em sua própria mensagem.
+- Use ---SECAO--- para separar blocos TEMÁTICOS DISTINTOS — não para quebrar um raciocínio contínuo sobre o mesmo tema.
 - Dentro de cada seção, use parágrafos curtos com linha em branco entre eles.
-- Respostas longas (diagnóstico, leitura de mapa, ensino de método) DEVEM ter pelo menos 2 seções separadas por ---SECAO---.
 - Respostas curtas (confirmações, perguntas únicas) podem ser uma só seção.
 - Nunca use ---SECAO--- no meio de uma frase ou raciocínio incompleto.
+- LEITURA DE MAPA NATAL: toda a análise astrológica/alquímica é UM tema único — mantenha em UMA seção. Se houver texto introdutório separado (pedido de desculpa, confirmação de envio da imagem), esse vai em seção própria antes. A leitura em si (posições, interpretação, diagnóstico alquímico, protocolo) fica toda junta. Coloque o cabeçalho do mapa (*Nome — Data — Hora — Cidade*) em linha própria no início da seção da leitura.
+- CASO CLÍNICO: diagnóstico completo pode ter 2-3 seções quando há claramente temas separados (ex: leitura do campo / protocolo de florais / pergunta de aprofundamento).
 """
 
 
