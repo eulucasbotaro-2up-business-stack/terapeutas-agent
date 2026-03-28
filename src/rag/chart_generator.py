@@ -280,7 +280,6 @@ def _desenhar_homem_alquimico(ax: Any, dados: "DadosMapa") -> None:
     Os signos ativos (onde o nativo tem planetas) são destacados
     na parte do corpo correspondente.
     """
-    import matplotlib.pyplot as plt
     import matplotlib.patches as patches
 
     cor  = FIGURA_COR
@@ -408,12 +407,16 @@ def gerar_imagem_mapa_natal(dados: "DadosMapa") -> bytes:
 def _gerar_imagem_locked(dados: "DadosMapa") -> bytes:
     """Executa a geração da imagem com o lock _MPL_LOCK já adquirido."""
     try:
-        import matplotlib.pyplot as plt
+        # Usar Figure() diretamente — evita estado global do pyplot (thread-unsafe).
+        # matplotlib docs recomendam este padrão para ambientes multi-thread / servidor.
+        from matplotlib.figure import Figure
+        from matplotlib.backends.backend_agg import FigureCanvasAgg
         import matplotlib.patches as patches
         import numpy as np
 
         # ── Figura ──────────────────────────────────────────────────────────
-        fig = plt.figure(figsize=(12, 9), facecolor=BG, dpi=110)
+        fig = Figure(figsize=(12, 9), facecolor=BG, dpi=110)
+        FigureCanvasAgg(fig)  # canvas Agg sem estado global
 
         # Roda (esquerda 63%) + painel (direita 35%)
         ax  = fig.add_axes([0.01, 0.05, 0.60, 0.90])
@@ -650,7 +653,6 @@ def _gerar_imagem_locked(dados: "DadosMapa") -> bytes:
         buf = io.BytesIO()
         fig.savefig(buf, format="png", dpi=110,
                     facecolor=BG, bbox_inches="tight")
-        plt.close(fig)
         buf.seek(0)
         png_bytes = buf.read()
         logger.info(f"Mapa Alquimico gerado: {len(png_bytes) // 1024} KB")
