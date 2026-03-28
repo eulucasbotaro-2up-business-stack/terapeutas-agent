@@ -233,10 +233,10 @@ def gerar_resposta_confusao(nome: Optional[str]) -> str:
     nome_fmt = nome.strip().split()[0].capitalize() if nome else ""
 
     variacoes = [
-        f"{'Pode continuar, ' + nome_fmt + '.' if nome_fmt else 'Pode continuar.'} Fico à disposição.",
-        f"{'Pode falar, ' + nome_fmt + '.' if nome_fmt else 'Pode falar.'} Estou aqui.",
-        "Tô aqui. Pode mandar.",
-        "Me conta mais. Estou de olho no que você trouxe.",
+        f"{'Continua, ' + nome_fmt + '.' if nome_fmt else 'Continua.'}",
+        f"{'Fala, ' + nome_fmt + '.' if nome_fmt else 'Fala.'}",
+        "Me conta.",
+        "Continua.",
     ]
     return random.choice(variacoes)
 
