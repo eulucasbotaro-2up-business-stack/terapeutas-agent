@@ -96,4 +96,7 @@ KEYWORDS_REFAZER_MAPA = {
     "manda de novo", "tenta de novo", "tenta novamente", "gerar novamente",
     "enviar novamente", "envia de novo", "manda o mapa", "cadê o mapa",
     "onde está o mapa", "nao recebi o mapa", "não recebi o mapa",
+    "reenvia", "reenviar", "me reenvia", "reenvia o mapa", "reenviar o mapa",
+    "refaz a imagem", "gera a imagem", "manda a imagem", "envia a imagem",
+    "nao chegou o mapa", "não chegou o mapa", "mapa nao chegou", "mapa não chegou",
 }

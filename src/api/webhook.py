@@ -1299,12 +1299,14 @@ async def _processar_mensagem(payload: dict) -> None:
                         # Nota vai para o system prompt (não para chunks — evita LLM reproduzir o texto)
                         _nota_imagem_sp = (
                             "\n\nINSTRUCAO INTERNA — nao reproduza este aviso na resposta: "
-                            "A imagem do mapa alquimico foi enviada ao terapeuta antes desta mensagem. "
-                            "Confirme brevemente que a imagem foi enviada e inicie a leitura alquimica."
+                            "A imagem do mapa alquimico foi enviada ao terapeuta como arquivo separado antes desta mensagem. "
+                            "Confirme em UMA frase curta que o mapa foi enviado e inicie a leitura alquimica completa."
                             if imagem_enviada else
                             "\n\nINSTRUCAO INTERNA — nao reproduza este aviso na resposta: "
-                            "A imagem do mapa nao foi enviada desta vez por instabilidade tecnica. "
-                            "O usuario ja foi avisado. Inicie direto a leitura alquimica sem mencionar a imagem."
+                            "A imagem do mapa NAO foi enviada desta vez por instabilidade tecnica. "
+                            "O terapeuta JA foi avisado sobre o problema via mensagem anterior. "
+                            "ENTREGUE A LEITURA ALQUIMICA COMPLETA AGORA — nao peca permissao, nao pergunte se deve continuar, nao mencione a imagem. "
+                            "Se o terapeuta pedir para reenviar a imagem, diga que ele deve digitar 'refazer mapa'."
                         )
                         mapa_prefixo = (
                             f"MAPA NATAL CALCULADO AUTOMATICAMENTE (Swiss Ephemeris — dado preciso, nao alucinado):\n"
@@ -2398,12 +2400,14 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                         # Nota vai para o system prompt (não para chunks — evita LLM reproduzir o texto)
                         _nota_imagem_sp = (
                             "\n\nINSTRUCAO INTERNA — nao reproduza este aviso na resposta: "
-                            "A imagem do mapa alquimico foi enviada ao terapeuta antes desta mensagem. "
-                            "Confirme brevemente que a imagem foi enviada e inicie a leitura alquimica."
+                            "A imagem do mapa alquimico foi enviada ao terapeuta como arquivo separado antes desta mensagem. "
+                            "Confirme em UMA frase curta que o mapa foi enviado e inicie a leitura alquimica completa."
                             if imagem_enviada else
                             "\n\nINSTRUCAO INTERNA — nao reproduza este aviso na resposta: "
-                            "A imagem do mapa nao foi enviada desta vez por instabilidade tecnica. "
-                            "O usuario ja foi avisado. Inicie direto a leitura alquimica sem mencionar a imagem."
+                            "A imagem do mapa NAO foi enviada desta vez por instabilidade tecnica. "
+                            "O terapeuta JA foi avisado sobre o problema via mensagem anterior. "
+                            "ENTREGUE A LEITURA ALQUIMICA COMPLETA AGORA — nao peca permissao, nao pergunte se deve continuar, nao mencione a imagem. "
+                            "Se o terapeuta pedir para reenviar a imagem, diga que ele deve digitar 'refazer mapa'."
                         )
                         mapa_prefixo = (
                             f"MAPA NATAL CALCULADO AUTOMATICAMENTE (Swiss Ephemeris — dado preciso, nao alucinado):\n"

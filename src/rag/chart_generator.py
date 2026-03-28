@@ -9,6 +9,13 @@ Design:
 - Painel direito com posições e distribuição de elementos
 """
 
+import os
+import threading
+
+# MPLCONFIGDIR antes de qualquer import matplotlib — necessário em Docker onde /root pode
+# não ser gravável. /tmp é sempre gravável em containers.
+os.environ.setdefault("MPLCONFIGDIR", "/tmp/matplotlib_cache")
+
 import matplotlib
 matplotlib.use("Agg")  # backend sem GUI — obrigatório ANTES de qualquer import pyplot
 
@@ -18,6 +25,10 @@ import math
 from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
+
+# Lock para thread safety — matplotlib não é thread-safe por padrão.
+# asyncio.to_thread usa thread pool; requests concorrentes poderiam colidir.
+_MPL_LOCK = threading.Lock()
 
 # ---------------------------------------------------------------------------
 # Cores
@@ -390,6 +401,12 @@ def gerar_imagem_mapa_natal(dados: "DadosMapa") -> bytes:
     Gera PNG do Mapa Alquimico — roda zodiacal com homem no centro.
     Retorna bytes PNG. Levanta RuntimeError se falhar.
     """
+    with _MPL_LOCK:
+        return _gerar_imagem_locked(dados)
+
+
+def _gerar_imagem_locked(dados: "DadosMapa") -> bytes:
+    """Executa a geração da imagem com o lock _MPL_LOCK já adquirido."""
     try:
         import matplotlib.pyplot as plt
         import matplotlib.patches as patches
@@ -419,9 +436,12 @@ def gerar_imagem_mapa_natal(dados: "DadosMapa") -> bytes:
         R_ASP  = 0.59   # linhas de aspectos
 
         # ── Anel zodiacal ────────────────────────────────────────────────────
+        # Cada signo ocupa exatamente 30° no sentido horário (sentido da progressão zodiacal).
+        # ang0 sempre diminui 30° para ang1 — sem linspace entre pontos que cruzam ±π.
+        SEG_RAD = math.pi / 6  # 30° em radianos
         for i, abrev in enumerate(SIGNOS_ABREV):
             ang0 = _grau_para_rad(i * 30.0, asc)
-            ang1 = _grau_para_rad((i + 1) * 30.0, asc)
+            ang1 = ang0 - SEG_RAD  # sempre exatos 30° horários — sem wrap-around
             cor  = ELEMENTO_COR.get(abrev, "#CCCCCC")
             t    = np.linspace(ang0, ang1, 40)
 
@@ -431,13 +451,13 @@ def gerar_imagem_mapa_natal(dados: "DadosMapa") -> bytes:
             ax.fill(xs, ys, color=cor, alpha=0.18, zorder=2)
 
             # Bordas do segmento
-            ang_div = _grau_para_rad(i * 30.0, asc)
+            ang_div = ang0
             x0, y0 = _xy(R_ZOD, ang_div)
             x1, y1 = _xy(R_EXT, ang_div)
             ax.plot([x0, x1], [y0, y1], color=cor, lw=0.8, alpha=0.55, zorder=3)
 
-            # Rótulo do signo (abreviação 2 letras)
-            ang_m = (ang0 + ang1) / 2
+            # Rótulo do signo (abreviação 2 letras) — posicionado no meio do segmento
+            ang_m = ang0 - SEG_RAD / 2
             sx, sy = _xy((R_ZOD + R_EXT) / 2, ang_m)
             label = SIGNO_LABEL.get(abrev, abrev[:2])
             ax.text(sx, sy, label,
@@ -457,8 +477,8 @@ def gerar_imagem_mapa_natal(dados: "DadosMapa") -> bytes:
             ax.plot([x0, x1], [y0, y1],
                     color=OURO if eixo else LINHA_GRADE,
                     lw=1.4 if eixo else 0.6, zorder=6)
-            # Número da casa
-            ang_n = _grau_para_rad((i + 0.5) * 30.0, asc)
+            # Número da casa — posicionado 15° depois da borda (metade do segmento)
+            ang_n = ang - SEG_RAD / 2
             nx, ny = _xy((R_CSA + R_ZOD) / 2 - 0.01, ang_n)
             ax.text(nx, ny, str(i + 1),
                     ha="center", va="center", fontsize=7,
