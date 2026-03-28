@@ -604,6 +604,106 @@ def extrair_dados_nascimento(texto: str) -> Optional[dict]:
     return None
 
 
+# ---------------------------------------------------------------------------
+# Extração de dados de nascimento via LLM (agente robusto)
+# ---------------------------------------------------------------------------
+
+_PROMPT_NASC_LLM = """\
+Analise o texto abaixo e extraia dados de nascimento de uma pessoa específica, SE existirem.
+
+Texto:
+\"\"\"{texto}\"\"\"
+
+Retorne APENAS JSON válido (sem markdown, sem explicação, sem texto extra):
+{{"nome": "Nome Completo", "data": "DD/MM/AAAA", "hora": "HH:MM", "cidade": "Cidade"}}
+
+Regras obrigatórias:
+- Só extraia se o texto contiver data + hora + cidade de nascimento de alguém
+- Normalize cidade: "SP" → "São Paulo", "São Paulo capital" → "São Paulo",
+  "Rio" → "Rio de Janeiro", "BH" → "Belo Horizonte", "BSB" → "Brasília",
+  "Sampa" → "São Paulo", use o nome completo da cidade sempre
+- Data obrigatoriamente em DD/MM/AAAA
+- Hora em HH:MM (24h); "meio-dia"/"12h" = "12:00", "meia-noite" = "00:00"
+- Nome: extraia se presente no texto; caso contrário use null
+- Se NÃO há dados de nascimento completos (data + hora + cidade), retorne exatamente:
+  {{"nome": null, "data": null, "hora": null, "cidade": null}}
+- Não invente dados que não estão no texto"""
+
+
+async def extrair_dados_nascimento_llm(texto: str) -> Optional[dict]:
+    """
+    Agente LLM (Claude Haiku) para extrair dados de nascimento de qualquer formato.
+
+    Muito mais robusto que regex: interpreta linguagem natural, áudio transcrito,
+    abreviações de cidades ("SP", "BH", "Rio"), datas por extenso, variações de hora.
+
+    Fallback automático para regex se a chamada LLM falhar.
+
+    Args:
+        texto: Texto a ser analisado (pode ser mensagem, histórico concatenado, transcrição de áudio)
+
+    Returns:
+        Dict com 'nome', 'data' (DD/MM/AAAA), 'hora' (HH:MM), 'cidade' ou None se incompleto.
+    """
+    import asyncio
+    import json as _json
+
+    if not texto or len(texto.strip()) < 5:
+        return None
+
+    # Pré-filtro rápido: sem dígito → sem data/hora → não há nascimento
+    if not re.search(r"\d", texto):
+        return None
+
+    try:
+        import anthropic
+        from src.core.config import get_settings
+
+        settings = get_settings()
+        client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
+
+        resposta = await asyncio.wait_for(
+            client.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=150,
+                messages=[{
+                    "role": "user",
+                    "content": _PROMPT_NASC_LLM.format(texto=texto[:600]),
+                }],
+            ),
+            timeout=12.0,
+        )
+
+        texto_resp = resposta.content[0].text.strip()
+        # Remove blocos markdown se o modelo insistir em adicioná-los
+        texto_resp = re.sub(r"^```(?:json)?\s*", "", texto_resp)
+        texto_resp = re.sub(r"\s*```$", "", texto_resp).strip()
+
+        dados = _json.loads(texto_resp)
+
+        # Normalizar: converter string "null" para None real
+        nome  = dados.get("nome")  if dados.get("nome")  not in (None, "null", "") else None
+        data  = dados.get("data")  if dados.get("data")  not in (None, "null", "") else None
+        hora  = dados.get("hora")  if dados.get("hora")  not in (None, "null", "") else None
+        cidade = dados.get("cidade") if dados.get("cidade") not in (None, "null", "") else None
+
+        if data and hora and cidade:
+            resultado = {"data": data, "hora": hora, "cidade": cidade}
+            resultado["nome"] = nome if nome else "Paciente"
+            print(f"[NASC-LLM] Extraído: {resultado}", flush=True)
+            logger.info(f"LLM extraiu dados de nascimento: {resultado}")
+            return resultado
+
+        # Sem dados completos → None (não ativa cálculo de mapa)
+        return None
+
+    except Exception as llm_err:
+        print(f"[NASC-LLM] Falhou ({type(llm_err).__name__}: {llm_err}) — fallback regex", flush=True)
+        logger.warning(f"Extração LLM de nascimento falhou — usando regex: {llm_err}")
+        # Fallback robusto para o extrator regex
+        return extrair_dados_nascimento(texto)
+
+
 def gerar_mapa_completo(
     nome: str,
     data_nascimento: str,

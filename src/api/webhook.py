@@ -68,7 +68,7 @@ from src.core.memoria import (
 )
 from src.rag.retriever import buscar_contexto
 from src.rag.generator import gerar_resposta, classificar_intencao
-from src.rag.astrologia import calcular_mapa_natal, extrair_dados_nascimento, gerar_mapa_completo
+from src.rag.astrologia import calcular_mapa_natal, extrair_dados_nascimento, extrair_dados_nascimento_llm, gerar_mapa_completo
 from src.agents.capabilities import (
     KEYWORDS_PEDIDO_MAPA, KEYWORDS_REFAZER_MAPA,
     NUMERO_SUPORTE,
@@ -1185,11 +1185,11 @@ async def _processar_mensagem(payload: dict) -> None:
                     )
                     texto_busca_nascimento = f"{texto_para_processar}\n{msgs_historico}"
 
-                dados_nasc = extrair_dados_nascimento(texto_busca_nascimento)
+                dados_nasc = await extrair_dados_nascimento_llm(texto_busca_nascimento)
 
                 # Interceptor: "refazer mapa" — busca dados do histórico e regera
                 if _eh_pedido_refazer_mapa(texto_para_processar):
-                    dados_hist = extrair_dados_nascimento(
+                    dados_hist = await extrair_dados_nascimento_llm(
                         " ".join(
                             (m.get("content", "") or m.get("conteudo", "") or m.get("mensagem", "") or "")
                             for m in (historico or [])
@@ -2316,13 +2316,13 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                     )
                     texto_busca_nascimento = f"{texto_para_processar}\n{msgs_historico}"
 
-                dados_nasc = extrair_dados_nascimento(texto_busca_nascimento)
+                dados_nasc = await extrair_dados_nascimento_llm(texto_busca_nascimento)
                 if dados_nasc:
                     print(f"[META-NASC] dados_nasc={dados_nasc} | msg='{texto_para_processar[:80]}'", flush=True)
 
                 # Interceptor: "refazer mapa" — busca dados do histórico e regera
                 if _eh_pedido_refazer_mapa(texto_para_processar):
-                    dados_hist = extrair_dados_nascimento(
+                    dados_hist = await extrair_dados_nascimento_llm(
                         " ".join(
                             (m.get("content", "") or m.get("conteudo", "") or m.get("mensagem", "") or "")
                             for m in (historico or [])
