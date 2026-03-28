@@ -1999,28 +1999,6 @@ async def _processar_mensagem_meta(payload: dict) -> None:
             resposta_texto = MENSAGEM_FORA_ESCOPO
 
         elif modo in (ModoOperacao.CONSULTA, ModoOperacao.CRIACAO_CONTEUDO, ModoOperacao.PESQUISA):
-            # 10a. Detectar mudança de assunto antes de responder
-            if (
-                not estado.aguardando_confirmacao_topico
-                and historico
-                and len(historico) >= 6
-            ):
-                mudou, topico_ant = detectar_mudanca_assunto(historico, texto_para_processar)
-                if mudou:
-                    await salvar_confirmacao_topico(
-                        terapeuta_id, numero_paciente, texto_para_processar, topico_ant
-                    )
-                    confirmacao = gerar_msg_confirma_mudanca(topico_ant, estado.nome_usuario)
-                    await meta_client.send_text_message(
-                        phone_number=numero_paciente, message=confirmacao,
-                    )
-                    await _salvar_conversa(
-                        terapeuta_id=terapeuta_id, paciente_numero=numero_paciente,
-                        mensagem_paciente=texto_mensagem, resposta_agente=confirmacao,
-                        intencao="CONFIRMACAO_TOPICO",
-                    )
-                    asyncio.create_task(atualizar_timestamp_mensagem(terapeuta_id, numero_paciente))
-                    return
 
             # Classificar intenção apenas no branch RAG (economiza chamada Haiku)
             intencao = await classificar_intencao(texto_para_processar)
