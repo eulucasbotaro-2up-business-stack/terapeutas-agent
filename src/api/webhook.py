@@ -69,7 +69,7 @@ from src.core.memoria import (
 from src.rag.retriever import buscar_contexto
 from src.rag.generator import gerar_resposta, classificar_intencao
 from src.rag.astrologia import calcular_mapa_natal, extrair_dados_nascimento, gerar_mapa_completo
-from src.agents.capabilities import KEYWORDS_PEDIDO_MAPA
+from src.agents.capabilities import KEYWORDS_PEDIDO_MAPA, KEYWORDS_REFAZER_MAPA
 from src.rag.aprendizado import (
     analisar_conversa,
     carregar_contexto_terapeuta,
@@ -1176,6 +1176,25 @@ async def _processar_mensagem(payload: dict) -> None:
 
                 dados_nasc = extrair_dados_nascimento(texto_busca_nascimento)
 
+                # Interceptor: "refazer mapa" — busca dados do histórico e regera
+                if _eh_pedido_refazer_mapa(texto_para_processar):
+                    dados_hist = extrair_dados_nascimento(
+                        " ".join(
+                            (m.get("content", "") or m.get("conteudo", "") or m.get("mensagem", "") or "")
+                            for m in (historico or [])
+                        )
+                    )
+                    if dados_hist and not dados_hist.get("falta_ano"):
+                        # Tem dados no histórico — injeta como se fossem novos para o path normal processar
+                        dados_nasc = dados_hist
+                        logger.info(f"[Evolution] Refazer mapa: dados recuperados do histórico para {numero_paciente}")
+                    else:
+                        await evolution.enviar_mensagem(
+                            instance=instance_name, numero=numero_paciente,
+                            texto="Para refazer o mapa, preciso dos dados de nascimento novamente. Me manda nome, data, hora e cidade.",
+                        )
+                        return
+
                 # Interceptor pré-LLM: pedido de mapa sem nenhum dado → responder direto
                 if not dados_nasc and _eh_pedido_mapa_sem_dados(texto_para_processar, historico):
                     await evolution.enviar_mensagem(
@@ -1211,6 +1230,19 @@ async def _processar_mensagem(payload: dict) -> None:
                     return
                 elif dados_nasc and not dados_nasc.get("falta_ano"):
                     _nota_imagem_sp = ""
+                    # Pré-mensagem: avisa que está gerando (melhora UX)
+                    nome_nasc_pre = dados_nasc.get("nome", "")
+                    msg_gerando = (
+                        f"Calculando o mapa alquímico de {nome_nasc_pre} agora."
+                        if nome_nasc_pre else "Calculando o mapa alquímico agora."
+                    )
+                    msg_gerando += " A imagem chega em instantes — já faço a leitura na sequência."
+                    try:
+                        await evolution.enviar_mensagem(
+                            instance=instance_name, numero=numero_paciente, texto=msg_gerando,
+                        )
+                    except Exception:
+                        pass  # pré-mensagem não é crítica
                     try:
                         mapa_resultado, mapa_png = await asyncio.to_thread(
                             gerar_mapa_completo,
@@ -1222,34 +1254,54 @@ async def _processar_mensagem(payload: dict) -> None:
                         imagem_enviada = False
                         # Enviar imagem do mapa natal antes da resposta textual
                         if mapa_png:
-                            try:
-                                caption_img = (
-                                    f"Mapa Natal — {dados_nasc.get('nome', 'Paciente')}\n"
-                                    f"{dados_nasc['data']} {dados_nasc['hora']} | {dados_nasc['cidade']}"
-                                )
-                                resp_img = await evolution.enviar_imagem(
-                                    instance=instance_name,
-                                    numero=numero_paciente,
-                                    imagem_bytes=mapa_png,
-                                    caption=caption_img,
-                                )
-                                imagem_enviada = True
-                                logger.info(f"Imagem do mapa natal enviada para {numero_paciente} — Evolution | resp={resp_img}")
-                            except Exception as img_send_err:
-                                logger.warning(
-                                    f"Envio da imagem do mapa natal falhou (Evolution): {img_send_err}",
-                                    exc_info=True,
-                                )
+                            for tentativa_img in range(1, 3):  # até 2 tentativas
+                                try:
+                                    caption_img = (
+                                        f"Mapa Natal — {dados_nasc.get('nome', 'Paciente')}\n"
+                                        f"{dados_nasc['data']} {dados_nasc['hora']} | {dados_nasc['cidade']}"
+                                    )
+                                    resp_img = await evolution.enviar_imagem(
+                                        instance=instance_name,
+                                        numero=numero_paciente,
+                                        imagem_bytes=mapa_png,
+                                        caption=caption_img,
+                                    )
+                                    imagem_enviada = True
+                                    logger.info(f"Imagem enviada para {numero_paciente} — Evolution tentativa {tentativa_img} | resp={resp_img}")
+                                    break
+                                except Exception as img_send_err:
+                                    logger.warning(
+                                        f"Envio da imagem falhou tentativa {tentativa_img}/2 (Evolution): {img_send_err}",
+                                        exc_info=True,
+                                    )
+                                    if tentativa_img < 2:
+                                        await asyncio.sleep(2)
                         else:
                             logger.warning(f"mapa_png é None para {numero_paciente} — imagem não gerada (Evolution)")
+
+                        # Se imagem não chegou, avisa o usuário com instrução de retry
+                        if not imagem_enviada:
+                            msg_fallback = (
+                                "Não consegui gerar a imagem do mapa agora — houve uma instabilidade técnica. "
+                                "A leitura completa segue abaixo. Para tentar gerar a imagem de novo, "
+                                "envie: *refazer mapa*"
+                            )
+                            try:
+                                await evolution.enviar_mensagem(
+                                    instance=instance_name, numero=numero_paciente, texto=msg_fallback,
+                                )
+                            except Exception:
+                                pass
 
                         # Nota vai para o system prompt (não para chunks — evita LLM reproduzir o texto)
                         _nota_imagem_sp = (
                             "\n\nINSTRUCAO INTERNA — nao reproduza este aviso na resposta: "
                             "A imagem do mapa alquimico foi enviada ao terapeuta antes desta mensagem. "
-                            "Confirme brevemente que a imagem foi enviada e faca a leitura. "
-                            "Nunca diga que nao consegue gerar imagens."
-                            if imagem_enviada else ""
+                            "Confirme brevemente que a imagem foi enviada e inicie a leitura alquimica."
+                            if imagem_enviada else
+                            "\n\nINSTRUCAO INTERNA — nao reproduza este aviso na resposta: "
+                            "A imagem do mapa nao foi enviada desta vez por instabilidade tecnica. "
+                            "O usuario ja foi avisado. Inicie direto a leitura alquimica sem mencionar a imagem."
                         )
                         mapa_prefixo = (
                             f"MAPA NATAL CALCULADO AUTOMATICAMENTE (Swiss Ephemeris — dado preciso, nao alucinado):\n"
@@ -1265,6 +1317,13 @@ async def _processar_mensagem(payload: dict) -> None:
                             f"Cálculo de mapa natal falhou (Evolution) — continuando sem mapa: {mapa_err}",
                             exc_info=True,
                         )
+                        try:
+                            await evolution.enviar_mensagem(
+                                instance=instance_name, numero=numero_paciente,
+                                texto="Não consegui calcular o mapa agora. Pode reenviar os dados de nascimento?",
+                            )
+                        except Exception:
+                            pass
 
             # Selecionar prompt do agente especialista com fallback para None (usa genérico)
             try:
@@ -1448,6 +1507,12 @@ _MSG_PEDE_DADOS_MAPA = (
     "Nome completo, data de nascimento (dia, mês e ano), hora exata de nascimento e cidade onde nasceu.\n\n"
     "Me manda isso que calculo na hora."
 )
+
+
+def _eh_pedido_refazer_mapa(texto: str) -> bool:
+    """Retorna True se o usuário está pedindo para reenviar/refazer o mapa."""
+    texto_lower = texto.lower().strip()
+    return any(kw in texto_lower for kw in KEYWORDS_REFAZER_MAPA)
 
 
 # =============================================
@@ -2214,6 +2279,24 @@ async def _processar_mensagem_meta(payload: dict) -> None:
 
                 dados_nasc = extrair_dados_nascimento(texto_busca_nascimento)
 
+                # Interceptor: "refazer mapa" — busca dados do histórico e regera
+                if _eh_pedido_refazer_mapa(texto_para_processar):
+                    dados_hist = extrair_dados_nascimento(
+                        " ".join(
+                            (m.get("content", "") or m.get("conteudo", "") or m.get("mensagem", "") or "")
+                            for m in (historico or [])
+                        )
+                    )
+                    if dados_hist and not dados_hist.get("falta_ano"):
+                        dados_nasc = dados_hist
+                        logger.info(f"[Meta] Refazer mapa: dados recuperados do histórico para {numero_paciente}")
+                    else:
+                        await meta_client.send_text_message(
+                            phone_number=numero_paciente,
+                            message="Para refazer o mapa, preciso dos dados de nascimento novamente. Me manda nome, data, hora e cidade.",
+                        )
+                        return
+
                 # Interceptor pré-LLM: pedido de mapa sem nenhum dado → responder direto
                 if not dados_nasc and _eh_pedido_mapa_sem_dados(texto_para_processar, historico):
                     await meta_client.send_text_message(
@@ -2249,6 +2332,19 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                     return
                 elif dados_nasc and not dados_nasc.get("falta_ano"):
                     _nota_imagem_sp = ""
+                    # Pré-mensagem: avisa que está gerando (melhora UX)
+                    nome_nasc_pre = dados_nasc.get("nome", "")
+                    msg_gerando = (
+                        f"Calculando o mapa alquímico de {nome_nasc_pre} agora."
+                        if nome_nasc_pre else "Calculando o mapa alquímico agora."
+                    )
+                    msg_gerando += " A imagem chega em instantes — já faço a leitura na sequência."
+                    try:
+                        await meta_client.send_text_message(
+                            phone_number=numero_paciente, message=msg_gerando,
+                        )
+                    except Exception:
+                        pass  # pré-mensagem não é crítica
                     try:
                         mapa_resultado, mapa_png = await asyncio.to_thread(
                             gerar_mapa_completo,
@@ -2260,33 +2356,53 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                         imagem_enviada = False
                         # Enviar imagem do mapa natal antes da resposta textual
                         if mapa_png:
-                            try:
-                                caption_img = (
-                                    f"Mapa Natal — {dados_nasc.get('nome', 'Paciente')}\n"
-                                    f"{dados_nasc['data']} {dados_nasc['hora']} | {dados_nasc['cidade']}"
-                                )
-                                resp_img = await meta_client.send_image_message(
-                                    phone_number=numero_paciente,
-                                    imagem_bytes=mapa_png,
-                                    caption=caption_img,
-                                )
-                                imagem_enviada = True
-                                logger.info(f"Imagem do mapa natal enviada para {numero_paciente} — Meta | resp={resp_img}")
-                            except Exception as img_send_err:
-                                logger.warning(
-                                    f"Envio da imagem do mapa natal falhou (Meta): {img_send_err}",
-                                    exc_info=True,
-                                )
+                            for tentativa_img in range(1, 3):  # até 2 tentativas
+                                try:
+                                    caption_img = (
+                                        f"Mapa Natal — {dados_nasc.get('nome', 'Paciente')}\n"
+                                        f"{dados_nasc['data']} {dados_nasc['hora']} | {dados_nasc['cidade']}"
+                                    )
+                                    resp_img = await meta_client.send_image_message(
+                                        phone_number=numero_paciente,
+                                        imagem_bytes=mapa_png,
+                                        caption=caption_img,
+                                    )
+                                    imagem_enviada = True
+                                    logger.info(f"Imagem enviada para {numero_paciente} — Meta tentativa {tentativa_img} | resp={resp_img}")
+                                    break
+                                except Exception as img_send_err:
+                                    logger.warning(
+                                        f"Envio da imagem falhou tentativa {tentativa_img}/2 (Meta): {img_send_err}",
+                                        exc_info=True,
+                                    )
+                                    if tentativa_img < 2:
+                                        await asyncio.sleep(2)
                         else:
                             logger.warning(f"mapa_png é None para {numero_paciente} — imagem não gerada (Meta)")
+
+                        # Se imagem não chegou, avisa o usuário com instrução de retry
+                        if not imagem_enviada:
+                            msg_fallback = (
+                                "Não consegui gerar a imagem do mapa agora — houve uma instabilidade técnica. "
+                                "A leitura completa segue abaixo. Para tentar gerar a imagem de novo, "
+                                "envie: *refazer mapa*"
+                            )
+                            try:
+                                await meta_client.send_text_message(
+                                    phone_number=numero_paciente, message=msg_fallback,
+                                )
+                            except Exception:
+                                pass
 
                         # Nota vai para o system prompt (não para chunks — evita LLM reproduzir o texto)
                         _nota_imagem_sp = (
                             "\n\nINSTRUCAO INTERNA — nao reproduza este aviso na resposta: "
                             "A imagem do mapa alquimico foi enviada ao terapeuta antes desta mensagem. "
-                            "Confirme brevemente que a imagem foi enviada e faca a leitura. "
-                            "Nunca diga que nao consegue gerar imagens."
-                            if imagem_enviada else ""
+                            "Confirme brevemente que a imagem foi enviada e inicie a leitura alquimica."
+                            if imagem_enviada else
+                            "\n\nINSTRUCAO INTERNA — nao reproduza este aviso na resposta: "
+                            "A imagem do mapa nao foi enviada desta vez por instabilidade tecnica. "
+                            "O usuario ja foi avisado. Inicie direto a leitura alquimica sem mencionar a imagem."
                         )
                         mapa_prefixo = (
                             f"MAPA NATAL CALCULADO AUTOMATICAMENTE (Swiss Ephemeris — dado preciso, nao alucinado):\n"
@@ -2302,6 +2418,13 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                             f"Cálculo de mapa natal falhou (Meta) — continuando sem mapa: {mapa_err}",
                             exc_info=True,
                         )
+                        try:
+                            await meta_client.send_text_message(
+                                phone_number=numero_paciente,
+                                message="Não consegui calcular o mapa agora. Pode reenviar os dados de nascimento?",
+                            )
+                        except Exception:
+                            pass
 
             # Selecionar prompt do agente especialista com fallback para None (usa genérico)
             try:

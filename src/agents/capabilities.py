@@ -55,3 +55,11 @@ KEYWORDS_PEDIDO_MAPA = {
     "pode fazer meu mapa", "pode calcular", "consegue calcular",
     "consegue gerar", "me faz um mapa", "me manda meu mapa",
 }
+
+# Trigger para reprocessar mapa quando usuário pede refazer
+KEYWORDS_REFAZER_MAPA = {
+    "refazer mapa", "refaz mapa", "refazer o mapa", "gera de novo",
+    "manda de novo", "tenta de novo", "tenta novamente", "gerar novamente",
+    "enviar novamente", "envia de novo", "manda o mapa", "cadê o mapa",
+    "onde está o mapa", "nao recebi o mapa", "não recebi o mapa",
+}
