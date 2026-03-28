@@ -6,6 +6,40 @@ rejeite um pedido válido por desconhecer as capacidades dos outros.
 """
 
 # =============================================================================
+# CONTATO DE SUPORTE — altere aqui para atualizar em todo o sistema
+# =============================================================================
+
+NUMERO_SUPORTE = "(11) 99589-4317"   # número do suporte — atualizar se necessário
+
+MSG_ERRO_GENERICO = (
+    "Pedimos desculpas pelo transtorno! 🙏\n\n"
+    "Ocorreu uma instabilidade técnica e o erro já foi registrado automaticamente "
+    "para o nosso administrador.\n\n"
+    f"Para abrir um chamado e receber suporte, entre em contato: *{NUMERO_SUPORTE}*"
+)
+
+MSG_ERRO_MAPA_IMAGEM = (
+    "Pedimos desculpas! Houve uma instabilidade técnica ao gerar a imagem do mapa "
+    "e o erro já foi registrado para o administrador.\n\n"
+    "A leitura completa segue abaixo. "
+    "Para tentar gerar a imagem novamente envie *refazer mapa*, "
+    f"ou abra um chamado: *{NUMERO_SUPORTE}*"
+)
+
+MSG_ERRO_MAPA_CALCULO = (
+    "Pedimos desculpas! Houve uma instabilidade técnica ao calcular o mapa "
+    "e o erro já foi registrado para o administrador.\n\n"
+    "Por favor, reenvie os dados de nascimento para tentarmos novamente. "
+    f"Se o problema persistir, abra um chamado: *{NUMERO_SUPORTE}*"
+)
+
+MSG_ERRO_MENSAGEM = (
+    "Pedimos desculpas pelo transtorno! Houve uma instabilidade técnica "
+    "e o erro já foi registrado para o administrador.\n\n"
+    f"Pode repetir sua mensagem? Se o problema persistir: *{NUMERO_SUPORTE}*"
+)
+
+# =============================================================================
 # MANIFESTO COMPLETO DO SISTEMA
 # =============================================================================
 

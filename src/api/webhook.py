@@ -69,7 +69,11 @@ from src.core.memoria import (
 from src.rag.retriever import buscar_contexto
 from src.rag.generator import gerar_resposta, classificar_intencao
 from src.rag.astrologia import calcular_mapa_natal, extrair_dados_nascimento, gerar_mapa_completo
-from src.agents.capabilities import KEYWORDS_PEDIDO_MAPA, KEYWORDS_REFAZER_MAPA
+from src.agents.capabilities import (
+    KEYWORDS_PEDIDO_MAPA, KEYWORDS_REFAZER_MAPA,
+    NUMERO_SUPORTE,
+    MSG_ERRO_GENERICO, MSG_ERRO_MAPA_IMAGEM, MSG_ERRO_MAPA_CALCULO, MSG_ERRO_MENSAGEM,
+)
 from src.rag.aprendizado import (
     analisar_conversa,
     carregar_contexto_terapeuta,
@@ -830,18 +834,19 @@ async def _processar_mensagem(payload: dict) -> None:
 
         # 3. Resolver mídia — cada tipo tem seu pipeline de processamento
         # Marcadores de erro que geram aviso para o usuário e encerram o fluxo
+        _s = NUMERO_SUPORTE  # atalho local para as f-strings abaixo
         _avisos_evolution = {
-            "[AUDIO_DOWNLOAD_FALHOU]":    "Não consegui baixar o áudio. Pode reenviar?",
+            "[AUDIO_DOWNLOAD_FALHOU]":    f"Pedimos desculpas! Não consegui baixar o áudio — o erro foi registrado para o administrador. Pode reenviar? Se o problema persistir, abra um chamado: *{_s}*",
             "[AUDIO_SEM_CONTEUDO]":       "Não consegui entender o áudio. Pode reenviar em voz mais alta ou escrever o que disse?",
-            "[AUDIO_TRANSCRICAO_FALHOU]": "Recebi o áudio, mas não consegui transcrever com clareza suficiente. Pode falar um pouco mais devagar e em voz mais alta, ou escrever o que queria dizer?",
-            "[IMAGEM_DOWNLOAD_FALHOU]":   "Não consegui baixar a imagem. Pode reenviar?",
+            "[AUDIO_TRANSCRICAO_FALHOU]": "Recebi o áudio, mas não consegui transcrever com clareza. Pode falar mais devagar e em voz mais alta, ou escrever o que queria dizer?",
+            "[IMAGEM_DOWNLOAD_FALHOU]":   f"Pedimos desculpas! Não consegui baixar a imagem — o erro foi registrado. Pode reenviar? Se persistir: *{_s}*",
             "[IMAGEM_SEM_CONTEUDO]":      "Não consegui processar a imagem. Pode tentar outra?",
-            "[IMAGEM_FALHOU]":            "Tive problema ao descrever a imagem. Pode reenviar ou descrever como texto?",
-            "[PDF_DOWNLOAD_FALHOU]":      "Não consegui baixar o PDF. Pode reenviar?",
-            "[PDF_SEM_CONTEUDO]":         "Não consegui extrair texto do PDF. Pode reenviar?",
-            "[PDF_SEM_TEXTO]":            "O PDF parece ser uma imagem escaneada e não consegui ler o texto. Pode enviar uma versão com texto selecionável?",
-            "[PDF_FALHOU]":               "Tive problema ao processar o PDF. Pode reenviar?",
-            "[MIDIA_MUITO_GRANDE]":       "O arquivo é muito grande. Pode enviar uma versão menor ou escrever como texto?",
+            "[IMAGEM_FALHOU]":            f"Pedimos desculpas! Tive problema ao processar a imagem — erro registrado. Pode reenviar ou descrever como texto? Se persistir: *{_s}*",
+            "[PDF_DOWNLOAD_FALHOU]":      f"Pedimos desculpas! Não consegui baixar o PDF — erro registrado. Pode reenviar? Se persistir: *{_s}*",
+            "[PDF_SEM_CONTEUDO]":         f"Pedimos desculpas! Não consegui extrair o texto do PDF — erro registrado. Pode reenviar? Se persistir: *{_s}*",
+            "[PDF_SEM_TEXTO]":            "O PDF parece ser uma imagem escaneada. Pode enviar uma versão com texto selecionável?",
+            "[PDF_FALHOU]":               f"Pedimos desculpas! Tive problema ao processar o PDF — erro registrado. Pode reenviar? Se persistir: *{_s}*",
+            "[MIDIA_MUITO_GRANDE]":       "O arquivo é muito grande para processar. Pode enviar uma versão menor ou escrever como texto?",
             "[VIDEO_EVOLUTION_PENDENTE]": "Recebi seu vídeo, mas por enquanto só consigo processar o áudio. Se quiser, pode enviar só o áudio.",
             "[DOCUMENTO_RECEBIDO]":       "Recebi seu documento, mas só consigo processar PDFs e imagens. Pode reenviar nesse formato?",
         }
@@ -1282,9 +1287,7 @@ async def _processar_mensagem(payload: dict) -> None:
                         # Se imagem não chegou, avisa o usuário com instrução de retry
                         if not imagem_enviada:
                             msg_fallback = (
-                                "Não consegui gerar a imagem do mapa agora — houve uma instabilidade técnica. "
-                                "A leitura completa segue abaixo. Para tentar gerar a imagem de novo, "
-                                "envie: *refazer mapa*"
+                                MSG_ERRO_MAPA_IMAGEM
                             )
                             try:
                                 await evolution.enviar_mensagem(
@@ -1320,7 +1323,7 @@ async def _processar_mensagem(payload: dict) -> None:
                         try:
                             await evolution.enviar_mensagem(
                                 instance=instance_name, numero=numero_paciente,
-                                texto="Não consegui calcular o mapa agora. Pode reenviar os dados de nascimento?",
+                                texto=MSG_ERRO_MAPA_CALCULO,
                             )
                         except Exception:
                             pass
@@ -1366,7 +1369,7 @@ async def _processar_mensagem(payload: dict) -> None:
                 logger.error(f"Falha ao gerar resposta Claude (Evolution): {e}", exc_info=True)
                 await evolution.enviar_mensagem(
                     instance=instance_name, numero=numero_paciente,
-                    texto="Tive um problema ao processar sua mensagem. Pode repetir?",
+                    texto=MSG_ERRO_MENSAGEM,
                 )
                 return
         else:
@@ -1385,7 +1388,7 @@ async def _processar_mensagem(payload: dict) -> None:
                 logger.error(f"Falha ao gerar resposta Claude (Evolution, fallback): {e}", exc_info=True)
                 await evolution.enviar_mensagem(
                     instance=instance_name, numero=numero_paciente,
-                    texto="Tive um problema ao processar sua mensagem. Pode repetir?",
+                    texto=MSG_ERRO_MENSAGEM,
                 )
                 return
 
@@ -1952,30 +1955,30 @@ async def _processar_mensagem_meta(payload: dict) -> None:
             return
 
         # Tratar marcadores de erro de mídia com mensagens específicas
+        _sm = NUMERO_SUPORTE
         _avisos_midia = {
             "[AUDIO_SEM_CONTEUDO]": (
                 "Não consegui entender o áudio. "
                 "Pode reenviar em voz mais alta ou escrever o que disse?"
             ),
             "[AUDIO_TRANSCRICAO_FALHOU]": (
-                "Recebi o áudio, mas não consegui transcrever com clareza suficiente. "
-                "Pode falar um pouco mais devagar e em voz mais alta, "
-                "ou escrever o que queria dizer?"
+                "Recebi o áudio, mas não consegui transcrever com clareza. "
+                "Pode falar mais devagar e em voz mais alta, ou escrever o que queria dizer?"
             ),
             "[MIDIA_FALHOU]": (
-                "Tive problema ao processar o arquivo. "
-                "Pode reenviar ou escrever como texto?"
+                f"Pedimos desculpas! Tive problema ao processar o arquivo — erro registrado para o administrador. "
+                f"Pode reenviar ou escrever como texto? Se persistir: *{_sm}*"
             ),
             "[MIDIA_TOKEN_INVALIDO]": (
-                "Estou com problema técnico para acessar mídias agora. "
-                "Por favor, escreva sua mensagem como texto."
+                f"Pedimos desculpas! Estou com problema técnico para acessar mídias — erro registrado. "
+                f"Por favor, escreva sua mensagem como texto. Se persistir: *{_sm}*"
             ),
             "[MIDIA_MUITO_GRANDE]": (
-                "O arquivo é muito grande para eu processar. "
+                "O arquivo é muito grande para processar. "
                 "Pode enviar uma versão menor ou escrever como texto?"
             ),
             "[PDF_SEM_TEXTO]": (
-                "O PDF parece ser uma imagem escaneada e não consigo ler o texto. "
+                "O PDF parece ser uma imagem escaneada. "
                 "Pode enviar uma versão com texto selecionável?"
             ),
         }
@@ -2383,9 +2386,7 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                         # Se imagem não chegou, avisa o usuário com instrução de retry
                         if not imagem_enviada:
                             msg_fallback = (
-                                "Não consegui gerar a imagem do mapa agora — houve uma instabilidade técnica. "
-                                "A leitura completa segue abaixo. Para tentar gerar a imagem de novo, "
-                                "envie: *refazer mapa*"
+                                MSG_ERRO_MAPA_IMAGEM
                             )
                             try:
                                 await meta_client.send_text_message(
@@ -2421,7 +2422,7 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                         try:
                             await meta_client.send_text_message(
                                 phone_number=numero_paciente,
-                                message="Não consegui calcular o mapa agora. Pode reenviar os dados de nascimento?",
+                                message=MSG_ERRO_MAPA_CALCULO,
                             )
                         except Exception:
                             pass
@@ -2467,7 +2468,7 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                 logger.error(f"Falha ao gerar resposta Claude (Meta): {e}", exc_info=True)
                 await meta_client.send_text_message(
                     phone_number=numero_paciente,
-                    message="Tive um problema ao processar sua mensagem. Pode repetir?",
+                    message=MSG_ERRO_MENSAGEM,
                 )
                 return
         else:
@@ -2486,7 +2487,7 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                 logger.error(f"Falha ao gerar resposta Claude (Meta, fallback): {e}", exc_info=True)
                 await meta_client.send_text_message(
                     phone_number=numero_paciente,
-                    message="Tive um problema ao processar sua mensagem. Pode repetir?",
+                    message=MSG_ERRO_MENSAGEM,
                 )
                 return
 
