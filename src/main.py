@@ -25,6 +25,7 @@ from src.api.terapeutas import router as terapeutas_router
 from src.api.documentos import router as documentos_router
 from src.api.teste import router as teste_router
 from src.api.dashboard import router as dashboard_router
+from src.api.evolution import router as evolution_router
 
 
 @asynccontextmanager
@@ -110,6 +111,7 @@ app.include_router(terapeutas_router)
 app.include_router(documentos_router)
 app.include_router(teste_router)
 app.include_router(dashboard_router)
+app.include_router(evolution_router)
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
