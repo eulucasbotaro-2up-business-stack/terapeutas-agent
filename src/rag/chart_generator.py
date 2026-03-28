@@ -6,6 +6,9 @@ Design: tema escuro moderno, muito mais bonito que o Vega Plus.
 Usa matplotlib com tema polar escuro + Pillow para composição final.
 """
 
+import matplotlib
+matplotlib.use("Agg")  # backend sem GUI — obrigatório em servidor antes de qualquer import pyplot
+
 import io
 import logging
 import math
