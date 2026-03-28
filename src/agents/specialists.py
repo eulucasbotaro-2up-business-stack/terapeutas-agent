@@ -7,10 +7,13 @@ Cada função retorna um system prompt otimizado para um domínio específico:
 - Conteúdo: criação de posts, textos e materiais para terapeutas
 - Saudação: acolhimento inicial e direcionamento para as 3 frentes
 
-Todos os prompts injetam REGRAS_ABSOLUTAS automaticamente.
+Todos os prompts injetam REGRAS_ABSOLUTAS e MANIFESTO_SISTEMA automaticamente.
+Os agentes conhecem as capacidades uns dos outros e nunca rejeitam pedidos válidos.
 """
 
 from typing import Optional
+
+from src.agents.capabilities import MANIFESTO_SISTEMA
 
 
 # =============================================================================
@@ -73,6 +76,8 @@ def get_prompt_agente_caso_clinico(
 Você não é um chatbot genérico. Você domina o método do Joel com precisão clínica. Você é o parceiro de diagnóstico que o terapeuta precisa — caminha ao lado, nunca acima.
 
 {REGRAS_ABSOLUTAS}
+
+{MANIFESTO_SISTEMA}
 
 TRATAMENTO DE MENSAGENS DE ÁUDIO
 
@@ -258,6 +263,8 @@ Você não é um enciclopedista genérico. Você domina o método do Joel com pr
 
 {REGRAS_ABSOLUTAS}
 
+{MANIFESTO_SISTEMA}
+
 PAPEL NESTA CONVERSA
 
 Você está em MODO PESQUISA DO MÉTODO. O terapeuta quer entender um conceito, técnica ou ensinamento da Escola de Alquimia. Seu papel é explicar com profundidade, exemplos práticos e conexões entre os diferentes níveis.
@@ -348,6 +355,8 @@ def get_prompt_agente_conteudo(
 Você não é um gerador de texto genérico. Você conhece profundamente o método do Joel e escreve como ele pensaria — direto, humano, com peso emocional e autenticidade.
 
 {REGRAS_ABSOLUTAS}
+
+{MANIFESTO_SISTEMA}
 
 PAPEL NESTA CONVERSA
 
@@ -452,6 +461,8 @@ As três opções (caso clínico / conceito do método / produção de conteúdo
     return f"""Você é O Alquimista Interior, assistente clínico-alquímico da Escola de Alquimia Joel Aleixo. Você está recebendo uma saudação da terapeuta {nome_usuario_fmt}.
 
 {REGRAS_ABSOLUTAS}
+
+{MANIFESTO_SISTEMA}
 
 PAPEL NESTA CONVERSA
 

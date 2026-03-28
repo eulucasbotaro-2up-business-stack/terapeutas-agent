@@ -69,6 +69,7 @@ from src.core.memoria import (
 from src.rag.retriever import buscar_contexto
 from src.rag.generator import gerar_resposta, classificar_intencao
 from src.rag.astrologia import calcular_mapa_natal, extrair_dados_nascimento, gerar_mapa_completo
+from src.agents.capabilities import KEYWORDS_PEDIDO_MAPA
 from src.rag.aprendizado import (
     analisar_conversa,
     carregar_contexto_terapeuta,
@@ -1174,6 +1175,20 @@ async def _processar_mensagem(payload: dict) -> None:
                     texto_busca_nascimento = f"{texto_para_processar}\n{msgs_historico}"
 
                 dados_nasc = extrair_dados_nascimento(texto_busca_nascimento)
+
+                # Interceptor pré-LLM: pedido de mapa sem nenhum dado → responder direto
+                if not dados_nasc and _eh_pedido_mapa_sem_dados(texto_para_processar):
+                    await evolution.enviar_mensagem(
+                        instance=instance_name, numero=numero_paciente, texto=_MSG_PEDE_DADOS_MAPA,
+                    )
+                    await _salvar_conversa(
+                        terapeuta_id=terapeuta_id, paciente_numero=numero_paciente,
+                        mensagem_paciente=texto_mensagem, resposta_agente=_MSG_PEDE_DADOS_MAPA,
+                        intencao="MAPA_NATAL_PEDE_DADOS",
+                    )
+                    logger.info(f"[Evolution] Interceptado pedido de mapa sem dados — solicitando dados — {numero_paciente}")
+                    return
+
                 if dados_nasc and dados_nasc.get("falta_ano"):
                     # Dados de nascimento detectados mas sem o ano — pedir ao terapeuta
                     nome_nasc = dados_nasc.get("nome", "Paciente")
@@ -1347,6 +1362,40 @@ async def _processar_mensagem(payload: dict) -> None:
 
     except Exception as e:
         logger.error(f"Erro ao processar mensagem Evolution: {e}", exc_info=True)
+
+
+# =============================================================================
+# HELPER — Detecção pré-LLM de pedido de mapa astral sem dados de nascimento
+# =============================================================================
+
+def _eh_pedido_mapa_sem_dados(texto: str) -> bool:
+    """
+    Retorna True se a mensagem é um pedido puro de mapa astral/natal
+    sem nenhum dado de nascimento fornecido.
+
+    Usado para interceptar antes do especialista e pedir os dados diretamente,
+    evitando que o LLM gere uma resposta errada por falta de instrução.
+    """
+    texto_lower = texto.lower().strip()
+    tem_pedido_mapa = any(kw in texto_lower for kw in KEYWORDS_PEDIDO_MAPA)
+    if not tem_pedido_mapa:
+        return False
+    # Se já tem dados de nascimento na mensagem (data, hora, cidade), não interceptar
+    indicadores_dados = [
+        "/", "nasceu", "nascida", "nascido", "às ", "as ", "horas", "hora",
+        "janeiro", "fevereiro", "março", "abril", "maio", "junho",
+        "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
+    ]
+    tem_dados = any(ind in texto_lower for ind in indicadores_dados)
+    return not tem_dados
+
+
+_MSG_PEDE_DADOS_MAPA = (
+    "Perfeito, consigo calcular o mapa natal agora mesmo.\n\n"
+    "Só preciso de quatro dados:\n\n"
+    "Nome completo, data de nascimento (dia, mês e ano), hora exata de nascimento e cidade onde nasceu.\n\n"
+    "Me manda isso que calculo na hora."
+)
 
 
 # =============================================
@@ -2112,6 +2161,20 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                     texto_busca_nascimento = f"{texto_para_processar}\n{msgs_historico}"
 
                 dados_nasc = extrair_dados_nascimento(texto_busca_nascimento)
+
+                # Interceptor pré-LLM: pedido de mapa sem nenhum dado → responder direto
+                if not dados_nasc and _eh_pedido_mapa_sem_dados(texto_para_processar):
+                    await meta_client.send_text_message(
+                        phone_number=numero_paciente, message=_MSG_PEDE_DADOS_MAPA,
+                    )
+                    await _salvar_conversa(
+                        terapeuta_id=terapeuta_id, paciente_numero=numero_paciente,
+                        mensagem_paciente=texto_mensagem, resposta_agente=_MSG_PEDE_DADOS_MAPA,
+                        intencao="MAPA_NATAL_PEDE_DADOS",
+                    )
+                    logger.info(f"[Meta] Interceptado pedido de mapa sem dados — solicitando dados — {numero_paciente}")
+                    return
+
                 if dados_nasc and dados_nasc.get("falta_ano"):
                     # Dados de nascimento detectados mas sem o ano — pedir ao terapeuta
                     nome_nasc = dados_nasc.get("nome", "Paciente")
