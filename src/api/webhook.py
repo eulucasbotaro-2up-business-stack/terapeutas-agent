@@ -68,6 +68,7 @@ from src.core.memoria import (
 )
 from src.rag.retriever import buscar_contexto
 from src.rag.generator import gerar_resposta, classificar_intencao
+from src.rag.astrologia import calcular_mapa_natal, extrair_dados_nascimento
 from src.rag.aprendizado import (
     analisar_conversa,
     carregar_contexto_terapeuta,
@@ -1158,6 +1159,41 @@ async def _processar_mensagem(payload: dict) -> None:
                 c.get("conteudo", "") for c in contexto_chunks if c.get("conteudo")
             )
 
+            # --- Injeção de Mapa Natal (Swiss Ephemeris via Kerykeion) ---
+            # Verifica se a mensagem atual ou o histórico recente contém dados de nascimento.
+            # Em modo CONSULTA, calcula o mapa natal e prepende ao contexto para eliminar
+            # alucinações de Ascendente e posições planetárias.
+            if modo == ModoOperacao.CONSULTA:
+                texto_busca_nascimento = texto_para_processar
+                # Também escaneia as últimas 10 mensagens do histórico
+                if historico:
+                    msgs_historico = " ".join(
+                        m.get("conteudo", "") or m.get("mensagem", "") or ""
+                        for m in historico[-10:]
+                    )
+                    texto_busca_nascimento = f"{texto_para_processar}\n{msgs_historico}"
+
+                dados_nasc = extrair_dados_nascimento(texto_busca_nascimento)
+                if dados_nasc:
+                    try:
+                        mapa_resultado = await asyncio.to_thread(
+                            calcular_mapa_natal,
+                            dados_nasc.get("nome", "Paciente"),
+                            dados_nasc["data"],
+                            dados_nasc["hora"],
+                            dados_nasc["cidade"],
+                        )
+                        mapa_prefixo = f"MAPA NATAL CALCULADO AUTOMATICAMENTE (Swiss Ephemeris — dado preciso, não alucinado):\n{mapa_resultado}\n\n"
+                        chunks_texto = mapa_prefixo + chunks_texto
+                        logger.info(
+                            f"Mapa natal calculado para '{dados_nasc.get('nome')}' "
+                            f"({dados_nasc['data']} {dados_nasc['hora']} em {dados_nasc['cidade']}) — Evolution"
+                        )
+                    except Exception as mapa_err:
+                        logger.warning(
+                            f"Cálculo de mapa natal falhou (Evolution) — continuando sem mapa: {mapa_err}"
+                        )
+
             # Selecionar prompt do agente especialista com fallback para None (usa genérico)
             try:
                 if modo == ModoOperacao.CONSULTA:
@@ -2022,6 +2058,41 @@ async def _processar_mensagem_meta(payload: dict) -> None:
             chunks_texto = "\n\n".join(
                 c.get("conteudo", "") for c in contexto_chunks if c.get("conteudo")
             )
+
+            # --- Injeção de Mapa Natal (Swiss Ephemeris via Kerykeion) ---
+            # Verifica se a mensagem atual ou o histórico recente contém dados de nascimento.
+            # Em modo CONSULTA, calcula o mapa natal e prepende ao contexto para eliminar
+            # alucinações de Ascendente e posições planetárias.
+            if modo == ModoOperacao.CONSULTA:
+                texto_busca_nascimento = texto_para_processar
+                # Também escaneia as últimas 10 mensagens do histórico
+                if historico:
+                    msgs_historico = " ".join(
+                        m.get("conteudo", "") or m.get("mensagem", "") or ""
+                        for m in historico[-10:]
+                    )
+                    texto_busca_nascimento = f"{texto_para_processar}\n{msgs_historico}"
+
+                dados_nasc = extrair_dados_nascimento(texto_busca_nascimento)
+                if dados_nasc:
+                    try:
+                        mapa_resultado = await asyncio.to_thread(
+                            calcular_mapa_natal,
+                            dados_nasc.get("nome", "Paciente"),
+                            dados_nasc["data"],
+                            dados_nasc["hora"],
+                            dados_nasc["cidade"],
+                        )
+                        mapa_prefixo = f"MAPA NATAL CALCULADO AUTOMATICAMENTE (Swiss Ephemeris — dado preciso, não alucinado):\n{mapa_resultado}\n\n"
+                        chunks_texto = mapa_prefixo + chunks_texto
+                        logger.info(
+                            f"Mapa natal calculado para '{dados_nasc.get('nome')}' "
+                            f"({dados_nasc['data']} {dados_nasc['hora']} em {dados_nasc['cidade']}) — Meta"
+                        )
+                    except Exception as mapa_err:
+                        logger.warning(
+                            f"Cálculo de mapa natal falhou (Meta) — continuando sem mapa: {mapa_err}"
+                        )
 
             # Selecionar prompt do agente especialista com fallback para None (usa genérico)
             try:
