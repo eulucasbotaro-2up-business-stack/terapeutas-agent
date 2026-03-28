@@ -1259,6 +1259,8 @@ async def _processar_mensagem(payload: dict) -> None:
                         )
                     except Exception:
                         pass  # pré-mensagem não é crítica
+                    imagem_enviada = False  # inicializa ANTES do try para o except conseguir verificar
+                    _nota_imagem_sp = ""   # será sobrescrito dentro do try se tudo correr bem
                     try:
                         mapa_resultado, mapa_png_joel, mapa_png_trad = await asyncio.wait_for(
                             asyncio.to_thread(
@@ -1270,7 +1272,6 @@ async def _processar_mensagem(payload: dict) -> None:
                             ),
                             timeout=90.0,
                         )
-                        imagem_enviada = False
                         # Envia as duas imagens antes da resposta textual
                         _caption_base = (
                             f"{dados_nasc.get('nome', 'Paciente')}\n"
@@ -1343,31 +1344,36 @@ async def _processar_mensagem(payload: dict) -> None:
                             f"Cálculo de mapa natal falhou (Evolution) — {mapa_err}",
                             exc_info=True,
                         )
-                        _MAPA_FALHAS[numero_paciente] = _MAPA_FALHAS.get(numero_paciente, 0) + 1
-                        tentativas_falha = _MAPA_FALHAS[numero_paciente]
-                        if tentativas_falha >= _MAPA_MAX_TENTATIVAS:
-                            _MAPA_FALHAS[numero_paciente] = 0
-                            msg_suporte = (
-                                f"Pedimos desculpas pelo transtorno! Após {_MAPA_MAX_TENTATIVAS} tentativas, "
-                                f"o mapa natal ainda não conseguiu ser gerado. "
-                                f"O erro foi registrado automaticamente.\n\n"
-                                f"Por favor, abra um chamado de suporte: *{NUMERO_SUPORTE}*"
-                            )
-                            try:
-                                await evolution.enviar_mensagem(
-                                    instance=instance_name, numero=numero_paciente, texto=msg_suporte,
+                        if imagem_enviada:
+                            # Imagem já enviada — exceção ocorreu depois. Continua para gerar o texto.
+                            if not _nota_imagem_sp:
+                                _nota_imagem_sp = (
+                                    "\n\nINSTRUCAO INTERNA — nao reproduza este aviso na resposta: "
+                                    "A imagem do mapa alquimico ja foi enviada como arquivo separado. "
+                                    "NAO mencione a imagem, NAO diga que foi enviada, NAO diga que houve instabilidade. "
+                                    "Va direto para a leitura alquimica completa — comece pela primeira linha."
                                 )
-                            except Exception:
-                                pass
+                            # chunks_texto pode não ter o mapa_prefixo, mas o LLM ainda gera a leitura
                         else:
-                            try:
-                                await evolution.enviar_mensagem(
-                                    instance=instance_name, numero=numero_paciente,
-                                    texto=MSG_ERRO_MAPA_CALCULO,
+                            # Imagem nunca enviada — falha real no cálculo
+                            _MAPA_FALHAS[numero_paciente] = _MAPA_FALHAS.get(numero_paciente, 0) + 1
+                            tentativas_falha = _MAPA_FALHAS[numero_paciente]
+                            if tentativas_falha >= _MAPA_MAX_TENTATIVAS:
+                                _MAPA_FALHAS[numero_paciente] = 0
+                                msg_suporte = (
+                                    f"Pedimos desculpas pelo transtorno! Após {_MAPA_MAX_TENTATIVAS} tentativas, "
+                                    f"o mapa natal ainda não conseguiu ser gerado. "
+                                    f"O erro foi registrado automaticamente.\n\n"
+                                    f"Por favor, abra um chamado de suporte: *{NUMERO_SUPORTE}*"
                                 )
-                            except Exception:
-                                pass
-                        return  # não chamar LLM após falha de cálculo do mapa
+                                try:
+                                    await evolution.enviar_mensagem(
+                                        instance=instance_name, numero=numero_paciente, texto=msg_suporte,
+                                    )
+                                except Exception:
+                                    pass
+                            # tentativas 1 e 2 sem imagem: silencioso — não chamar LLM
+                            return
 
             # Selecionar prompt do agente especialista com fallback para None (usa genérico)
             try:
@@ -2392,6 +2398,8 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                         )
                     except Exception:
                         pass  # pré-mensagem não é crítica
+                    imagem_enviada = False  # inicializa ANTES do try para o except conseguir verificar
+                    _nota_imagem_sp = ""   # será sobrescrito dentro do try se tudo correr bem
                     try:
                         print(f"[META-MAPA] Calculando mapa para {dados_nasc.get('nome')} {dados_nasc['data']} {dados_nasc['hora']} {dados_nasc['cidade']}", flush=True)
                         mapa_resultado, mapa_png_joel, mapa_png_trad = await asyncio.wait_for(
@@ -2405,7 +2413,6 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                             timeout=90.0,
                         )
                         print(f"[META-MAPA] gerar_mapa_completo retornou — joel={'OK '+str(len(mapa_png_joel))+' bytes' if mapa_png_joel else 'None'} | trad={'OK '+str(len(mapa_png_trad))+' bytes' if mapa_png_trad else 'None'}", flush=True)
-                        imagem_enviada = False
                         # Envia as duas imagens antes da resposta textual
                         _caption_base = (
                             f"{dados_nasc.get('nome', 'Paciente')}\n"
@@ -2480,25 +2487,38 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                             f"Cálculo de mapa natal falhou (Meta) — {mapa_err}",
                             exc_info=True,
                         )
-                        _MAPA_FALHAS[numero_paciente] = _MAPA_FALHAS.get(numero_paciente, 0) + 1
-                        tentativas_falha = _MAPA_FALHAS[numero_paciente]
-                        if tentativas_falha >= _MAPA_MAX_TENTATIVAS:
-                            # 3ª falha consecutiva — avisar o usuário e sugerir suporte
-                            _MAPA_FALHAS[numero_paciente] = 0
-                            msg_suporte = (
-                                f"Pedimos desculpas pelo transtorno! Após {_MAPA_MAX_TENTATIVAS} tentativas, "
-                                f"o mapa natal ainda não conseguiu ser gerado. "
-                                f"O erro foi registrado automaticamente.\n\n"
-                                f"Por favor, abra um chamado de suporte: *{NUMERO_SUPORTE}*"
-                            )
-                            try:
-                                await meta_client.send_text_message(
-                                    phone_number=numero_paciente, message=msg_suporte,
+                        if imagem_enviada:
+                            # Imagem já enviada — exceção ocorreu depois. Continua para gerar o texto.
+                            print(f"[META-MAPA] Imagem ja enviada — continuando para gerar texto mesmo com excecao", flush=True)
+                            if not _nota_imagem_sp:
+                                _nota_imagem_sp = (
+                                    "\n\nINSTRUCAO INTERNA — nao reproduza este aviso na resposta: "
+                                    "A imagem do mapa alquimico ja foi enviada como arquivo separado. "
+                                    "NAO mencione a imagem, NAO diga que foi enviada, NAO diga que houve instabilidade. "
+                                    "Va direto para a leitura alquimica completa — comece pela primeira linha."
                                 )
-                            except Exception:
-                                pass
-                        # tentativas 1 e 2: silencioso — não enviar mensagem de erro ainda
-                        return  # não chamar LLM após falha de cálculo do mapa
+                            # chunks_texto pode não ter o mapa_prefixo, mas o LLM ainda gera a leitura
+                        else:
+                            # Imagem nunca enviada — falha real no cálculo
+                            _MAPA_FALHAS[numero_paciente] = _MAPA_FALHAS.get(numero_paciente, 0) + 1
+                            tentativas_falha = _MAPA_FALHAS[numero_paciente]
+                            if tentativas_falha >= _MAPA_MAX_TENTATIVAS:
+                                # 3ª falha consecutiva — avisar o usuário e sugerir suporte
+                                _MAPA_FALHAS[numero_paciente] = 0
+                                msg_suporte = (
+                                    f"Pedimos desculpas pelo transtorno! Após {_MAPA_MAX_TENTATIVAS} tentativas, "
+                                    f"o mapa natal ainda não conseguiu ser gerado. "
+                                    f"O erro foi registrado automaticamente.\n\n"
+                                    f"Por favor, abra um chamado de suporte: *{NUMERO_SUPORTE}*"
+                                )
+                                try:
+                                    await meta_client.send_text_message(
+                                        phone_number=numero_paciente, message=msg_suporte,
+                                    )
+                                except Exception:
+                                    pass
+                            # tentativas 1 e 2 sem imagem: silencioso — não chamar LLM
+                            return
 
             # Selecionar prompt do agente especialista com fallback para None (usa genérico)
             try:
