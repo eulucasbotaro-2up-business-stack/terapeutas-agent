@@ -1223,6 +1223,10 @@ async def _processar_mensagem(payload: dict) -> None:
                 await _enviar_sequencia_evolution(
                     resposta_texto, evolution, instance_name, numero_paciente,
                 )
+            elif modo == ModoOperacao.CONSULTA and "---SECAO---" in resposta_texto:
+                # Diagnóstico completo: dividir em mensagens por seção
+                secoes = [s.strip() for s in resposta_texto.split("---SECAO---") if s.strip()]
+                await _enviar_sequencia_evolution(secoes, evolution, instance_name, numero_paciente)
             else:
                 resposta_texto = humanizar_resposta(resposta_texto)
                 await aguardar_antes_de_enviar(numero_paciente, sequencial=False)
@@ -2082,6 +2086,10 @@ async def _processar_mensagem_meta(payload: dict) -> None:
         if resposta_texto:
             if isinstance(resposta_texto, list):
                 await _enviar_sequencia_meta(resposta_texto, meta_client, numero_paciente)
+            elif modo == ModoOperacao.CONSULTA and "---SECAO---" in resposta_texto:
+                # Diagnóstico completo: dividir em mensagens por seção
+                secoes = [s.strip() for s in resposta_texto.split("---SECAO---") if s.strip()]
+                await _enviar_sequencia_meta(secoes, meta_client, numero_paciente)
             else:
                 resposta_texto = humanizar_resposta(resposta_texto)
                 await aguardar_antes_de_enviar(numero_paciente, sequencial=False)
