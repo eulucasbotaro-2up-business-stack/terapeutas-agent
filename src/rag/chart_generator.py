@@ -1,17 +1,16 @@
 """
-Gerador de imagens de mapa natal — estilo clássico, fundo branco, legível no celular.
+Gerador do Mapa Alquímico — estilo Joel Aleixo.
 
-Design inspirado no estilo Astro.com:
-- Fundo branco com alto contraste
-- Anel zodiacal colorido por elemento
-- Planetas com glifos e graus visíveis
-- Linhas de aspectos coloridas (azul=harmônico, vermelho=tenso)
-- Painel de posições à direita
-- 1100×900px, otimizado para tela de celular
+Design:
+- Fundo branco, alto contraste (legível no celular)
+- Roda zodiacal colorida por elemento
+- FIGURA HUMANA alquímica no centro (como o Joel ensina)
+- Planetas marcados com abreviações de texto (sem Unicode que trava no Docker)
+- Painel direito com posições e distribuição de elementos
 """
 
 import matplotlib
-matplotlib.use("Agg")  # backend sem GUI — obrigatório em servidor antes de qualquer import pyplot
+matplotlib.use("Agg")  # backend sem GUI — obrigatório ANTES de qualquer import pyplot
 
 import io
 import logging
@@ -21,22 +20,21 @@ from typing import Any, Optional
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Cores — fundo claro, alto contraste
+# Cores
 # ---------------------------------------------------------------------------
-
 BG           = "#FFFFFF"
-BG_PAINEL    = "#F7F7F7"
-BORDA        = "#AAAAAA"
+BG_PAINEL    = "#F5F5F5"
+BORDA        = "#999999"
 TEXTO_ESCURO = "#111111"
 TEXTO_CINZA  = "#555555"
-LINHA_GRADE  = "#CCCCCC"
+LINHA_GRADE  = "#DDDDDD"
 OURO         = "#B8860B"
+FIGURA_COR   = "#2C2C2C"  # silhueta humana
 
-# Elementos — cores saturadas para boa leitura em celular
-COR_FOGO  = "#E53935"   # Áries, Leão, Sagitário
-COR_TERRA = "#388E3C"   # Touro, Virgem, Capricórnio
-COR_AR    = "#C6A800"   # Gêmeos, Libra, Aquário
-COR_AGUA  = "#1565C0"   # Câncer, Escorpião, Peixes
+COR_FOGO  = "#D32F2F"
+COR_TERRA = "#388E3C"
+COR_AR    = "#C6A800"
+COR_AGUA  = "#1565C0"
 
 ELEMENTO_COR: dict[str, str] = {
     "Ari": COR_FOGO,  "Leo": COR_FOGO,  "Sag": COR_FOGO,
@@ -45,42 +43,44 @@ ELEMENTO_COR: dict[str, str] = {
     "Can": COR_AGUA,  "Sco": COR_AGUA,  "Pis": COR_AGUA,
 }
 
-SIGNOS_UNICODE = ["♈", "♉", "♊", "♋", "♌", "♍", "♎", "♏", "♐", "♑", "♒", "♓"]
-SIGNOS_ABREV   = ["Ari", "Tau", "Gem", "Can", "Leo", "Vir",
-                  "Lib", "Sco", "Sag", "Cap", "Aqu", "Pis"]
-SIGNOS_NOME_PT = [
-    "Áries", "Touro", "Gêmeos", "Câncer", "Leão", "Virgem",
-    "Libra", "Escorpião", "Sagitário", "Capricórnio", "Aquário", "Peixes",
+# ---------------------------------------------------------------------------
+# Signos — abreviações SEM Unicode (evita crash no Docker slim)
+# ---------------------------------------------------------------------------
+SIGNOS_ABREV = ["Ari", "Tau", "Gem", "Can", "Leo", "Vir",
+                "Lib", "Sco", "Sag", "Cap", "Aqu", "Pis"]
+
+SIGNO_LABEL: dict[str, str] = {
+    "Ari": "AR", "Tau": "TA", "Gem": "GE", "Can": "CA",
+    "Leo": "LE", "Vir": "VI", "Lib": "LI", "Sco": "ES",
+    "Sag": "SA", "Cap": "CP", "Aqu": "AQ", "Pis": "PI",
+}
+
+SIGNO_NOME_PT: dict[str, str] = {
+    "Ari": "Aries",  "Tau": "Touro",    "Gem": "Gemeos",  "Can": "Cancer",
+    "Leo": "Leao",   "Vir": "Virgem",   "Lib": "Libra",   "Sco": "Escorp.",
+    "Sag": "Sagit.", "Cap": "Capric.",  "Aqu": "Aquario", "Pis": "Peixes",
+}
+
+# ---------------------------------------------------------------------------
+# Planetas — abreviações SEM Unicode
+# ---------------------------------------------------------------------------
+ORDEM_PLANETAS = [
+    "Sun", "Moon", "Mercury", "Venus", "Mars",
+    "Jupiter", "Saturn", "Uranus", "Neptune", "Pluto",
+    "Ascendant", "Medium_Coeli",
 ]
 
-# Aspectos
-COR_ASPECTO: dict[str, str] = {
-    "conjunction": "#8B4513",   # marrom
-    "trine":       "#1565C0",   # azul — harmônico forte
-    "sextile":     "#2E7D32",   # verde — harmônico leve
-    "square":      "#C62828",   # vermelho — tensão
-    "opposition":  "#7B1FA2",   # roxo — oposição
-}
-SIGLA_ASPECTO: dict[str, str] = {
-    "conjunction": "☌",
-    "opposition":  "☍",
-    "square":      "□",
-    "trine":       "△",
-    "sextile":     "✶",
-}
-
-# Planetas
-PLANETA_GLIFO: dict[str, str] = {
-    "Sun":          "☉",
-    "Moon":         "☽",
-    "Mercury":      "☿",
-    "Venus":        "♀",
-    "Mars":         "♂",
-    "Jupiter":      "♃",
-    "Saturn":       "♄",
-    "Uranus":       "♅",
-    "Neptune":      "♆",
-    "Pluto":        "♇",
+PLANETA_ABREV: dict[str, str] = {
+    "Sun":          "Sol",
+    "Moon":         "Lua",
+    "Mercury":      "Mer",
+    "Venus":        "Ven",
+    "Mars":         "Mar",
+    "Jupiter":      "Jup",
+    "Saturn":       "Sat",
+    "Uranus":       "Ura",
+    "Neptune":      "Net",
+    "Pluto":        "Plu",
     "Ascendant":    "Asc",
     "Medium_Coeli": "MC",
 }
@@ -88,14 +88,14 @@ PLANETA_GLIFO: dict[str, str] = {
 PLANETA_NOME_PT: dict[str, str] = {
     "Sun":          "Sol",
     "Moon":         "Lua",
-    "Mercury":      "Mercúrio",
-    "Venus":        "Vênus",
+    "Mercury":      "Mercurio",
+    "Venus":        "Venus",
     "Mars":         "Marte",
-    "Jupiter":      "Júpiter",
+    "Jupiter":      "Jupiter",
     "Saturn":       "Saturno",
     "Uranus":       "Urano",
     "Neptune":      "Netuno",
-    "Pluto":        "Plutão",
+    "Pluto":        "Plutao",
     "Ascendant":    "Ascendente",
     "Medium_Coeli": "MC",
 }
@@ -107,7 +107,7 @@ COR_PLANETA: dict[str, str] = {
     "Venus":        "#AD1457",
     "Mars":         "#C62828",
     "Jupiter":      "#4527A0",
-    "Saturn":       "#1B5E20",
+    "Saturn":       "#37474F",
     "Uranus":       "#006064",
     "Neptune":      "#1A237E",
     "Pluto":        "#4A0E4E",
@@ -115,21 +115,27 @@ COR_PLANETA: dict[str, str] = {
     "Medium_Coeli": "#000000",
 }
 
-ORDEM_PLANETAS = [
-    "Sun", "Moon", "Mercury", "Venus", "Mars",
-    "Jupiter", "Saturn", "Uranus", "Neptune", "Pluto",
-    "Ascendant", "Medium_Coeli",
-]
-
 ELEM_MAPA: dict[str, str] = {
     "Ari": "Fogo", "Leo": "Fogo", "Sag": "Fogo",
     "Tau": "Terra", "Vir": "Terra", "Cap": "Terra",
-    "Gem": "Ar", "Lib": "Ar", "Aqu": "Ar",
-    "Can": "Água", "Sco": "Água", "Pis": "Água",
+    "Gem": "Ar",    "Lib": "Ar",   "Aqu": "Ar",
+    "Can": "Agua",  "Sco": "Agua", "Pis": "Agua",
 }
 
 # ---------------------------------------------------------------------------
-# Estruturas de dados (inalteradas — compatibilidade com astrologia.py)
+# Correspondência signo ↔ parte do corpo (tradição alquímica)
+# ---------------------------------------------------------------------------
+SIGNO_CORPO: dict[str, str] = {
+    "Ari": "Cabeca",    "Tau": "Pescoco",
+    "Gem": "Ombros",    "Can": "Peito",
+    "Leo": "Coracao",   "Vir": "Abdomen",
+    "Lib": "Rins",      "Sco": "Pelve",
+    "Sag": "Coxas",     "Cap": "Joelhos",
+    "Aqu": "Pernas",    "Pis": "Pes",
+}
+
+# ---------------------------------------------------------------------------
+# Estrutura de dados (compatível com astrologia.py)
 # ---------------------------------------------------------------------------
 
 
@@ -155,6 +161,11 @@ class DadosMapa:
         self.casas     = casas
         self.aspectos  = aspectos
         self.ascendente_grau = ascendente_grau
+
+
+# ---------------------------------------------------------------------------
+# Converte sujeito Kerykeion → DadosMapa
+# ---------------------------------------------------------------------------
 
 
 def dados_mapa_de_sujeito(
@@ -205,7 +216,6 @@ def dados_mapa_de_sujeito(
         planetas_pessoais = {"Sun", "Moon", "Mercury", "Venus", "Mars",
                              "Jupiter", "Saturn", "Ascendant", "Medium_Coeli"}
         tipos_major = {"conjunction", "opposition", "square", "trine", "sextile"}
-
         for asp in aspectos_model.aspects:
             if (asp.aspect in tipos_major
                     and asp.p1_name in planetas_pessoais
@@ -217,7 +227,7 @@ def dados_mapa_de_sujeito(
                     "orbe": float(asp.orbit),
                 })
     except Exception as e:
-        logger.warning(f"Aspectos indisponíveis para o gráfico: {e}")
+        logger.warning(f"Aspectos indisponiveis para o grafico: {e}")
 
     return DadosMapa(
         nome_paciente=nome_paciente,
@@ -236,11 +246,9 @@ def dados_mapa_de_sujeito(
 # Geometria
 # ---------------------------------------------------------------------------
 
+
 def _grau_para_rad(grau_ecl: float, asc_grau: float) -> float:
-    """
-    Converte grau eclíptico → ângulo cartesiano para o gráfico.
-    Ascendente fica à esquerda (180°). Sentido anti-horário.
-    """
+    """Converte grau eclíptico → ângulo cartesiano. Ascendente fica à esquerda (180°)."""
     delta = (grau_ecl - asc_grau) % 360.0
     angulo_graus = 180.0 - delta
     return math.radians(angulo_graus)
@@ -251,13 +259,136 @@ def _xy(raio: float, ang_rad: float) -> tuple[float, float]:
 
 
 # ---------------------------------------------------------------------------
-# Renderização principal — estilo clássico fundo branco
+# Figura humana alquímica (homem inscrito na roda — estilo Joel Aleixo)
 # ---------------------------------------------------------------------------
+
+
+def _desenhar_homem_alquimico(ax: Any, dados: "DadosMapa") -> None:
+    """
+    Desenha a silhueta humana alquímica no centro da roda.
+    Os signos ativos (onde o nativo tem planetas) são destacados
+    na parte do corpo correspondente.
+    """
+    import matplotlib.pyplot as plt
+    import matplotlib.patches as patches
+
+    cor  = FIGURA_COR
+    lw   = 1.8
+
+    # ── Cabeça ────────────────────────────────────────────────────────────
+    head = plt.Circle((0, 0.395), 0.090, color=BG, ec=cor, lw=lw, zorder=22)
+    ax.add_patch(head)
+
+    # ── Pescoço ──────────────────────────────────────────────────────────
+    ax.plot([0, 0], [0.305, 0.262], color=cor, lw=lw, zorder=22)
+
+    # ── Ombros ───────────────────────────────────────────────────────────
+    ax.plot([-0.215, 0.215], [0.262, 0.262], color=cor, lw=lw, zorder=22)
+
+    # ── Braços (estendidos — figura Vitruviana) ───────────────────────────
+    ax.plot([-0.215, -0.510], [0.262, 0.160], color=cor, lw=lw, zorder=22)
+    ax.plot([ 0.215,  0.510], [0.262, 0.160], color=cor, lw=lw, zorder=22)
+
+    # ── Torso ─────────────────────────────────────────────────────────────
+    ax.plot([0, 0], [0.262, -0.100], color=cor, lw=lw, zorder=22)
+
+    # ── Quadris ──────────────────────────────────────────────────────────
+    ax.plot([-0.175, 0.175], [-0.100, -0.100], color=cor, lw=lw, zorder=22)
+
+    # ── Pernas ───────────────────────────────────────────────────────────
+    ax.plot([-0.175, -0.120], [-0.100, -0.500], color=cor, lw=lw, zorder=22)
+    ax.plot([ 0.175,  0.120], [-0.100, -0.500], color=cor, lw=lw, zorder=22)
+
+    # ── Pontos articulares (joelhos) ──────────────────────────────────────
+    for xk, yk in [(-0.147, -0.300), (0.147, -0.300)]:
+        ax.plot(xk, yk, "o", color=cor, markersize=3, zorder=22)
+
+    # ── Marcação de planetas no corpo ────────────────────────────────────
+    # Mapeia onde cada planeta do nativo está no corpo via signo
+    _CORPO_XY: dict[str, tuple[float, float]] = {
+        "Cabeca":   (0,     0.395),
+        "Pescoco":  (0,     0.270),
+        "Ombros":   (0,     0.262),
+        "Peito":    (0,     0.185),
+        "Coracao":  (0,     0.130),
+        "Abdomen":  (0,     0.050),
+        "Rins":     (0,    -0.030),
+        "Pelve":    (0,    -0.100),
+        "Coxas":    (0,    -0.185),
+        "Joelhos":  (0,    -0.300),
+        "Pernas":   (0,    -0.390),
+        "Pes":      (0,    -0.490),
+    }
+
+    planetas_marcados: set[str] = set()
+    for nome_p in ["Sun", "Moon", "Ascendant", "Mercury", "Venus", "Mars"]:
+        if nome_p not in dados.signos:
+            continue
+        signo = dados.signos[nome_p]
+        parte = SIGNO_CORPO.get(signo)
+        if not parte or parte in planetas_marcados:
+            continue
+        planetas_marcados.add(parte)
+        cx, cy = _CORPO_XY.get(parte, (0, 0))
+        cor_p  = COR_PLANETA.get(nome_p, OURO)
+        abrev  = PLANETA_ABREV.get(nome_p, nome_p[:3])
+        ax.plot(cx + 0.05, cy, "o", color=cor_p, markersize=4.5, zorder=23)
+        ax.text(cx + 0.14, cy, abrev,
+                ha="left", va="center", fontsize=5.5,
+                color=cor_p, fontweight="bold", zorder=23)
+
+    # ── Rótulos dos 4 elementos nos cantos interiores da roda ─────────────
+    elem_dados = [
+        ( 0.000,  0.570, "FOGO",  COR_FOGO),
+        ( 0.570,  0.000, "AR",    COR_AR),
+        ( 0.000, -0.570, "TERRA", COR_TERRA),
+        (-0.570,  0.000, "AGUA",  COR_AGUA),
+    ]
+    for ex, ey, elabel, ecor in elem_dados:
+        ax.text(ex, ey, elabel, ha="center", va="center",
+                fontsize=6.5, color=ecor, fontweight="bold",
+                alpha=0.65, zorder=21)
+
+
+# ---------------------------------------------------------------------------
+# Ajuste de sobreposição de planetas
+# ---------------------------------------------------------------------------
+
+
+def _ajustar_posicoes(
+    posicoes: dict[str, float],
+    asc: float,
+    limiar_graus: float = 7.0,
+) -> dict[str, float]:
+    if not posicoes:
+        return {}
+    ordem = sorted(posicoes.keys(), key=lambda k: posicoes[k])
+    ajustadas = dict(posicoes)
+    for _ in range(8):
+        modificado = False
+        for i in range(len(ordem)):
+            for j in range(i + 1, len(ordem)):
+                p1, p2 = ordem[i], ordem[j]
+                d = (ajustadas[p2] - ajustadas[p1]) % 360.0
+                if d < limiar_graus:
+                    delta = (limiar_graus - d) / 2.0 + 0.5
+                    ajustadas[p1] = (ajustadas[p1] - delta) % 360.0
+                    ajustadas[p2] = (ajustadas[p2] + delta) % 360.0
+                    modificado = True
+        if not modificado:
+            break
+    return ajustadas
+
+
+# ---------------------------------------------------------------------------
+# Renderização principal
+# ---------------------------------------------------------------------------
+
 
 def gerar_imagem_mapa_natal(dados: "DadosMapa") -> bytes:
     """
-    Gera PNG do mapa natal estilo clássico (fundo branco, legível em celular).
-    Retorna bytes PNG.
+    Gera PNG do Mapa Alquimico — roda zodiacal com homem no centro.
+    Retorna bytes PNG. Levanta RuntimeError se falhar.
     """
     try:
         import matplotlib.pyplot as plt
@@ -265,141 +396,144 @@ def gerar_imagem_mapa_natal(dados: "DadosMapa") -> bytes:
         import numpy as np
 
         # ── Figura ──────────────────────────────────────────────────────────
-        fig = plt.figure(figsize=(13, 9), facecolor=BG, dpi=110)
+        fig = plt.figure(figsize=(12, 9), facecolor=BG, dpi=110)
 
-        # Dois eixos: roda (esquerda) + painel (direita)
-        ax  = fig.add_axes([0.01, 0.04, 0.62, 0.92])   # roda
-        axp = fig.add_axes([0.65, 0.04, 0.34, 0.92])   # painel
+        # Roda (esquerda 63%) + painel (direita 35%)
+        ax  = fig.add_axes([0.01, 0.05, 0.60, 0.90])
+        axp = fig.add_axes([0.63, 0.04, 0.35, 0.92])
 
-        # ── RODA NATAL ───────────────────────────────────────────────────────
         ax.set_aspect("equal")
         ax.set_facecolor(BG)
-        ax.set_xlim(-1.35, 1.35)
-        ax.set_ylim(-1.35, 1.35)
+        ax.set_xlim(-1.32, 1.32)
+        ax.set_ylim(-1.32, 1.32)
         ax.axis("off")
 
         asc = dados.ascendente_grau
 
         # Raios
-        R_EXT    = 1.22   # borda externa zodíaco
-        R_ZOD    = 0.97   # borda interna zodíaco / externa casas
-        R_CASA   = 0.72   # borda interna anel casas
-        R_PLAN   = 0.84   # anel dos planetas
-        R_ASP    = 0.68   # raio das linhas de aspectos
+        R_EXT  = 1.18   # borda externa zodíaco
+        R_ZOD  = 0.94   # borda interna zodíaco / externa planetas
+        R_PLN  = 0.81   # anel dos planetas
+        R_CSA  = 0.68   # divisões de casas
+        R_INT  = 0.63   # círculo interno (figura humana)
+        R_ASP  = 0.59   # linhas de aspectos
 
-        # ── Anel zodiacal (fundo cinza claro + colorido por elemento) ────────
+        # ── Anel zodiacal ────────────────────────────────────────────────────
         for i, abrev in enumerate(SIGNOS_ABREV):
             ang0 = _grau_para_rad(i * 30.0, asc)
             ang1 = _grau_para_rad((i + 1) * 30.0, asc)
             cor  = ELEMENTO_COR.get(abrev, "#CCCCCC")
+            t    = np.linspace(ang0, ang1, 40)
 
-            # Fatia colorida (fill)
-            t = np.linspace(ang0, ang1, 40)
+            # Fundo colorido translúcido
             xs = list(R_EXT * np.cos(t)) + list(R_ZOD * np.cos(t[::-1]))
             ys = list(R_EXT * np.sin(t)) + list(R_ZOD * np.sin(t[::-1]))
-            ax.fill(xs, ys, color=cor, alpha=0.15, zorder=2)
+            ax.fill(xs, ys, color=cor, alpha=0.18, zorder=2)
 
-            # Borda da fatia
-            x0, y0 = _xy(R_ZOD, ang0)
-            x1, y1 = _xy(R_EXT, ang0)
-            ax.plot([x0, x1], [y0, y1], color=cor, lw=0.9, alpha=0.6, zorder=3)
+            # Bordas do segmento
+            ang_div = _grau_para_rad(i * 30.0, asc)
+            x0, y0 = _xy(R_ZOD, ang_div)
+            x1, y1 = _xy(R_EXT, ang_div)
+            ax.plot([x0, x1], [y0, y1], color=cor, lw=0.8, alpha=0.55, zorder=3)
 
-            # Símbolo do signo (centro da fatia)
+            # Rótulo do signo (abreviação 2 letras)
             ang_m = (ang0 + ang1) / 2
-            r_sim = (R_ZOD + R_EXT) / 2
-            sx, sy = _xy(r_sim, ang_m)
-            ax.text(sx, sy, SIGNOS_UNICODE[i],
-                    ha="center", va="center", fontsize=13,
+            sx, sy = _xy((R_ZOD + R_EXT) / 2, ang_m)
+            label = SIGNO_LABEL.get(abrev, abrev[:2])
+            ax.text(sx, sy, label,
+                    ha="center", va="center", fontsize=9,
                     color=cor, fontweight="bold", zorder=4)
 
-        # Círculos externos
-        ax.add_patch(plt.Circle((0, 0), R_EXT,  color=BORDA, fill=False, lw=1.2, zorder=5))
-        ax.add_patch(plt.Circle((0, 0), R_ZOD,  color=BORDA, fill=False, lw=0.8, zorder=5))
-        ax.add_patch(plt.Circle((0, 0), R_CASA, color=BORDA, fill=False, lw=0.8, zorder=5))
+        # Círculos do anel
+        for r, lw_c in [(R_EXT, 1.2), (R_ZOD, 0.9), (R_CSA, 0.7), (R_INT, 1.0)]:
+            ax.add_patch(plt.Circle((0, 0), r, color=BORDA, fill=False, lw=lw_c, zorder=5))
 
-        # ── Linhas de casas ──────────────────────────────────────────────────
+        # ── Divisões de casas ────────────────────────────────────────────────
         for i in range(12):
-            ang = _grau_para_rad(i * 30.0, asc)
-            x0, y0 = _xy(R_CASA, ang)
-            x1, y1 = _xy(R_ZOD,  ang)
-            eixo = i in (0, 3, 6, 9)
+            ang   = _grau_para_rad(i * 30.0, asc)
+            eixo  = i in (0, 3, 6, 9)
+            x0, y0 = _xy(R_CSA, ang)
+            x1, y1 = _xy(R_ZOD, ang)
             ax.plot([x0, x1], [y0, y1],
                     color=OURO if eixo else LINHA_GRADE,
-                    lw=1.5 if eixo else 0.7, zorder=6)
-
+                    lw=1.4 if eixo else 0.6, zorder=6)
             # Número da casa
             ang_n = _grau_para_rad((i + 0.5) * 30.0, asc)
-            r_n   = (R_CASA + R_ZOD) / 2
-            nx, ny = _xy(r_n, ang_n)
+            nx, ny = _xy((R_CSA + R_ZOD) / 2 - 0.01, ang_n)
             ax.text(nx, ny, str(i + 1),
-                    ha="center", va="center", fontsize=7.5,
+                    ha="center", va="center", fontsize=7,
                     color=TEXTO_CINZA, zorder=7)
 
         # ── Linhas de aspectos ───────────────────────────────────────────────
+        COR_ASP = {
+            "conjunction": "#8B4513",
+            "trine":       "#1565C0",
+            "sextile":     "#2E7D32",
+            "square":      "#C62828",
+            "opposition":  "#7B1FA2",
+        }
         for asp in dados.aspectos:
             p1, p2, tipo = asp["p1"], asp["p2"], asp["tipo"]
             if p1 not in dados.planetas or p2 not in dados.planetas:
                 continue
-            cor_a  = COR_ASPECTO.get(tipo, "#888888")
-            alpha_a = 0.45 if tipo in ("trine", "sextile") else 0.60
-            lw_a   = 0.9  if tipo in ("trine", "sextile") else 1.2
-
+            cor_a  = COR_ASP.get(tipo, "#888888")
+            alpha_a = 0.40 if tipo in ("trine", "sextile") else 0.55
+            lw_a   = 0.8  if tipo in ("trine", "sextile") else 1.1
             a1 = _grau_para_rad(dados.planetas[p1], asc)
             a2 = _grau_para_rad(dados.planetas[p2], asc)
-            x1, y1 = _xy(R_ASP, a1)
-            x2, y2 = _xy(R_ASP, a2)
-            ax.plot([x1, x2], [y1, y2], color=cor_a, lw=lw_a, alpha=alpha_a, zorder=8)
+            x1_a, y1_a = _xy(R_ASP, a1)
+            x2_a, y2_a = _xy(R_ASP, a2)
+            ax.plot([x1_a, x2_a], [y1_a, y2_a],
+                    color=cor_a, lw=lw_a, alpha=alpha_a, zorder=8)
 
-        # Círculo central (branco para cobrir cruzamentos de aspectos)
+        # Círculo branco cobre as interseções de aspectos
         ax.add_patch(plt.Circle((0, 0), R_ASP - 0.01, color=BG, fill=True, zorder=9))
-        ax.add_patch(plt.Circle((0, 0), R_ASP - 0.01, color=LINHA_GRADE, fill=False, lw=0.6, zorder=10))
+        ax.add_patch(plt.Circle((0, 0), R_INT, color=BG, fill=True, zorder=10))
+        ax.add_patch(plt.Circle((0, 0), R_INT, color=BORDA, fill=False, lw=1.0, zorder=11))
 
-        # Ponto dourado no centro
-        ax.add_patch(plt.Circle((0, 0), 0.04, color=OURO, fill=True, alpha=0.6, zorder=11))
+        # ── Figura humana alquímica ──────────────────────────────────────────
+        _desenhar_homem_alquimico(ax, dados)
 
         # ── Planetas no anel ─────────────────────────────────────────────────
-        posicoes_ajustadas = _ajustar_posicoes(
+        posicoes_ajust = _ajustar_posicoes(
             {k: v for k, v in dados.planetas.items() if k in ORDEM_PLANETAS}, asc
         )
 
-        for nome, grau in posicoes_ajustadas.items():
+        for nome, grau_ajust in posicoes_ajust.items():
             if nome not in dados.planetas:
                 continue
-            grau_orig = dados.planetas[nome]
-            ang_orig  = _grau_para_rad(grau_orig, asc)
-            ang_ajust = _grau_para_rad(grau, asc)
+            grau_real = dados.planetas[nome]
+            ang_real  = _grau_para_rad(grau_real, asc)
+            ang_ajust = _grau_para_rad(grau_ajust, asc)
+            cor_p     = COR_PLANETA.get(nome, TEXTO_ESCURO)
+            abrev     = PLANETA_ABREV.get(nome, nome[:3])
 
-            cor_p  = COR_PLANETA.get(nome, "#000000")
-            glifo  = PLANETA_GLIFO.get(nome, "?")
-            signo  = dados.signos.get(nome, "")
-            grau_s = grau_orig % 30.0
+            # Ponto exato (menor)
+            px, py = _xy(R_PLN - 0.06, ang_real)
+            ax.plot(px, py, "o", color=cor_p, markersize=3.5, zorder=14)
 
-            # Ponto de posição exata
-            px, py = _xy(R_PLAN - 0.05, ang_orig)
-            ax.plot(px, py, "o", color=cor_p, markersize=3.5, zorder=12)
+            # Rótulo com abreviação (posição ajustada)
+            lx, ly = _xy(R_PLN + 0.06, ang_ajust)
+            if abs(ang_real - ang_ajust) > 0.05:
+                ax.plot([px, lx], [py, ly], color=cor_p, lw=0.5, alpha=0.35, zorder=13)
 
-            # Linha de conexão se ajustado
-            gx, gy = _xy(R_PLAN + 0.05, ang_ajust)
-            if abs(ang_orig - ang_ajust) > 0.04:
-                ax.plot([px, gx], [py, gy], color=cor_p, lw=0.5, alpha=0.4, zorder=12)
+            fs_p = 7 if nome in ("Ascendant", "Medium_Coeli") else 8.5
+            ax.text(lx, ly, abrev,
+                    ha="center", va="center", fontsize=fs_p,
+                    color=cor_p, fontweight="bold", zorder=15)
 
-            # Glifo
-            fs = 8 if nome in ("Ascendant", "Medium_Coeli") else 11
-            ax.text(gx, gy, glifo,
-                    ha="center", va="center", fontsize=fs,
-                    color=cor_p, fontweight="bold", zorder=13)
+            # Grau dentro do signo
+            grau_sig = grau_real % 30.0
+            dx, dy = _xy(R_PLN + 0.06, ang_ajust)
+            ax.text(dx, dy - 0.095, f"{grau_sig:.0f}",
+                    ha="center", va="center", fontsize=5.5,
+                    color=cor_p, alpha=0.75, zorder=15)
 
-            # Grau no signo abaixo do glifo (menor)
-            deg_lbl = f"{grau_s:.0f}°"
-            ax.text(gx, gy - 0.10, deg_lbl,
-                    ha="center", va="center", fontsize=6,
-                    color=cor_p, alpha=0.80, zorder=13)
-
-        # Título abaixo da roda
-        ax.text(0, -1.33,
-                f"Swiss Ephemeris  ·  {dados.data_nascimento}  {dados.hora_nascimento}  ·  {dados.cidade_nascimento}",
-                ha="center", va="center", fontsize=7,
-                color=TEXTO_CINZA, zorder=14)
+        # Rodapé com dados
+        ax.text(0, -1.30,
+                f"Swiss Ephemeris  |  {dados.data_nascimento}  {dados.hora_nascimento}  |  {dados.cidade_nascimento}",
+                ha="center", va="center", fontsize=6.5,
+                color=TEXTO_CINZA, zorder=16)
 
         # ── PAINEL DIREITO ───────────────────────────────────────────────────
         axp.set_facecolor(BG_PAINEL)
@@ -416,57 +550,48 @@ def gerar_imagem_mapa_natal(dados: "DadosMapa") -> bytes:
         def txt(t: str, x: float, y: float,
                 color: str = TEXTO_ESCURO,
                 fs: float = 8.5,
-                bold: bool = False,
-                alpha: float = 1.0) -> None:
-            axp.text(x, y, t,
-                     ha="left", va="top", fontsize=fs,
-                     color=color,
-                     fontweight="bold" if bold else "normal",
-                     alpha=alpha)
+                bold: bool = False) -> None:
+            axp.text(x, y, t, ha="left", va="top", fontsize=fs,
+                     color=color, fontweight="bold" if bold else "normal")
 
         y = 0.97
 
-        # Nome
-        nome_d = dados.nome_paciente[:24]
-        txt(nome_d.upper(), 0.06, y, color=OURO, fs=10, bold=True)
-        y -= 0.045
+        # Nome em destaque
+        txt(dados.nome_paciente[:22].upper(), 0.06, y, color=OURO, fs=10, bold=True)
+        y -= 0.048
 
-        # Data / hora / cidade
+        # Data / cidade
         txt(f"{dados.data_nascimento}  {dados.hora_nascimento}", 0.06, y, color=TEXTO_CINZA, fs=7.5)
-        y -= 0.030
-        txt(dados.cidade_nascimento[:30], 0.06, y, color=TEXTO_CINZA, fs=7.5)
-        y -= 0.038
+        y -= 0.033
+        txt(dados.cidade_nascimento[:28], 0.06, y, color=TEXTO_CINZA, fs=7.5)
+        y -= 0.040
 
-        # Separador
         axp.axhline(y=y, xmin=0.04, xmax=0.96, color=BORDA, lw=0.8)
         y -= 0.030
 
         # Posições planetárias
-        txt("POSIÇÕES", 0.06, y, color=OURO, fs=7.5, bold=True)
+        txt("POSICOES", 0.06, y, color=OURO, fs=7.5, bold=True)
         y -= 0.030
 
-        dy = 0.032
         for nome_p in ORDEM_PLANETAS:
-            if nome_p not in dados.planetas or y < 0.40:
+            if nome_p not in dados.planetas or y < 0.41:
                 continue
             grau_abs = dados.planetas[nome_p]
             sig_abrev = dados.signos.get(nome_p, "")
-            sig_nome  = SIGNOS_NOME_PT[SIGNOS_ABREV.index(sig_abrev)] if sig_abrev in SIGNOS_ABREV else sig_abrev
+            sig_nome  = SIGNO_NOME_PT.get(sig_abrev, sig_abrev)
             grau_sig  = grau_abs % 30.0
             casa      = dados.casas.get(nome_p)
             casa_txt  = f" C{casa}" if casa else ""
+            cor_p     = COR_PLANETA.get(nome_p, TEXTO_ESCURO)
+            abrev_p   = PLANETA_ABREV.get(nome_p, nome_p[:3])
+            axp.text(0.06, y, abrev_p,
+                     ha="left", va="top", fontsize=7.5,
+                     color=cor_p, fontweight="bold")
+            axp.text(0.32, y, f"{grau_sig:.1f}  {sig_nome}{casa_txt}",
+                     ha="left", va="top", fontsize=7.5,
+                     color=TEXTO_ESCURO)
+            y -= 0.034
 
-            glifo = PLANETA_GLIFO.get(nome_p, "")
-            cor_p = COR_PLANETA.get(nome_p, TEXTO_ESCURO)
-            cor_e = ELEMENTO_COR.get(sig_abrev, TEXTO_CINZA)
-            nome_curto = PLANETA_NOME_PT.get(nome_p, nome_p)[:9]
-
-            txt(glifo,    0.06, y, color=cor_p, fs=9, bold=True)
-            txt(nome_curto, 0.15, y, color=TEXTO_ESCURO, fs=7.5)
-            txt(f"{grau_sig:.1f}° {sig_nome[:3]}{casa_txt}", 0.58, y, color=cor_e, fs=7.5)
-            y -= dy
-
-        # Separador
         axp.axhline(y=y, xmin=0.04, xmax=0.96, color=BORDA, lw=0.8)
         y -= 0.025
 
@@ -474,100 +599,43 @@ def gerar_imagem_mapa_natal(dados: "DadosMapa") -> bytes:
         txt("ELEMENTOS", 0.06, y, color=OURO, fs=7.5, bold=True)
         y -= 0.028
 
-        contagem: dict[str, int] = {"Fogo": 0, "Terra": 0, "Ar": 0, "Água": 0}
-        COR_ELEM = {"Fogo": COR_FOGO, "Terra": COR_TERRA, "Ar": COR_AR, "Água": COR_AGUA}
-        for p in ORDEM_PLANETAS[:10]:  # só os 10 planetas principais
+        contagem: dict[str, int] = {"Fogo": 0, "Terra": 0, "Ar": 0, "Agua": 0}
+        COR_EL = {"Fogo": COR_FOGO, "Terra": COR_TERRA, "Ar": COR_AR, "Agua": COR_AGUA}
+        for p in ORDEM_PLANETAS[:10]:
             sg = dados.signos.get(p, "")
             el = ELEM_MAPA.get(sg)
             if el:
                 contagem[el] += 1
 
-        total = sum(contagem.values()) or 1
+        total_el = sum(contagem.values()) or 1
         for el, qtd in contagem.items():
-            cor_el = COR_ELEM[el]
-            barra  = 0.65 * (qtd / total)
+            cor_el = COR_EL[el]
+            barra  = 0.65 * (qtd / total_el)
             axp.add_patch(patches.Rectangle(
-                (0.24, y - 0.010), barra, 0.013,
-                color=cor_el, alpha=0.35,
+                (0.06, y - 0.018), barra, 0.016,
+                color=cor_el, alpha=0.75,
             ))
-            txt(f"{el[:4]}:", 0.06, y, color=cor_el, fs=7.5)
-            txt(str(qtd), 0.94, y, color=cor_el, fs=7.5)
-            y -= 0.026
-
-        # Separador
-        axp.axhline(y=y, xmin=0.04, xmax=0.96, color=BORDA, lw=0.8)
-        y -= 0.025
-
-        # Aspectos principais
-        if dados.aspectos and y > 0.05:
-            txt("ASPECTOS", 0.06, y, color=OURO, fs=7.5, bold=True)
+            axp.text(0.73, y - 0.004, f"{el[:2].upper()} {qtd}",
+                     ha="left", va="top", fontsize=6.5, color=cor_el, fontweight="bold")
             y -= 0.028
-            for asp in dados.aspectos[:10]:
-                if y < 0.04:
-                    break
-                p1   = PLANETA_GLIFO.get(asp["p1"], asp["p1"][:2])
-                p2   = PLANETA_GLIFO.get(asp["p2"], asp["p2"][:2])
-                tipo = asp["tipo"]
-                sig  = SIGLA_ASPECTO.get(tipo, tipo[:2])
-                cor_a = COR_ASPECTO.get(tipo, TEXTO_CINZA)
-                orbe  = asp.get("orbe", 0)
-                txt(f"{p1} {sig} {p2}   {orbe:.1f}°", 0.06, y, color=cor_a, fs=7.5)
-                y -= 0.026
 
-        # Rodapé
-        axp.text(0.50, 0.015,
-                 "Alquimista Interior · Swiss Ephemeris",
-                 ha="center", va="bottom", fontsize=6,
-                 color=TEXTO_CINZA, alpha=0.6)
+        if y > 0.05:
+            axp.axhline(y=y, xmin=0.04, xmax=0.96, color=BORDA, lw=0.8)
+            y -= 0.025
+            txt("Mapa Alquimico", 0.06, y, color=TEXTO_CINZA, fs=6.5)
+            y -= 0.022
+            txt("Escola Joel Aleixo", 0.06, y, color=TEXTO_CINZA, fs=6.5)
 
-        # ── Título global ────────────────────────────────────────────────────
-        fig.text(0.33, 0.98,
-                 f"Mapa Natal — {dados.nome_paciente}",
-                 ha="center", va="top", fontsize=14,
-                 color=OURO, fontweight="bold")
-
-        # ── Exportar ─────────────────────────────────────────────────────────
+        # ── Salva ────────────────────────────────────────────────────────────
         buf = io.BytesIO()
         fig.savefig(buf, format="png", dpi=110,
                     facecolor=BG, bbox_inches="tight")
         plt.close(fig)
         buf.seek(0)
         png_bytes = buf.read()
-        logger.info(f"Imagem do mapa natal gerada: {len(png_bytes) // 1024} KB")
+        logger.info(f"Mapa Alquimico gerado: {len(png_bytes) // 1024} KB")
         return png_bytes
 
     except Exception as e:
         logger.error(f"Falha ao gerar imagem do mapa natal: {e}", exc_info=True)
-        raise RuntimeError(f"Falha na geração da imagem: {e}") from e
-
-
-# ---------------------------------------------------------------------------
-# Ajuste de sobreposição de planetas
-# ---------------------------------------------------------------------------
-
-def _ajustar_posicoes(
-    posicoes: dict[str, float],
-    asc: float,
-    limiar_graus: float = 6.0,
-) -> dict[str, float]:
-    if not posicoes:
-        return {}
-
-    ordem = sorted(posicoes.keys(), key=lambda k: posicoes[k])
-    ajustadas = dict(posicoes)
-
-    for _ in range(6):
-        modificado = False
-        for i in range(len(ordem)):
-            for j in range(i + 1, len(ordem)):
-                p1, p2 = ordem[i], ordem[j]
-                d = (ajustadas[p2] - ajustadas[p1]) % 360.0
-                if d < limiar_graus:
-                    delta = (limiar_graus - d) / 2.0 + 0.5
-                    ajustadas[p1] = (ajustadas[p1] - delta) % 360.0
-                    ajustadas[p2] = (ajustadas[p2] + delta) % 360.0
-                    modificado = True
-        if not modificado:
-            break
-
-    return ajustadas
+        raise RuntimeError(f"Falha na geracao da imagem: {e}") from e
