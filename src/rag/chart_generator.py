@@ -276,7 +276,7 @@ def _desenhar_homem_alquimico(ax: Any, dados: "DadosMapa") -> None:
     lw   = 1.8
 
     # ── Cabeça ────────────────────────────────────────────────────────────
-    head = plt.Circle((0, 0.395), 0.090, color=BG, ec=cor, lw=lw, zorder=22)
+    head = patches.Circle((0, 0.395), 0.090, color=BG, ec=cor, lw=lw, zorder=22)
     ax.add_patch(head)
 
     # ── Pescoço ──────────────────────────────────────────────────────────
@@ -446,7 +446,7 @@ def gerar_imagem_mapa_natal(dados: "DadosMapa") -> bytes:
 
         # Círculos do anel
         for r, lw_c in [(R_EXT, 1.2), (R_ZOD, 0.9), (R_CSA, 0.7), (R_INT, 1.0)]:
-            ax.add_patch(plt.Circle((0, 0), r, color=BORDA, fill=False, lw=lw_c, zorder=5))
+            ax.add_patch(patches.Circle((0, 0), r, color=BORDA, fill=False, lw=lw_c, zorder=5))
 
         # ── Divisões de casas ────────────────────────────────────────────────
         for i in range(12):
@@ -487,9 +487,9 @@ def gerar_imagem_mapa_natal(dados: "DadosMapa") -> bytes:
                     color=cor_a, lw=lw_a, alpha=alpha_a, zorder=8)
 
         # Círculo branco cobre as interseções de aspectos
-        ax.add_patch(plt.Circle((0, 0), R_ASP - 0.01, color=BG, fill=True, zorder=9))
-        ax.add_patch(plt.Circle((0, 0), R_INT, color=BG, fill=True, zorder=10))
-        ax.add_patch(plt.Circle((0, 0), R_INT, color=BORDA, fill=False, lw=1.0, zorder=11))
+        ax.add_patch(patches.Circle((0, 0), R_ASP - 0.01, color=BG, fill=True, zorder=9))
+        ax.add_patch(patches.Circle((0, 0), R_INT, color=BG, fill=True, zorder=10))
+        ax.add_patch(patches.Circle((0, 0), R_INT, color=BORDA, fill=False, lw=1.0, zorder=11))
 
         # ── Figura humana alquímica ──────────────────────────────────────────
         _desenhar_homem_alquimico(ax, dados)
