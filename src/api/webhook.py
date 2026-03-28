@@ -97,6 +97,11 @@ _PROCESSED_MESSAGE_IDS: "OrderedDict[str, float]" = OrderedDict()
 _DEDUP_TTL_SECONDS = 300
 _DEDUP_MAX_SIZE = 1000
 
+# Contador de falhas consecutivas de geração de mapa por número de paciente.
+# Após _MAPA_MAX_TENTATIVAS falhas, envia mensagem de suporte e para de tentar.
+_MAPA_FALHAS: dict[str, int] = {}
+_MAPA_MAX_TENTATIVAS = 3
+
 
 def _ja_processado(message_id: str) -> bool:
     """Retorna True se o message_id já foi processado recentemente."""
@@ -256,16 +261,17 @@ async def _enviar_sequencia_evolution(
     evolution: "EvolutionClient",
     instance: str,
     numero: str,
-    delay: float = 3.0,
+    delay: float = 4.0,
 ) -> None:
     """
     Envia uma lista de mensagens com rate limiting (Evolution API).
-    Delay padrão: 3s — acima do mínimo oficial da Meta (6s por usuário),
-    conservador o suficiente para respostas sequenciais sem risco de ban.
+    Delay padrão: 4s entre mensagens para o terapeuta conseguir ler cada bloco.
     """
     for i, msg in enumerate(msgs):
         await aguardar_antes_de_enviar(numero, sequencial=True)
-        if i > 0:
+        if i == 0 and len(msgs) > 1:
+            await asyncio.sleep(1.5)  # pausa breve antes da 1ª mensagem de uma sequência
+        elif i > 0:
             await asyncio.sleep(delay)
         await evolution.enviar_mensagem(instance=instance, numero=numero, texto=msg)
 
@@ -1191,6 +1197,11 @@ async def _processar_mensagem(payload: dict) -> None:
                     )
                     if dados_hist and not dados_hist.get("falta_ano"):
                         # Tem dados no histórico — injeta como se fossem novos para o path normal processar
+                        # Se extrair_dados_nascimento não encontrou o nome, usa o nome do estado (onboarding)
+                        if not dados_hist.get("nome") or dados_hist.get("nome") == "Paciente":
+                            nome_estado = getattr(estado, "nome_usuario", None) or estado.get("nome_usuario") if isinstance(estado, dict) else getattr(estado, "nome_usuario", None)
+                            if nome_estado:
+                                dados_hist["nome"] = nome_estado
                         dados_nasc = dados_hist
                         logger.info(f"[Evolution] Refazer mapa: dados recuperados do histórico para {numero_paciente}")
                     else:
@@ -1272,6 +1283,7 @@ async def _processar_mensagem(payload: dict) -> None:
                                         caption=caption_img,
                                     )
                                     imagem_enviada = True
+                                    _MAPA_FALHAS[numero_paciente] = 0  # sucesso — reseta contador
                                     logger.info(f"Imagem enviada para {numero_paciente} — Evolution tentativa {tentativa_img} | resp={resp_img}")
                                     break
                                 except Exception as img_send_err:
@@ -1319,16 +1331,34 @@ async def _processar_mensagem(payload: dict) -> None:
                         )
                     except Exception as mapa_err:
                         logger.warning(
-                            f"Cálculo de mapa natal falhou (Evolution) — continuando sem mapa: {mapa_err}",
+                            f"Cálculo de mapa natal falhou (Evolution) — {mapa_err}",
                             exc_info=True,
                         )
-                        try:
-                            await evolution.enviar_mensagem(
-                                instance=instance_name, numero=numero_paciente,
-                                texto=MSG_ERRO_MAPA_CALCULO,
+                        _MAPA_FALHAS[numero_paciente] = _MAPA_FALHAS.get(numero_paciente, 0) + 1
+                        tentativas_falha = _MAPA_FALHAS[numero_paciente]
+                        if tentativas_falha >= _MAPA_MAX_TENTATIVAS:
+                            _MAPA_FALHAS[numero_paciente] = 0
+                            msg_suporte = (
+                                f"Pedimos desculpas pelo transtorno! Após {_MAPA_MAX_TENTATIVAS} tentativas, "
+                                f"o mapa natal ainda não conseguiu ser gerado. "
+                                f"O erro foi registrado automaticamente.\n\n"
+                                f"Por favor, abra um chamado de suporte: *{NUMERO_SUPORTE}*"
                             )
-                        except Exception:
-                            pass
+                            try:
+                                await evolution.enviar_mensagem(
+                                    instance=instance_name, numero=numero_paciente, texto=msg_suporte,
+                                )
+                            except Exception:
+                                pass
+                        else:
+                            try:
+                                await evolution.enviar_mensagem(
+                                    instance=instance_name, numero=numero_paciente,
+                                    texto=MSG_ERRO_MAPA_CALCULO,
+                                )
+                            except Exception:
+                                pass
+                        return  # não chamar LLM após falha de cálculo do mapa
 
             # Selecionar prompt do agente especialista com fallback para None (usa genérico)
             try:
@@ -1897,16 +1927,17 @@ async def _enviar_sequencia_meta(
     msgs: list[str],
     meta_client: "MetaCloudClient",
     numero: str,
-    delay: float = 3.0,
+    delay: float = 4.0,
 ) -> None:
     """
     Envia uma lista de mensagens com rate limiting (Meta Cloud API).
-    Delay padrão: 3s — conservador para respostas sequenciais sem risco de ban.
-    O rate limiter global garante mínimo de 3s entre qualquer envio ao mesmo número.
+    Delay padrão: 4s entre mensagens para o terapeuta conseguir ler cada bloco.
     """
     for i, msg in enumerate(msgs):
         await aguardar_antes_de_enviar(numero, sequencial=True)
-        if i > 0:
+        if i == 0 and len(msgs) > 1:
+            await asyncio.sleep(1.5)  # pausa breve antes da 1ª mensagem de uma sequência
+        elif i > 0:
             await asyncio.sleep(delay)
         await meta_client.send_text_message(phone_number=numero, message=msg)
 
@@ -2373,6 +2404,7 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                                         caption=caption_img,
                                     )
                                     imagem_enviada = True
+                                    _MAPA_FALHAS[numero_paciente] = 0  # sucesso — reseta contador
                                     logger.info(f"Imagem enviada para {numero_paciente} — Meta tentativa {tentativa_img} | resp={resp_img}")
                                     break
                                 except Exception as img_send_err:
@@ -2420,16 +2452,33 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                         )
                     except Exception as mapa_err:
                         logger.warning(
-                            f"Cálculo de mapa natal falhou (Meta) — continuando sem mapa: {mapa_err}",
+                            f"Cálculo de mapa natal falhou (Meta) — {mapa_err}",
                             exc_info=True,
                         )
-                        try:
-                            await meta_client.send_text_message(
-                                phone_number=numero_paciente,
-                                message=MSG_ERRO_MAPA_CALCULO,
+                        _MAPA_FALHAS[numero_paciente] = _MAPA_FALHAS.get(numero_paciente, 0) + 1
+                        tentativas_falha = _MAPA_FALHAS[numero_paciente]
+                        if tentativas_falha >= _MAPA_MAX_TENTATIVAS:
+                            _MAPA_FALHAS[numero_paciente] = 0
+                            msg_suporte = (
+                                f"Pedimos desculpas pelo transtorno! Após {_MAPA_MAX_TENTATIVAS} tentativas, "
+                                f"o mapa natal ainda não conseguiu ser gerado. "
+                                f"O erro foi registrado automaticamente.\n\n"
+                                f"Por favor, abra um chamado de suporte: *{NUMERO_SUPORTE}*"
                             )
-                        except Exception:
-                            pass
+                            try:
+                                await meta_client.send_text_message(
+                                    phone_number=numero_paciente, message=msg_suporte,
+                                )
+                            except Exception:
+                                pass
+                        else:
+                            try:
+                                await meta_client.send_text_message(
+                                    phone_number=numero_paciente, message=MSG_ERRO_MAPA_CALCULO,
+                                )
+                            except Exception:
+                                pass
+                        return  # não chamar LLM após falha de cálculo do mapa
 
             # Selecionar prompt do agente especialista com fallback para None (usa genérico)
             try:
