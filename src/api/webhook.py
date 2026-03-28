@@ -1260,7 +1260,7 @@ async def _processar_mensagem(payload: dict) -> None:
                     except Exception:
                         pass  # pré-mensagem não é crítica
                     try:
-                        mapa_resultado, mapa_png = await asyncio.wait_for(
+                        mapa_resultado, mapa_png_joel, mapa_png_trad = await asyncio.wait_for(
                             asyncio.to_thread(
                                 gerar_mapa_completo,
                                 dados_nasc.get("nome", "Paciente"),
@@ -1271,22 +1271,27 @@ async def _processar_mensagem(payload: dict) -> None:
                             timeout=90.0,
                         )
                         imagem_enviada = False
-                        # Enviar imagem do mapa natal antes da resposta textual
-                        if mapa_png:
-                            for tentativa_img in range(1, 3):  # até 2 tentativas
+                        # Envia as duas imagens antes da resposta textual
+                        _caption_base = (
+                            f"{dados_nasc.get('nome', 'Paciente')}\n"
+                            f"{dados_nasc['data']} {dados_nasc['hora']} | {dados_nasc['cidade']}"
+                        )
+                        for _img_bytes, _img_caption in [
+                            (mapa_png_trad, f"Mapa Natal — {_caption_base}"),
+                            (mapa_png_joel, f"Mapa Alquimico — {_caption_base}"),
+                        ]:
+                            if not _img_bytes:
+                                continue
+                            for tentativa_img in range(1, 3):
                                 try:
-                                    caption_img = (
-                                        f"Mapa Natal — {dados_nasc.get('nome', 'Paciente')}\n"
-                                        f"{dados_nasc['data']} {dados_nasc['hora']} | {dados_nasc['cidade']}"
-                                    )
                                     resp_img = await evolution.enviar_imagem(
                                         instance=instance_name,
                                         numero=numero_paciente,
-                                        imagem_bytes=mapa_png,
-                                        caption=caption_img,
+                                        imagem_bytes=_img_bytes,
+                                        caption=_img_caption,
                                     )
                                     imagem_enviada = True
-                                    _MAPA_FALHAS[numero_paciente] = 0  # sucesso — reseta contador
+                                    _MAPA_FALHAS[numero_paciente] = 0
                                     logger.info(f"Imagem enviada para {numero_paciente} — Evolution tentativa {tentativa_img} | resp={resp_img}")
                                     break
                                 except Exception as img_send_err:
@@ -1296,8 +1301,8 @@ async def _processar_mensagem(payload: dict) -> None:
                                     )
                                     if tentativa_img < 2:
                                         await asyncio.sleep(2)
-                        else:
-                            logger.warning(f"mapa_png é None para {numero_paciente} — imagem não gerada (Evolution)")
+                        if not mapa_png_joel and not mapa_png_trad:
+                            logger.warning(f"Ambas as imagens são None para {numero_paciente} — imagens não geradas (Evolution)")
 
                         # Se imagem não chegou, avisa o usuário com instrução de retry
                         if not imagem_enviada:
@@ -2389,7 +2394,7 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                         pass  # pré-mensagem não é crítica
                     try:
                         print(f"[META-MAPA] Calculando mapa para {dados_nasc.get('nome')} {dados_nasc['data']} {dados_nasc['hora']} {dados_nasc['cidade']}", flush=True)
-                        mapa_resultado, mapa_png = await asyncio.wait_for(
+                        mapa_resultado, mapa_png_joel, mapa_png_trad = await asyncio.wait_for(
                             asyncio.to_thread(
                                 gerar_mapa_completo,
                                 dados_nasc.get("nome", "Paciente"),
@@ -2399,23 +2404,28 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                             ),
                             timeout=90.0,
                         )
-                        print(f"[META-MAPA] gerar_mapa_completo retornou — mapa_png={'OK '+str(len(mapa_png))+' bytes' if mapa_png else 'None'}", flush=True)
+                        print(f"[META-MAPA] gerar_mapa_completo retornou — joel={'OK '+str(len(mapa_png_joel))+' bytes' if mapa_png_joel else 'None'} | trad={'OK '+str(len(mapa_png_trad))+' bytes' if mapa_png_trad else 'None'}", flush=True)
                         imagem_enviada = False
-                        # Enviar imagem do mapa natal antes da resposta textual
-                        if mapa_png:
-                            for tentativa_img in range(1, 3):  # até 2 tentativas
+                        # Envia as duas imagens antes da resposta textual
+                        _caption_base = (
+                            f"{dados_nasc.get('nome', 'Paciente')}\n"
+                            f"{dados_nasc['data']} {dados_nasc['hora']} | {dados_nasc['cidade']}"
+                        )
+                        for _img_bytes, _img_caption in [
+                            (mapa_png_trad, f"Mapa Natal — {_caption_base}"),
+                            (mapa_png_joel, f"Mapa Alquimico — {_caption_base}"),
+                        ]:
+                            if not _img_bytes:
+                                continue
+                            for tentativa_img in range(1, 3):
                                 try:
-                                    caption_img = (
-                                        f"Mapa Natal — {dados_nasc.get('nome', 'Paciente')}\n"
-                                        f"{dados_nasc['data']} {dados_nasc['hora']} | {dados_nasc['cidade']}"
-                                    )
                                     resp_img = await meta_client.send_image_message(
                                         phone_number=numero_paciente,
-                                        imagem_bytes=mapa_png,
-                                        caption=caption_img,
+                                        imagem_bytes=_img_bytes,
+                                        caption=_img_caption,
                                     )
                                     imagem_enviada = True
-                                    _MAPA_FALHAS[numero_paciente] = 0  # sucesso — reseta contador
+                                    _MAPA_FALHAS[numero_paciente] = 0
                                     print(f"[META-MAPA] Imagem enviada com sucesso para {numero_paciente} (tentativa {tentativa_img})", flush=True)
                                     logger.info(f"Imagem enviada para {numero_paciente} — Meta tentativa {tentativa_img} | resp={resp_img}")
                                     break
@@ -2427,9 +2437,9 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                                     )
                                     if tentativa_img < 2:
                                         await asyncio.sleep(2)
-                        else:
-                            print(f"[META-MAPA] mapa_png é None — imagem não gerada para {numero_paciente}", flush=True)
-                            logger.warning(f"mapa_png é None para {numero_paciente} — imagem não gerada (Meta)")
+                        if not mapa_png_joel and not mapa_png_trad:
+                            print(f"[META-MAPA] Ambas as imagens são None — não geradas para {numero_paciente}", flush=True)
+                            logger.warning(f"Ambas as imagens são None para {numero_paciente} — imagens não geradas (Meta)")
 
                         # Se imagem não chegou, avisa o usuário com instrução de retry
                         if not imagem_enviada:

@@ -408,6 +408,23 @@ def gerar_imagem_mapa_natal(dados: "DadosMapa") -> bytes:
         _MPL_LOCK.release()
 
 
+def gerar_ambas_imagens(dados: "DadosMapa") -> tuple[bytes, bytes]:
+    """
+    Gera os dois PNGs em sequência com um único lock:
+      1. Mapa Alquimico (estilo Joel Aleixo — com figura humana)
+      2. Mapa Natal Tradicional (roda pura com linhas de aspectos — estilo software)
+    Retorna (imagem_joel_bytes, imagem_tradicional_bytes).
+    """
+    if not _MPL_LOCK.acquire(timeout=90.0):
+        raise RuntimeError("Timeout aguardando lock matplotlib (90s)")
+    try:
+        joel = _gerar_imagem_locked(dados)
+        trad = _gerar_imagem_tradicional_locked(dados)
+        return joel, trad
+    finally:
+        _MPL_LOCK.release()
+
+
 def _gerar_imagem_locked(dados: "DadosMapa") -> bytes:
     """Executa a geração da imagem com o lock _MPL_LOCK já adquirido."""
     try:
@@ -665,3 +682,247 @@ def _gerar_imagem_locked(dados: "DadosMapa") -> bytes:
     except Exception as e:
         logger.error(f"Falha ao gerar imagem do mapa natal: {e}", exc_info=True)
         raise RuntimeError(f"Falha na geracao da imagem: {e}") from e
+
+
+# ---------------------------------------------------------------------------
+# Mapa Natal Tradicional — estilo software astrológico (sem figura humana)
+# ---------------------------------------------------------------------------
+
+
+def _gerar_imagem_tradicional_locked(dados: "DadosMapa") -> bytes:
+    """
+    Gera PNG do Mapa Natal tradicional — roda zodiacal pura com linhas de aspectos
+    proeminentes no centro, sem figura humana. Estilo software astrológico profissional.
+    """
+    try:
+        from matplotlib.figure import Figure
+        from matplotlib.backends.backend_agg import FigureCanvasAgg
+        import matplotlib.patches as patches
+        import numpy as np
+
+        fig = Figure(figsize=(12, 9), facecolor=BG, dpi=110)
+        FigureCanvasAgg(fig)
+
+        ax  = fig.add_axes([0.01, 0.05, 0.60, 0.90])
+        axp = fig.add_axes([0.63, 0.04, 0.35, 0.92])
+
+        ax.set_aspect("equal")
+        ax.set_facecolor(BG)
+        ax.set_xlim(-1.32, 1.32)
+        ax.set_ylim(-1.32, 1.32)
+        ax.axis("off")
+
+        asc = dados.ascendente_grau
+
+        R_EXT    = 1.18
+        R_ZOD    = 0.94
+        R_PLN    = 0.81
+        R_CSA    = 0.68
+        R_INT    = 0.63
+        R_CENTRO = 0.09
+        SEG_RAD  = math.pi / 6
+
+        # ── Anel zodiacal ──────────────────────────────────────────────────
+        for i, abrev in enumerate(SIGNOS_ABREV):
+            ang0 = _grau_para_rad(i * 30.0, asc)
+            ang1 = ang0 - SEG_RAD
+            cor  = ELEMENTO_COR.get(abrev, "#CCCCCC")
+            t    = np.linspace(ang0, ang1, 40)
+
+            xs = list(R_EXT * np.cos(t)) + list(R_ZOD * np.cos(t[::-1]))
+            ys = list(R_EXT * np.sin(t)) + list(R_ZOD * np.sin(t[::-1]))
+            ax.fill(xs, ys, color=cor, alpha=0.22, zorder=2)
+
+            ang_div = ang0
+            x0, y0 = _xy(R_ZOD, ang_div)
+            x1, y1 = _xy(R_EXT, ang_div)
+            ax.plot([x0, x1], [y0, y1], color=cor, lw=0.8, alpha=0.60, zorder=3)
+
+            ang_m = ang0 - SEG_RAD / 2
+            sx, sy = _xy((R_ZOD + R_EXT) / 2, ang_m)
+            label = SIGNO_LABEL.get(abrev, abrev[:2])
+            ax.text(sx, sy, label,
+                    ha="center", va="center", fontsize=9,
+                    color=cor, fontweight="bold", zorder=4)
+
+        # Círculos dos anéis
+        for r, lw_c in [(R_EXT, 1.2), (R_ZOD, 0.9), (R_CSA, 0.7), (R_INT, 1.0)]:
+            ax.add_patch(patches.Circle((0, 0), r, color=BORDA, fill=False, lw=lw_c, zorder=5))
+
+        # ── Divisões de casas ──────────────────────────────────────────────
+        for i in range(12):
+            ang  = _grau_para_rad(i * 30.0, asc)
+            eixo = i in (0, 3, 6, 9)
+            x0, y0 = _xy(R_CSA, ang)
+            x1, y1 = _xy(R_ZOD, ang)
+            ax.plot([x0, x1], [y0, y1],
+                    color=OURO if eixo else LINHA_GRADE,
+                    lw=1.4 if eixo else 0.6, zorder=6)
+            ang_n = ang - SEG_RAD / 2
+            nx, ny = _xy((R_CSA + R_ZOD) / 2 - 0.01, ang_n)
+            ax.text(nx, ny, str(i + 1),
+                    ha="center", va="center", fontsize=7,
+                    color=TEXTO_CINZA, zorder=7)
+
+        # ── Linhas de aspectos (proeminentes — atravessam o centro) ────────
+        COR_ASP_TRAD = {
+            "conjunction": "#795548",
+            "trine":       "#1565C0",
+            "sextile":     "#2E7D32",
+            "square":      "#C62828",
+            "opposition":  "#7B1FA2",
+        }
+        for asp in dados.aspectos:
+            p1, p2, tipo = asp["p1"], asp["p2"], asp["tipo"]
+            if p1 not in dados.planetas or p2 not in dados.planetas:
+                continue
+            cor_a   = COR_ASP_TRAD.get(tipo, "#888888")
+            lw_a    = 1.4 if tipo in ("square", "opposition") else 1.0
+            alpha_a = 0.72 if tipo in ("square", "opposition") else 0.52
+            a1 = _grau_para_rad(dados.planetas[p1], asc)
+            a2 = _grau_para_rad(dados.planetas[p2], asc)
+            x1_a, y1_a = _xy(R_INT, a1)
+            x2_a, y2_a = _xy(R_INT, a2)
+            ax.plot([x1_a, x2_a], [y1_a, y2_a],
+                    color=cor_a, lw=lw_a, alpha=alpha_a,
+                    solid_capstyle="round", zorder=8)
+
+        # Círculo central decorativo
+        ax.add_patch(patches.Circle((0, 0), R_CENTRO, color=BG, fill=True, zorder=9))
+        ax.add_patch(patches.Circle((0, 0), R_CENTRO, color=BORDA, fill=False, lw=0.8, zorder=10))
+        ax.plot(0, 0, "o", color=OURO, markersize=3.5, zorder=11)
+
+        # ── Planetas no anel ───────────────────────────────────────────────
+        posicoes_ajust = _ajustar_posicoes(
+            {k: v for k, v in dados.planetas.items() if k in ORDEM_PLANETAS}, asc
+        )
+        for nome, grau_ajust in posicoes_ajust.items():
+            if nome not in dados.planetas:
+                continue
+            grau_real = dados.planetas[nome]
+            ang_real  = _grau_para_rad(grau_real, asc)
+            ang_ajust = _grau_para_rad(grau_ajust, asc)
+            cor_p     = COR_PLANETA.get(nome, TEXTO_ESCURO)
+            abrev     = PLANETA_ABREV.get(nome, nome[:3])
+
+            px, py = _xy(R_PLN - 0.06, ang_real)
+            ax.plot(px, py, "o", color=cor_p, markersize=3.5, zorder=14)
+
+            lx, ly = _xy(R_PLN + 0.06, ang_ajust)
+            if abs(ang_real - ang_ajust) > 0.05:
+                ax.plot([px, lx], [py, ly], color=cor_p, lw=0.5, alpha=0.35, zorder=13)
+
+            fs_p = 7 if nome in ("Ascendant", "Medium_Coeli") else 8.5
+            ax.text(lx, ly, abrev,
+                    ha="center", va="center", fontsize=fs_p,
+                    color=cor_p, fontweight="bold", zorder=15)
+
+            grau_sig = grau_real % 30.0
+            ax.text(lx, ly - 0.095, f"{grau_sig:.0f}",
+                    ha="center", va="center", fontsize=5.5,
+                    color=cor_p, alpha=0.75, zorder=15)
+
+        ax.text(0, -1.30,
+                f"Swiss Ephemeris  |  {dados.data_nascimento}  {dados.hora_nascimento}  |  {dados.cidade_nascimento}",
+                ha="center", va="center", fontsize=6.5,
+                color=TEXTO_CINZA, zorder=16)
+
+        # ── PAINEL DIREITO ─────────────────────────────────────────────────
+        axp.set_facecolor(BG_PAINEL)
+        axp.axis("off")
+        axp.set_xlim(0, 1)
+        axp.set_ylim(0, 1)
+        axp.add_patch(patches.FancyBboxPatch(
+            (0.02, 0.01), 0.96, 0.97,
+            boxstyle="round,pad=0.01",
+            linewidth=1.0, edgecolor=BORDA,
+            facecolor=BG_PAINEL,
+        ))
+
+        def txt(t: str, x: float, y: float,
+                color: str = TEXTO_ESCURO, fs: float = 8.5, bold: bool = False) -> None:
+            axp.text(x, y, t, ha="left", va="top", fontsize=fs,
+                     color=color, fontweight="bold" if bold else "normal")
+
+        y = 0.97
+        txt(dados.nome_paciente[:22].upper(), 0.06, y, color=OURO, fs=10, bold=True)
+        y -= 0.048
+        txt(f"{dados.data_nascimento}  {dados.hora_nascimento}", 0.06, y, color=TEXTO_CINZA, fs=7.5)
+        y -= 0.033
+        txt(dados.cidade_nascimento[:28], 0.06, y, color=TEXTO_CINZA, fs=7.5)
+        y -= 0.040
+        axp.axhline(y=y, xmin=0.04, xmax=0.96, color=BORDA, lw=0.8)
+        y -= 0.030
+
+        txt("POSICOES", 0.06, y, color=OURO, fs=7.5, bold=True)
+        y -= 0.030
+
+        for nome_p in ORDEM_PLANETAS:
+            if nome_p not in dados.planetas or y < 0.44:
+                continue
+            grau_abs  = dados.planetas[nome_p]
+            sig_abrev = dados.signos.get(nome_p, "")
+            sig_nome  = SIGNO_NOME_PT.get(sig_abrev, sig_abrev)
+            grau_sig  = grau_abs % 30.0
+            casa      = dados.casas.get(nome_p)
+            casa_txt  = f" C{casa}" if casa else ""
+            cor_p     = COR_PLANETA.get(nome_p, TEXTO_ESCURO)
+            abrev_p   = PLANETA_ABREV.get(nome_p, nome_p[:3])
+            axp.text(0.06, y, abrev_p,
+                     ha="left", va="top", fontsize=7.5,
+                     color=cor_p, fontweight="bold")
+            axp.text(0.32, y, f"{grau_sig:.1f}  {sig_nome}{casa_txt}",
+                     ha="left", va="top", fontsize=7.5,
+                     color=TEXTO_ESCURO)
+            y -= 0.034
+
+        axp.axhline(y=y, xmin=0.04, xmax=0.96, color=BORDA, lw=0.8)
+        y -= 0.025
+
+        # Tabela de aspectos
+        txt("ASPECTOS", 0.06, y, color=OURO, fs=7.5, bold=True)
+        y -= 0.028
+
+        _SIMB_ASP = {
+            "conjunction": "Con",
+            "opposition":  "Opo",
+            "square":      "Cua",
+            "trine":       "Tri",
+            "sextile":     "Sex",
+        }
+        for asp in dados.aspectos:
+            if y < 0.04:
+                break
+            p1, p2, tipo = asp["p1"], asp["p2"], asp["tipo"]
+            abrev_p1 = PLANETA_ABREV.get(p1, p1[:3])
+            abrev_p2 = PLANETA_ABREV.get(p2, p2[:3])
+            simb     = _SIMB_ASP.get(tipo, tipo[:3])
+            cor_asp  = COR_ASP_TRAD.get(tipo, TEXTO_ESCURO)
+            orbe     = abs(asp.get("orbe", 0.0))
+            axp.text(0.06, y, abrev_p1,
+                     ha="left", va="top", fontsize=6.8, color=TEXTO_ESCURO)
+            axp.text(0.26, y, simb,
+                     ha="left", va="top", fontsize=6.8, color=cor_asp, fontweight="bold")
+            axp.text(0.46, y, abrev_p2,
+                     ha="left", va="top", fontsize=6.8, color=TEXTO_ESCURO)
+            axp.text(0.66, y, f"{orbe:.1f}°",
+                     ha="left", va="top", fontsize=6.0, color=TEXTO_CINZA)
+            y -= 0.028
+
+        if y > 0.04:
+            axp.axhline(y=y, xmin=0.04, xmax=0.96, color=BORDA, lw=0.8)
+            y -= 0.022
+            txt("Mapa Natal", 0.06, y, color=TEXTO_CINZA, fs=6.5)
+            y -= 0.022
+            txt("Escola Joel Aleixo", 0.06, y, color=TEXTO_CINZA, fs=6.5)
+
+        buf = io.BytesIO()
+        fig.savefig(buf, format="png", dpi=110, facecolor=BG, bbox_inches="tight")
+        buf.seek(0)
+        png_bytes = buf.read()
+        logger.info(f"Mapa Natal Tradicional gerado: {len(png_bytes) // 1024} KB")
+        return png_bytes
+
+    except Exception as e:
+        logger.error(f"Falha ao gerar imagem tradicional: {e}", exc_info=True)
+        raise RuntimeError(f"Falha na geracao da imagem tradicional: {e}") from e

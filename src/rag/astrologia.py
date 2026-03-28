@@ -709,12 +709,9 @@ def gerar_mapa_completo(
     data_nascimento: str,
     hora_nascimento: str,
     cidade_nascimento: str,
-) -> Tuple[str, Optional[bytes]]:
+) -> Tuple[str, Optional[bytes], Optional[bytes]]:
     """
-    Calcula o mapa natal e gera a imagem PNG.
-
-    Combina calcular_mapa_natal() (texto formatado) com gerar_imagem_mapa_natal()
-    (PNG em bytes) em uma única chamada conveniente.
+    Calcula o mapa natal e gera as duas imagens PNG.
 
     Args:
         nome: Nome do paciente
@@ -723,9 +720,10 @@ def gerar_mapa_completo(
         cidade_nascimento: Cidade de nascimento
 
     Returns:
-        Tuple[str, Optional[bytes]]:
-            - str: texto formatado do mapa natal (sempre presente)
-            - Optional[bytes]: PNG do mapa natal, ou None se geração de imagem falhar
+        Tuple[str, Optional[bytes], Optional[bytes]]:
+            - str: texto formatado do mapa natal
+            - Optional[bytes]: PNG estilo Joel Aleixo (com figura humana)
+            - Optional[bytes]: PNG estilo tradicional (roda pura com aspectos)
     """
     from kerykeion import AstrologicalSubjectFactory
     from kerykeion.aspects.aspects_factory import AspectsFactory
@@ -781,11 +779,12 @@ def gerar_mapa_completo(
         tz_str=tz_str,
     )
 
-    # --- Imagem PNG ---
-    imagem_png: Optional[bytes] = None
+    # --- Imagens PNG (Joel + Tradicional) ---
+    imagem_joel: Optional[bytes] = None
+    imagem_trad: Optional[bytes] = None
     try:
-        print(f"[MAPA] Iniciando geração de imagem para '{nome}'", flush=True)
-        from src.rag.chart_generator import dados_mapa_de_sujeito, gerar_imagem_mapa_natal
+        print(f"[MAPA] Iniciando geração de imagens para '{nome}'", flush=True)
+        from src.rag.chart_generator import dados_mapa_de_sujeito, gerar_ambas_imagens
         dados = dados_mapa_de_sujeito(
             sujeito=sujeito,
             nome_paciente=nome,
@@ -793,11 +792,11 @@ def gerar_mapa_completo(
             hora_nascimento=hora_nascimento,
             cidade_nascimento=cidade_nascimento,
         )
-        imagem_png = gerar_imagem_mapa_natal(dados)
-        print(f"[MAPA] Imagem gerada para '{nome}': {len(imagem_png) // 1024} KB", flush=True)
-        logger.info(f"Imagem do mapa natal gerada para '{nome}' ({len(imagem_png) // 1024} KB)")
+        imagem_joel, imagem_trad = gerar_ambas_imagens(dados)
+        print(f"[MAPA] Imagens geradas — Joel: {len(imagem_joel) // 1024} KB | Trad: {len(imagem_trad) // 1024} KB", flush=True)
+        logger.info(f"Imagens do mapa natal geradas para '{nome}' ({len(imagem_joel) // 1024} KB joel, {len(imagem_trad) // 1024} KB trad)")
     except Exception as img_err:
-        print(f"[MAPA] ERRO ao gerar imagem para '{nome}': {img_err}", flush=True)
-        logger.warning(f"Geração de imagem do mapa natal falhou — continuando apenas com texto: {img_err}", exc_info=True)
+        print(f"[MAPA] ERRO ao gerar imagens para '{nome}': {img_err}", flush=True)
+        logger.warning(f"Geração de imagens do mapa natal falhou — continuando apenas com texto: {img_err}", exc_info=True)
 
-    return texto, imagem_png
+    return texto, imagem_joel, imagem_trad
