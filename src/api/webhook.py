@@ -1174,7 +1174,27 @@ async def _processar_mensagem(payload: dict) -> None:
                     texto_busca_nascimento = f"{texto_para_processar}\n{msgs_historico}"
 
                 dados_nasc = extrair_dados_nascimento(texto_busca_nascimento)
-                if dados_nasc:
+                if dados_nasc and dados_nasc.get("falta_ano"):
+                    # Dados de nascimento detectados mas sem o ano — pedir ao terapeuta
+                    nome_nasc = dados_nasc.get("nome", "Paciente")
+                    data_parcial = dados_nasc.get("data_parcial", "")
+                    msg_pede_ano = (
+                        f"Captei os dados de nascimento: {data_parcial}, "
+                        f"{dados_nasc.get('hora', '')} em {dados_nasc.get('cidade', '')}.\n\n"
+                        f"Para calcular o mapa natal preciso também do *ano de nascimento*. "
+                        f"Qual o ano de nascimento{' de ' + nome_nasc if nome_nasc != 'Paciente' else ''}?"
+                    )
+                    await evolution.enviar_mensagem(
+                        instance=instance_name, numero=numero_paciente, texto=msg_pede_ano,
+                    )
+                    await _salvar_conversa(
+                        terapeuta_id=terapeuta_id, paciente_numero=numero_paciente,
+                        mensagem_paciente=texto_mensagem, resposta_agente=msg_pede_ano,
+                        intencao="MAPA_NATAL_PEDE_ANO",
+                    )
+                    logger.info(f"[Evolution] Pedindo ano de nascimento para mapa natal — {numero_paciente}")
+                    return
+                elif dados_nasc and not dados_nasc.get("falta_ano"):
                     try:
                         mapa_resultado, mapa_png = await asyncio.to_thread(
                             gerar_mapa_completo,
@@ -2092,7 +2112,27 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                     texto_busca_nascimento = f"{texto_para_processar}\n{msgs_historico}"
 
                 dados_nasc = extrair_dados_nascimento(texto_busca_nascimento)
-                if dados_nasc:
+                if dados_nasc and dados_nasc.get("falta_ano"):
+                    # Dados de nascimento detectados mas sem o ano — pedir ao terapeuta
+                    nome_nasc = dados_nasc.get("nome", "Paciente")
+                    data_parcial = dados_nasc.get("data_parcial", "")
+                    msg_pede_ano = (
+                        f"Captei os dados de nascimento: {data_parcial}, "
+                        f"{dados_nasc.get('hora', '')} em {dados_nasc.get('cidade', '')}.\n\n"
+                        f"Para calcular o mapa natal preciso também do *ano de nascimento*. "
+                        f"Qual o ano de nascimento{' de ' + nome_nasc if nome_nasc != 'Paciente' else ''}?"
+                    )
+                    await meta_client.send_text_message(
+                        phone_number=numero_paciente, message=msg_pede_ano,
+                    )
+                    await _salvar_conversa(
+                        terapeuta_id=terapeuta_id, paciente_numero=numero_paciente,
+                        mensagem_paciente=texto_mensagem, resposta_agente=msg_pede_ano,
+                        intencao="MAPA_NATAL_PEDE_ANO",
+                    )
+                    logger.info(f"[Meta] Pedindo ano de nascimento para mapa natal — {numero_paciente}")
+                    return
+                elif dados_nasc and not dados_nasc.get("falta_ano"):
                     try:
                         mapa_resultado, mapa_png = await asyncio.to_thread(
                             gerar_mapa_completo,

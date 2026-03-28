@@ -41,6 +41,13 @@ _KEYWORDS_OBVIAS_CONSULTA = {
     "dificuldade", "problema", "quero trazer", "vou trazer", "trouxe um",
     "situação", "situacao", "moça", "moca", "rapaz", "pessoa que",
     "ela não consegue", "ele não consegue", "está passando", "tá passando",
+    # Mapa astral / natal — parte do método alquímico nível 5
+    "mapa astral", "mapa natal", "calcular mapa", "calcula mapa",
+    "mapa astrológico", "mapa astrologico", "gerar mapa", "gera mapa",
+    "fazer mapa", "faz mapa",
+    # Dados de nascimento standalone — sinalizam pedido de mapa ou caso clínico
+    "data de nascimento", "hora de nascimento", "local de nascimento",
+    "nasceu em", "nascida em", "nascido em",
 }
 _KEYWORDS_OBVIAS_PESQUISA = {
     "o que e", "o que é", "explica", "me explica", "me fala sobre",
@@ -251,6 +258,10 @@ async def _classificar_com_haiku(
         "Exemplos:\n"
         "- \"Tenho uma paciente que não consegue se relacionar\" → CONSULTA_CASO\n"
         "- \"Quero trazer um caso de uma moça com bloqueios\" → CONSULTA_CASO\n"
+        "- \"Preciso gerar um mapa astral\" → CONSULTA_CASO\n"
+        "- \"Consegue calcular um mapa natal?\" → CONSULTA_CASO\n"
+        "- \"Quero fazer o mapa astrológico de uma paciente\" → CONSULTA_CASO\n"
+        "- \"18 de novembro às 14 horas em Araguari MG\" → CONSULTA_CASO\n"
         "- \"O que é o método alquímico?\" → PESQUISA_METODO\n"
         "- \"Me explica sobre trauma ancestral\" → PESQUISA_METODO\n"
         "- \"Cria um post sobre ansiedade\" → CRIACAO_CONTEUDO\n"

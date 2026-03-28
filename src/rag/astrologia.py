@@ -330,7 +330,16 @@ def extrair_dados_nascimento(texto: str) -> Optional[dict]:
 
     resultado: dict = {}
 
+    # Mapeamento de nomes de meses em português para número
+    _MESES_PT = {
+        "janeiro": 1, "fevereiro": 2, "março": 3, "marco": 3,
+        "abril": 4, "maio": 5, "junho": 6, "julho": 7,
+        "agosto": 8, "setembro": 9, "outubro": 10,
+        "novembro": 11, "dezembro": 12,
+    }
+
     # --- Extração da data ---
+    # Tenta formato numérico primeiro: DD/MM/AAAA, DD-MM-AAAA, DD.MM.AAAA
     data_match = re.search(
         r"\b(\d{1,2})[/\-\.](\d{1,2})[/\-\.](\d{4})\b",
         texto,
@@ -338,9 +347,31 @@ def extrair_dados_nascimento(texto: str) -> Optional[dict]:
     if data_match:
         dia, mes, ano = data_match.groups()
         resultado["data"] = f"{int(dia):02d}/{int(mes):02d}/{ano}"
+    else:
+        # Tenta formato por extenso: "18 de novembro de 1985" ou "18 de novembro"
+        # (ano é opcional — pode vir sem ano quando o usuário o omitiu)
+        data_extenso = re.search(
+            r"\b(\d{1,2})\s+de\s+("
+            + "|".join(_MESES_PT.keys())
+            + r")(?:\s+de\s+(\d{4}))?\b",
+            texto,
+            re.IGNORECASE,
+        )
+        if data_extenso:
+            dia_str = data_extenso.group(1)
+            mes_str = data_extenso.group(2).lower()
+            ano_str = data_extenso.group(3)  # pode ser None
+            mes_num = _MESES_PT.get(mes_str)
+            if mes_num:
+                if ano_str:
+                    resultado["data"] = f"{int(dia_str):02d}/{mes_num:02d}/{ano_str}"
+                else:
+                    # Sem ano: guardar data parcial (dia/mês) e sinalizar que falta o ano
+                    resultado["data_parcial"] = f"{int(dia_str):02d}/{mes_num:02d}"
 
     # --- Extração da hora ---
     # Formatos: 14:30, 14h30, 14h00, 14:30:00
+    # Também: "14 horas" ou "14h" (sem minutos → assume :00)
     hora_match = re.search(
         r"\b(\d{1,2})h(\d{2})\b"        # 14h30
         r"|\b(\d{1,2}):(\d{2})(?::\d{2})?\b",  # 14:30 ou 14:30:00
@@ -355,6 +386,11 @@ def extrair_dados_nascimento(texto: str) -> Optional[dict]:
             # formato X:YY
             hora, minuto = grupos[2], grupos[3]
         resultado["hora"] = f"{int(hora):02d}:{int(minuto):02d}"
+    else:
+        # Tenta "14 horas" (sem minutos)
+        hora_extenso = re.search(r"\b(\d{1,2})\s+hora(?:s)?\b", texto, re.IGNORECASE)
+        if hora_extenso:
+            resultado["hora"] = f"{int(hora_extenso.group(1)):02d}:00"
 
     # --- Extração do nome ---
     # Padrões: "paciente: Nome", "nome: Nome", "nome do paciente: Nome"
@@ -455,6 +491,14 @@ def extrair_dados_nascimento(texto: str) -> Optional[dict]:
         # Nome é opcional — se não encontrado, usar placeholder
         if "nome" not in resultado:
             resultado["nome"] = "Paciente"
+        return resultado
+
+    # Caso especial: temos hora e cidade mas a data está incompleta (falta o ano).
+    # Retornar dict parcial com flag "falta_ano" para que o webhook possa perguntar o ano.
+    if "data_parcial" in resultado and "hora" in resultado and "cidade" in resultado:
+        if "nome" not in resultado:
+            resultado["nome"] = "Paciente"
+        resultado["falta_ano"] = True
         return resultado
 
     return None
