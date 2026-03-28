@@ -668,6 +668,7 @@ def gerar_mapa_completo(
     # --- Imagem PNG ---
     imagem_png: Optional[bytes] = None
     try:
+        print(f"[MAPA] Iniciando geração de imagem para '{nome}'", flush=True)
         from src.rag.chart_generator import dados_mapa_de_sujeito, gerar_imagem_mapa_natal
         dados = dados_mapa_de_sujeito(
             sujeito=sujeito,
@@ -677,8 +678,10 @@ def gerar_mapa_completo(
             cidade_nascimento=cidade_nascimento,
         )
         imagem_png = gerar_imagem_mapa_natal(dados)
+        print(f"[MAPA] Imagem gerada para '{nome}': {len(imagem_png) // 1024} KB", flush=True)
         logger.info(f"Imagem do mapa natal gerada para '{nome}' ({len(imagem_png) // 1024} KB)")
     except Exception as img_err:
+        print(f"[MAPA] ERRO ao gerar imagem para '{nome}': {img_err}", flush=True)
         logger.warning(f"Geração de imagem do mapa natal falhou — continuando apenas com texto: {img_err}", exc_info=True)
 
     return texto, imagem_png

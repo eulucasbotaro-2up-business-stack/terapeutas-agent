@@ -3,9 +3,15 @@ Aplicação principal FastAPI — Terapeutas Agent.
 Agente de IA no WhatsApp com base de conhecimento para terapeutas.
 """
 
+import logging
 from contextlib import asynccontextmanager
 
 from pathlib import Path
+
+logging.basicConfig(
+    level=logging.WARNING,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware

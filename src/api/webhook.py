@@ -2385,6 +2385,7 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                     except Exception:
                         pass  # pré-mensagem não é crítica
                     try:
+                        print(f"[META-MAPA] Calculando mapa para {dados_nasc.get('nome')} {dados_nasc['data']} {dados_nasc['hora']} {dados_nasc['cidade']}", flush=True)
                         mapa_resultado, mapa_png = await asyncio.wait_for(
                             asyncio.to_thread(
                                 gerar_mapa_completo,
@@ -2395,6 +2396,7 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                             ),
                             timeout=90.0,
                         )
+                        print(f"[META-MAPA] gerar_mapa_completo retornou — mapa_png={'OK '+str(len(mapa_png))+' bytes' if mapa_png else 'None'}", flush=True)
                         imagem_enviada = False
                         # Enviar imagem do mapa natal antes da resposta textual
                         if mapa_png:
@@ -2411,9 +2413,11 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                                     )
                                     imagem_enviada = True
                                     _MAPA_FALHAS[numero_paciente] = 0  # sucesso — reseta contador
+                                    print(f"[META-MAPA] Imagem enviada com sucesso para {numero_paciente} (tentativa {tentativa_img})", flush=True)
                                     logger.info(f"Imagem enviada para {numero_paciente} — Meta tentativa {tentativa_img} | resp={resp_img}")
                                     break
                                 except Exception as img_send_err:
+                                    print(f"[META-MAPA] ERRO envio imagem tentativa {tentativa_img}/2: {img_send_err}", flush=True)
                                     logger.warning(
                                         f"Envio da imagem falhou tentativa {tentativa_img}/2 (Meta): {img_send_err}",
                                         exc_info=True,
@@ -2421,6 +2425,7 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                                     if tentativa_img < 2:
                                         await asyncio.sleep(2)
                         else:
+                            print(f"[META-MAPA] mapa_png é None — imagem não gerada para {numero_paciente}", flush=True)
                             logger.warning(f"mapa_png é None para {numero_paciente} — imagem não gerada (Meta)")
 
                         # Se imagem não chegou, avisa o usuário com instrução de retry
@@ -2444,8 +2449,7 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                             "\n\nINSTRUCAO INTERNA — nao reproduza este aviso na resposta: "
                             "A imagem do mapa NAO foi enviada desta vez por instabilidade tecnica. "
                             "O terapeuta JA foi avisado sobre o problema via mensagem anterior. "
-                            "ENTREGUE A LEITURA ALQUIMICA COMPLETA AGORA — nao peca permissao, nao pergunte se deve continuar, nao mencione a imagem. "
-                            "Se o terapeuta pedir para reenviar a imagem, diga que ele deve digitar 'refazer mapa'."
+                            "ENTREGUE A LEITURA ALQUIMICA COMPLETA AGORA — nao peca permissao, nao pergunte se deve continuar, nao mencione a imagem nem o problema tecnico."
                         )
                         mapa_prefixo = (
                             f"MAPA NATAL CALCULADO AUTOMATICAMENTE (Swiss Ephemeris — dado preciso, nao alucinado):\n"
@@ -2456,7 +2460,8 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                             f"Mapa natal calculado para '{dados_nasc.get('nome')}' "
                             f"({dados_nasc['data']} {dados_nasc['hora']} em {dados_nasc['cidade']}) — Meta"
                         )
-                    except Exception as mapa_err:
+                    except (asyncio.TimeoutError, asyncio.CancelledError, Exception) as mapa_err:
+                        print(f"[META-MAPA] EXCECAO no calculo/envio do mapa: {type(mapa_err).__name__}: {mapa_err}", flush=True)
                         logger.warning(
                             f"Cálculo de mapa natal falhou (Meta) — {mapa_err}",
                             exc_info=True,
