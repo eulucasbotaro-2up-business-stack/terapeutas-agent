@@ -91,10 +91,11 @@ _REGEX_NONSENSE = re.compile(r"^[^a-záàâãéèêíìîóòôõúùûçA-Z\s]{
 MSGS_ONBOARDING: list[str] = [
     "Olá! Seja bem-vindo(a) ao Alquimista Interior — o assistente especializado da Escola de Alquimia do Joel Aleixo 🙏",
     (
-        "Aqui você encontra apoio em três frentes específicas do método alquímico:\n\n"
+        "Aqui você encontra apoio em quatro frentes do método alquímico:\n\n"
         "• Dúvidas e pesquisas sobre os ensinamentos da escola\n"
         "• Discussão e análise de casos clínicos com base nos materiais do Joel\n"
-        "• Produção de conteúdo (posts, materiais, roteiros)\n\n"
+        "• Produção de conteúdo (posts, materiais, roteiros)\n"
+        "• Criação de Mapa Natal Completo com gráfico visual\n\n"
         "Este assistente não substitui atendimento clínico. Para consultas terapêuticas, agende com o Joel."
     ),
     (
@@ -139,8 +140,8 @@ MSGS_ACESSO_LIBERADO: list[str] = [
     (
         "A partir de agora você tem acesso completo à base de conhecimento "
         "do método alquímico do Joel Aleixo.\n\n"
-        "Pode perguntar sobre o método, trazer casos clínicos ou pedir ajuda para produção de conteúdo — "
-        "por texto ou áudio, como preferir."
+        "Pode perguntar sobre o método, trazer casos clínicos, fazer mapa natal completo com gráfico "
+        "ou pedir ajuda para produção de conteúdo — por texto ou áudio, como preferir."
     ),
     "Antes de começar, como posso te chamar?",
 ]
@@ -159,9 +160,9 @@ def gerar_msg_boas_vindas_nome(nome: str) -> str:
     nome_fmt = nome.strip().split()[0].capitalize()
 
     variacoes = [
-        f"{nome_fmt}, prazer! Pode mandar o que tiver. Caso clínico, dúvida conceitual, ou quer criar conteúdo pra redes? Tô aqui pra caminhar junto contigo.",
-        f"Prazer, {nome_fmt}. Pode trazer o que você precisar: análise de caso, pesquisa no método do Joel, ou produção de conteúdo. O que você traz hoje?",
-        f"{nome_fmt}! Bom ter você aqui. Caso clínico, dúvida sobre o método, criação de post... me conta o que está na sua cabeça.",
+        f"{nome_fmt}, prazer! Pode mandar o que tiver. Caso clínico, mapa natal, dúvida conceitual, ou quer criar conteúdo pra redes? Tô aqui pra caminhar junto contigo.",
+        f"Prazer, {nome_fmt}. Pode trazer o que você precisar: análise de caso, mapa natal completo, pesquisa no método do Joel, ou produção de conteúdo. O que você traz hoje?",
+        f"{nome_fmt}! Bom ter você aqui. Caso clínico, mapa natal, dúvida sobre o método, criação de post... me conta o que está na sua cabeça.",
     ]
     return random.choice(variacoes)
 
@@ -184,16 +185,16 @@ def gerar_saudacao_ativo(nome: Optional[str], tem_historico_recente: bool = Fals
         # Conversa já em andamento — saudação dinâmica com as 3 frentes
         variacoes_com_opcoes = [
             (
-                f"{'Boa, ' + nome_fmt + '!' if nome_fmt else 'Boa!'} E agora, quer trazer mais algum caso, entender algo do método ou criar conteúdo?",
+                f"{'Boa, ' + nome_fmt + '!' if nome_fmt else 'Boa!'} E agora, quer trazer mais algum caso, fazer um mapa natal, entender algo do método ou criar conteúdo?",
             ),
             (
-                f"{'Que bom, ' + nome_fmt + '.' if nome_fmt else 'Que bom.'} Tem mais algum caso pra trabalhar, uma dúvida sobre o método, ou quer criar conteúdo agora?",
+                f"{'Que bom, ' + nome_fmt + '.' if nome_fmt else 'Que bom.'} Tem mais algum caso pra trabalhar, um mapa natal pra gerar, dúvida sobre o método, ou quer criar conteúdo agora?",
             ),
             (
-                f"{'Fala, ' + nome_fmt + '!' if nome_fmt else 'Fala!'} Mais algum caso clínico, pesquisa no método do Joel, ou produção de conteúdo?",
+                f"{'Fala, ' + nome_fmt + '!' if nome_fmt else 'Fala!'} Mais algum caso clínico, mapa natal, pesquisa no método do Joel, ou produção de conteúdo?",
             ),
             (
-                f"{'Opa, ' + nome_fmt + '.' if nome_fmt else 'Opa.'} O que você traz agora — mais um caso, algo sobre o método, ou quer criar conteúdo?",
+                f"{'Opa, ' + nome_fmt + '.' if nome_fmt else 'Opa.'} O que você traz agora — caso clínico, mapa natal, algo sobre o método, ou quer criar conteúdo?",
             ),
         ]
         return [random.choice(variacoes_com_opcoes)[0]]
@@ -202,19 +203,19 @@ def gerar_saudacao_ativo(nome: Optional[str], tem_historico_recente: bool = Fals
     variacoes = [
         (
             f"{'Fala, ' + nome_fmt + '!' if nome_fmt else 'Fala!'} Pode trazer o que tiver.",
-            "É um caso pra analisar, quer entender algum conceito do método, ou ajuda na produção de conteúdo?"
+            "É um caso pra analisar, quer um mapa natal, entender algum conceito do método, ou ajuda na produção de conteúdo?"
         ),
         (
             f"{'Opa, ' + nome_fmt + '.' if nome_fmt else 'Opa.'} Que bom te ver aqui.",
-            "Tem um caso, uma dúvida do método, ou precisa de conteúdo para as redes?"
+            "Tem um caso, um mapa natal pra fazer, uma dúvida do método, ou precisa de conteúdo para as redes?"
         ),
         (
             f"{'E aí, ' + nome_fmt + '!' if nome_fmt else 'E aí!'} Tô por aqui.",
-            "Pode ser caso clínico, pesquisa nos materiais do Joel, ou criação de post. O que você traz?"
+            "Pode ser caso clínico, mapa natal, pesquisa nos materiais do Joel, ou criação de post. O que você traz?"
         ),
         (
             f"{'Oi, ' + nome_fmt + '.' if nome_fmt else 'Oi.'} Que bom.",
-            "Caso clínico, dúvida no método, ou produção de conteúdo, o que está na cabeça hoje?"
+            "Caso clínico, mapa natal, dúvida no método, ou produção de conteúdo — o que está na cabeça hoje?"
         ),
     ]
 
