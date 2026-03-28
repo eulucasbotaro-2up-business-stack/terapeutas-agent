@@ -100,6 +100,15 @@ def _classificar_localmente(texto: str, is_audio: bool = False) -> Optional[Modo
             logger.warning(f"[ROUTER] EMERGENCIA detectada localmente: '{texto[:60]}'")
             return ModoOperacao.EMERGENCIA
 
+    # Pedido de imagem/gráfico de mapa astral → CONSULTA
+    # O webhook vai re-usar dados do histórico para gerar e reenviar a imagem
+    _PALAVRAS_IMG = {"imagem", "gráfico", "grafico", "foto", "figura", "gerar imagem", "me gere"}
+    _PALAVRAS_MAPA_CTX = {"mapa", "astral", "natal"}
+    if (any(p in texto_lower for p in _PALAVRAS_IMG)
+            and any(p in texto_lower for p in _PALAVRAS_MAPA_CTX)):
+        logger.info(f"[ROUTER] Pedido de imagem de mapa → CONSULTA: '{texto[:60]}'")
+        return ModoOperacao.CONSULTA
+
     # Mensagens meta sobre áudio/mídia: nunca são saudação — o usuário está reportando
     # algo sobre o fluxo ("mandei um áudio", "não consegui enviar", etc.)
     # Tratar como PESQUISA para não repetir o loop de saudação

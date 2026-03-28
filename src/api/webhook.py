@@ -1177,7 +1177,7 @@ async def _processar_mensagem(payload: dict) -> None:
                 dados_nasc = extrair_dados_nascimento(texto_busca_nascimento)
 
                 # Interceptor pré-LLM: pedido de mapa sem nenhum dado → responder direto
-                if not dados_nasc and _eh_pedido_mapa_sem_dados(texto_para_processar):
+                if not dados_nasc and _eh_pedido_mapa_sem_dados(texto_para_processar, historico):
                     await evolution.enviar_mensagem(
                         instance=instance_name, numero=numero_paciente, texto=_MSG_PEDE_DADOS_MAPA,
                     )
@@ -1380,26 +1380,54 @@ async def _processar_mensagem(payload: dict) -> None:
 # HELPER — Detecção pré-LLM de pedido de mapa astral sem dados de nascimento
 # =============================================================================
 
-def _eh_pedido_mapa_sem_dados(texto: str) -> bool:
+def _eh_pedido_mapa_sem_dados(texto: str, historico: list | None = None) -> bool:
     """
-    Retorna True se a mensagem é um pedido puro de mapa astral/natal
-    sem nenhum dado de nascimento fornecido.
+    Retorna True SOMENTE se a mensagem é um pedido NOVO de mapa astral/natal
+    sem nenhum dado de nascimento fornecido E sem contexto prévio no histórico.
 
-    Usado para interceptar antes do especialista e pedir os dados diretamente,
-    evitando que o LLM gere uma resposta errada por falta de instrução.
+    Não dispara para:
+    - Perguntas sobre capacidade ("consegue gerar?", "não pode?")
+    - Follow-ups quando mapa já foi discutido no histórico
+    - Mensagens com dados de nascimento
     """
     texto_lower = texto.lower().strip()
+
+    # 1. Tem pedido de mapa?
     tem_pedido_mapa = any(kw in texto_lower for kw in KEYWORDS_PEDIDO_MAPA)
     if not tem_pedido_mapa:
         return False
-    # Se já tem dados de nascimento na mensagem (data, hora, cidade), não interceptar
+
+    # 2. É uma pergunta sobre capacidade, não um pedido real → não interceptar
+    indicadores_pergunta = [
+        "consegue", "pode ", "não consegue", "não pode", "é possível",
+        "consegues", "você consegue", "voce consegue", "dá pra", "da pra",
+    ]
+    if any(ind in texto_lower for ind in indicadores_pergunta):
+        return False
+
+    # 3. Já tem dados de nascimento na mensagem → não interceptar
     indicadores_dados = [
         "/", "nasceu", "nascida", "nascido", "às ", "as ", "horas", "hora",
         "janeiro", "fevereiro", "março", "abril", "maio", "junho",
         "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
     ]
-    tem_dados = any(ind in texto_lower for ind in indicadores_dados)
-    return not tem_dados
+    if any(ind in texto_lower for ind in indicadores_dados):
+        return False
+
+    # 4. Histórico já tem contexto de mapa astral → é follow-up, não interceptar
+    if historico:
+        ctx_historico = " ".join(
+            (m.get("content", "") or m.get("conteudo", "") or m.get("mensagem", "") or "")
+            for m in historico[-6:]
+        ).lower()
+        indicadores_contexto_mapa = [
+            "mapa natal", "mapa astral", "posições planetárias", "ascendente",
+            "sol em ", "lua em ", "mercúrio em ", "casas (sistema",
+        ]
+        if any(ind in ctx_historico for ind in indicadores_contexto_mapa):
+            return False
+
+    return True
 
 
 _MSG_PEDE_DADOS_MAPA = (
@@ -2175,7 +2203,7 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                 dados_nasc = extrair_dados_nascimento(texto_busca_nascimento)
 
                 # Interceptor pré-LLM: pedido de mapa sem nenhum dado → responder direto
-                if not dados_nasc and _eh_pedido_mapa_sem_dados(texto_para_processar):
+                if not dados_nasc and _eh_pedido_mapa_sem_dados(texto_para_processar, historico):
                     await meta_client.send_text_message(
                         phone_number=numero_paciente, message=_MSG_PEDE_DADOS_MAPA,
                     )

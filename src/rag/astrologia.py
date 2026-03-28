@@ -616,6 +616,6 @@ def gerar_mapa_completo(
         imagem_png = gerar_imagem_mapa_natal(dados)
         logger.info(f"Imagem do mapa natal gerada para '{nome}' ({len(imagem_png) // 1024} KB)")
     except Exception as img_err:
-        logger.warning(f"Geração de imagem do mapa natal falhou — continuando apenas com texto: {img_err}")
+        logger.warning(f"Geração de imagem do mapa natal falhou — continuando apenas com texto: {img_err}", exc_info=True)
 
     return texto, imagem_png
