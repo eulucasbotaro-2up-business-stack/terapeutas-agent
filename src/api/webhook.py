@@ -1218,12 +1218,7 @@ async def _processar_mensagem(payload: dict) -> None:
                             dados_nasc["hora"],
                             dados_nasc["cidade"],
                         )
-                        mapa_prefixo = f"MAPA NATAL CALCULADO AUTOMATICAMENTE (Swiss Ephemeris — dado preciso, não alucinado):\n{mapa_resultado}\n\n"
-                        chunks_texto = mapa_prefixo + chunks_texto
-                        logger.info(
-                            f"Mapa natal calculado para '{dados_nasc.get('nome')}' "
-                            f"({dados_nasc['data']} {dados_nasc['hora']} em {dados_nasc['cidade']}) — Evolution"
-                        )
+                        imagem_enviada = False
                         # Enviar imagem do mapa natal antes da resposta textual
                         if mapa_png:
                             try:
@@ -1237,11 +1232,28 @@ async def _processar_mensagem(payload: dict) -> None:
                                     imagem_bytes=mapa_png,
                                     caption=caption_img,
                                 )
+                                imagem_enviada = True
                                 logger.info(f"Imagem do mapa natal enviada para {numero_paciente} — Evolution")
                             except Exception as img_send_err:
                                 logger.warning(
                                     f"Envio da imagem do mapa natal falhou (Evolution) — continuando: {img_send_err}"
                                 )
+
+                        nota_imagem = (
+                            "\n\nNOTA DO SISTEMA: A imagem do mapa natal acabou de ser enviada ao terapeuta "
+                            "antes desta mensagem. Confirme que o gráfico foi enviado e faça a leitura "
+                            "alquímica. Nunca diga que não consegue gerar imagens."
+                            if imagem_enviada else ""
+                        )
+                        mapa_prefixo = (
+                            f"MAPA NATAL CALCULADO AUTOMATICAMENTE (Swiss Ephemeris — dado preciso, não alucinado):\n"
+                            f"{mapa_resultado}{nota_imagem}\n\n"
+                        )
+                        chunks_texto = mapa_prefixo + chunks_texto
+                        logger.info(
+                            f"Mapa natal calculado para '{dados_nasc.get('nome')}' "
+                            f"({dados_nasc['data']} {dados_nasc['hora']} em {dados_nasc['cidade']}) — Evolution"
+                        )
                     except Exception as mapa_err:
                         logger.warning(
                             f"Cálculo de mapa natal falhou (Evolution) — continuando sem mapa: {mapa_err}"
@@ -2204,12 +2216,7 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                             dados_nasc["hora"],
                             dados_nasc["cidade"],
                         )
-                        mapa_prefixo = f"MAPA NATAL CALCULADO AUTOMATICAMENTE (Swiss Ephemeris — dado preciso, não alucinado):\n{mapa_resultado}\n\n"
-                        chunks_texto = mapa_prefixo + chunks_texto
-                        logger.info(
-                            f"Mapa natal calculado para '{dados_nasc.get('nome')}' "
-                            f"({dados_nasc['data']} {dados_nasc['hora']} em {dados_nasc['cidade']}) — Meta"
-                        )
+                        imagem_enviada = False
                         # Enviar imagem do mapa natal antes da resposta textual
                         if mapa_png:
                             try:
@@ -2222,11 +2229,28 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                                     imagem_bytes=mapa_png,
                                     caption=caption_img,
                                 )
+                                imagem_enviada = True
                                 logger.info(f"Imagem do mapa natal enviada para {numero_paciente} — Meta")
                             except Exception as img_send_err:
                                 logger.warning(
                                     f"Envio da imagem do mapa natal falhou (Meta) — continuando: {img_send_err}"
                                 )
+
+                        nota_imagem = (
+                            "\n\nNOTA DO SISTEMA: A imagem do mapa natal acabou de ser enviada ao terapeuta "
+                            "antes desta mensagem. Confirme que o gráfico foi enviado e faça a leitura "
+                            "alquímica. Nunca diga que não consegue gerar imagens."
+                            if imagem_enviada else ""
+                        )
+                        mapa_prefixo = (
+                            f"MAPA NATAL CALCULADO AUTOMATICAMENTE (Swiss Ephemeris — dado preciso, não alucinado):\n"
+                            f"{mapa_resultado}{nota_imagem}\n\n"
+                        )
+                        chunks_texto = mapa_prefixo + chunks_texto
+                        logger.info(
+                            f"Mapa natal calculado para '{dados_nasc.get('nome')}' "
+                            f"({dados_nasc['data']} {dados_nasc['hora']} em {dados_nasc['cidade']}) — Meta"
+                        )
                     except Exception as mapa_err:
                         logger.warning(
                             f"Cálculo de mapa natal falhou (Meta) — continuando sem mapa: {mapa_err}"
