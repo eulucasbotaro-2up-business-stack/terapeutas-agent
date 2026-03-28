@@ -320,7 +320,7 @@ class EvolutionClient:
                 "mediatype": "image",
                 "mimetype": mimetype,
                 "caption": caption,
-                "media": imagem_b64,
+                "media": f"data:{mimetype};base64,{imagem_b64}",
                 "fileName": nome_arquivo,
             },
         )

@@ -400,8 +400,12 @@ def gerar_imagem_mapa_natal(dados: "DadosMapa") -> bytes:
     Gera PNG do Mapa Alquimico — roda zodiacal com homem no centro.
     Retorna bytes PNG. Levanta RuntimeError se falhar.
     """
-    with _MPL_LOCK:
+    if not _MPL_LOCK.acquire(timeout=60.0):
+        raise RuntimeError("Timeout aguardando lock matplotlib (60s) — servidor sobrecarregado")
+    try:
         return _gerar_imagem_locked(dados)
+    finally:
+        _MPL_LOCK.release()
 
 
 def _gerar_imagem_locked(dados: "DadosMapa") -> bytes:

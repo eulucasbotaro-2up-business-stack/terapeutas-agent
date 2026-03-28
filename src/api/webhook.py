@@ -1260,12 +1260,15 @@ async def _processar_mensagem(payload: dict) -> None:
                     except Exception:
                         pass  # pré-mensagem não é crítica
                     try:
-                        mapa_resultado, mapa_png = await asyncio.to_thread(
-                            gerar_mapa_completo,
-                            dados_nasc.get("nome", "Paciente"),
-                            dados_nasc["data"],
-                            dados_nasc["hora"],
-                            dados_nasc["cidade"],
+                        mapa_resultado, mapa_png = await asyncio.wait_for(
+                            asyncio.to_thread(
+                                gerar_mapa_completo,
+                                dados_nasc.get("nome", "Paciente"),
+                                dados_nasc["data"],
+                                dados_nasc["hora"],
+                                dados_nasc["cidade"],
+                            ),
+                            timeout=90.0,
                         )
                         imagem_enviada = False
                         # Enviar imagem do mapa natal antes da resposta textual
@@ -2382,12 +2385,15 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                     except Exception:
                         pass  # pré-mensagem não é crítica
                     try:
-                        mapa_resultado, mapa_png = await asyncio.to_thread(
-                            gerar_mapa_completo,
-                            dados_nasc.get("nome", "Paciente"),
-                            dados_nasc["data"],
-                            dados_nasc["hora"],
-                            dados_nasc["cidade"],
+                        mapa_resultado, mapa_png = await asyncio.wait_for(
+                            asyncio.to_thread(
+                                gerar_mapa_completo,
+                                dados_nasc.get("nome", "Paciente"),
+                                dados_nasc["data"],
+                                dados_nasc["hora"],
+                                dados_nasc["cidade"],
+                            ),
+                            timeout=90.0,
                         )
                         imagem_enviada = False
                         # Enviar imagem do mapa natal antes da resposta textual
