@@ -26,6 +26,7 @@ from src.api.documentos import router as documentos_router
 from src.api.teste import router as teste_router
 from src.api.dashboard import router as dashboard_router
 from src.api.evolution import router as evolution_router
+from src.api.automation_router import router as automation_router
 
 
 @asynccontextmanager
@@ -112,6 +113,7 @@ app.include_router(documentos_router)
 app.include_router(teste_router)
 app.include_router(dashboard_router)
 app.include_router(evolution_router)
+app.include_router(automation_router)
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
@@ -126,3 +128,9 @@ async def chat_page():
 async def dashboard_page():
     """Serve a página do dashboard de BI."""
     return FileResponse(_PROJECT_ROOT / "dashboard.html")
+
+
+@app.get("/landing", tags=["Marketing"])
+async def landing_page():
+    """Serve a landing page de vendas."""
+    return FileResponse(_PROJECT_ROOT / "landing.html")
