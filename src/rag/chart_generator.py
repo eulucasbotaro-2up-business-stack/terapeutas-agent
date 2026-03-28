@@ -5,11 +5,13 @@ Design:
 - Fundo branco, alto contraste (legível no celular)
 - Roda zodiacal colorida por elemento
 - FIGURA HUMANA alquímica no centro (como o Joel ensina)
-- Planetas marcados com abreviações de texto (sem Unicode que trava no Docker)
+- Símbolos Unicode de planetas (☉☽☿♀♂♃♄♅♆♇) e signos (♈-♓) via
+  fonte NotoSansSymbols bundada em src/fonts/ — zero dependência de sistema
 - Painel direito com posições e distribuição de elementos
 """
 
 import os
+import pathlib
 import threading
 
 # MPLCONFIGDIR antes de qualquer import matplotlib — necessário em Docker onde /root pode
@@ -29,6 +31,50 @@ logger = logging.getLogger(__name__)
 # Lock para thread safety — matplotlib não é thread-safe por padrão.
 # asyncio.to_thread usa thread pool; requests concorrentes poderiam colidir.
 _MPL_LOCK = threading.Lock()
+
+# ---------------------------------------------------------------------------
+# Fonte com símbolos astrológicos Unicode
+# ---------------------------------------------------------------------------
+# Bundamos NotoSansSymbols em src/fonts/ para não depender de fontes do sistema.
+# No Docker slim as fontes do sistema não têm ☉♈♀♂ etc — causariam caixinhas/crash.
+
+_FONTS_DIR = pathlib.Path(__file__).parent.parent / "fonts"
+_GLYPH_FONT_PATH = _FONTS_DIR / "NotoSansSymbols-Regular.ttf"
+_glyph_font_prop = None  # carregado na primeira geração
+
+
+def _get_glyph_font():
+    """Retorna FontProperties para símbolos astrológicos, com fallback gracioso."""
+    global _glyph_font_prop
+    if _glyph_font_prop is not None:
+        return _glyph_font_prop
+    try:
+        from matplotlib import font_manager
+        if _GLYPH_FONT_PATH.exists():
+            font_manager.fontManager.addfont(str(_GLYPH_FONT_PATH))
+            _glyph_font_prop = font_manager.FontProperties(fname=str(_GLYPH_FONT_PATH))
+            logger.info(f"Fonte de simbolos carregada: {_GLYPH_FONT_PATH.name}")
+        else:
+            logger.warning(f"Fonte nao encontrada: {_GLYPH_FONT_PATH} — usando abreviacoes")
+    except Exception as e:
+        logger.warning(f"Falha ao carregar fonte de simbolos: {e} — usando abreviacoes")
+    return _glyph_font_prop
+
+
+def _draw_sun_symbol(ax: Any, x: float, y: float, color: str,
+                     size: float = 0.055, zorder: int = 15) -> None:
+    """
+    Desenha o símbolo do Sol (☉) como patches matplotlib:
+    círculo externo vazio + ponto central preenchido.
+    Evita dependência de fonte para U+2609 (ausente na NotoSansSymbols v1).
+    """
+    import matplotlib.patches as patches
+    outer = patches.Circle((x, y), size, fill=False,
+                            edgecolor=color, linewidth=1.3, zorder=zorder)
+    inner = patches.Circle((x, y), size * 0.22, fill=True,
+                            facecolor=color, linewidth=0, zorder=zorder)
+    ax.add_patch(outer)
+    ax.add_patch(inner)
 
 # ---------------------------------------------------------------------------
 # Cores
@@ -55,12 +101,29 @@ ELEMENTO_COR: dict[str, str] = {
 }
 
 # ---------------------------------------------------------------------------
-# Signos — abreviações SEM Unicode (evita crash no Docker slim)
+# Signos
 # ---------------------------------------------------------------------------
 SIGNOS_ABREV = ["Ari", "Tau", "Gem", "Can", "Leo", "Vir",
                 "Lib", "Sco", "Sag", "Cap", "Aqu", "Pis"]
 
+# Símbolos Unicode — renderizados com NotoSansSymbols bundada
 SIGNO_LABEL: dict[str, str] = {
+    "Ari": "\u2648",  # ♈
+    "Tau": "\u2649",  # ♉
+    "Gem": "\u264A",  # ♊
+    "Can": "\u264B",  # ♋
+    "Leo": "\u264C",  # ♌
+    "Vir": "\u264D",  # ♍
+    "Lib": "\u264E",  # ♎
+    "Sco": "\u264F",  # ♏
+    "Sag": "\u2650",  # ♐
+    "Cap": "\u2651",  # ♑
+    "Aqu": "\u2652",  # ♒
+    "Pis": "\u2653",  # ♓
+}
+
+# Fallback texto caso a fonte não carregue
+SIGNO_LABEL_TEXTO: dict[str, str] = {
     "Ari": "AR", "Tau": "TA", "Gem": "GE", "Can": "CA",
     "Leo": "LE", "Vir": "VI", "Lib": "LI", "Sco": "ES",
     "Sag": "SA", "Cap": "CP", "Aqu": "AQ", "Pis": "PI",
@@ -73,7 +136,7 @@ SIGNO_NOME_PT: dict[str, str] = {
 }
 
 # ---------------------------------------------------------------------------
-# Planetas — abreviações SEM Unicode
+# Planetas
 # ---------------------------------------------------------------------------
 ORDEM_PLANETAS = [
     "Sun", "Moon", "Mercury", "Venus", "Mars",
@@ -81,7 +144,24 @@ ORDEM_PLANETAS = [
     "Ascendant", "Medium_Coeli",
 ]
 
+# Símbolos Unicode — renderizados com NotoSansSymbols bundada
 PLANETA_ABREV: dict[str, str] = {
+    "Sun":          "\u2609",  # ☉
+    "Moon":         "\u263D",  # ☽
+    "Mercury":      "\u263F",  # ☿
+    "Venus":        "\u2640",  # ♀
+    "Mars":         "\u2642",  # ♂
+    "Jupiter":      "\u2643",  # ♃
+    "Saturn":       "\u2644",  # ♄
+    "Uranus":       "\u2645",  # ♅
+    "Neptune":      "\u2646",  # ♆
+    "Pluto":        "\u2647",  # ♇
+    "Ascendant":    "AC",      # sem símbolo padrão — mantém texto
+    "Medium_Coeli": "MC",      # idem
+}
+
+# Fallback texto caso a fonte não carregue
+PLANETA_ABREV_TEXTO: dict[str, str] = {
     "Sun":          "Sol",
     "Moon":         "Lua",
     "Mercury":      "Mer",
@@ -92,7 +172,7 @@ PLANETA_ABREV: dict[str, str] = {
     "Uranus":       "Ura",
     "Neptune":      "Net",
     "Pluto":        "Plu",
-    "Ascendant":    "Asc",
+    "Ascendant":    "AC",
     "Medium_Coeli": "MC",
 }
 
@@ -459,34 +539,41 @@ def _gerar_imagem_locked(dados: "DadosMapa") -> bytes:
         R_INT  = 0.63   # círculo interno (figura humana)
         R_ASP  = 0.59   # linhas de aspectos
 
+        # ── Fonte de símbolos (carregada uma vez por processo) ───────────────
+        glyph_fp = _get_glyph_font()
+
+        def _text_glyph(ax_, x, y, s, fontsize, color, zorder, bold=False, **kw):
+            """Renderiza texto: usa fonte de símbolos se disponível, senão fallback."""
+            kwargs = dict(ha="center", va="center", fontsize=fontsize,
+                          color=color, zorder=zorder, **kw)
+            if glyph_fp is not None:
+                kwargs["fontproperties"] = glyph_fp
+            else:
+                kwargs["fontweight"] = "bold" if bold else "normal"
+            ax_.text(x, y, s, **kwargs)
+
         # ── Anel zodiacal ────────────────────────────────────────────────────
-        # Cada signo ocupa exatamente 30° no sentido horário (sentido da progressão zodiacal).
-        # ang0 sempre diminui 30° para ang1 — sem linspace entre pontos que cruzam ±π.
         SEG_RAD = math.pi / 6  # 30° em radianos
         for i, abrev in enumerate(SIGNOS_ABREV):
             ang0 = _grau_para_rad(i * 30.0, asc)
-            ang1 = ang0 - SEG_RAD  # sempre exatos 30° horários — sem wrap-around
+            ang1 = ang0 - SEG_RAD
             cor  = ELEMENTO_COR.get(abrev, "#CCCCCC")
             t    = np.linspace(ang0, ang1, 40)
 
-            # Fundo colorido translúcido
             xs = list(R_EXT * np.cos(t)) + list(R_ZOD * np.cos(t[::-1]))
             ys = list(R_EXT * np.sin(t)) + list(R_ZOD * np.sin(t[::-1]))
             ax.fill(xs, ys, color=cor, alpha=0.18, zorder=2)
 
-            # Bordas do segmento
             ang_div = ang0
             x0, y0 = _xy(R_ZOD, ang_div)
             x1, y1 = _xy(R_EXT, ang_div)
             ax.plot([x0, x1], [y0, y1], color=cor, lw=0.8, alpha=0.55, zorder=3)
 
-            # Rótulo do signo (abreviação 2 letras) — posicionado no meio do segmento
             ang_m = ang0 - SEG_RAD / 2
             sx, sy = _xy((R_ZOD + R_EXT) / 2, ang_m)
-            label = SIGNO_LABEL.get(abrev, abrev[:2])
-            ax.text(sx, sy, label,
-                    ha="center", va="center", fontsize=9,
-                    color=cor, fontweight="bold", zorder=4)
+            # Símbolo Unicode via fonte bundada; fallback texto se fonte indisponível
+            label = SIGNO_LABEL.get(abrev) if glyph_fp else SIGNO_LABEL_TEXTO.get(abrev, abrev[:2])
+            _text_glyph(ax, sx, sy, label, fontsize=11, color=cor, zorder=4, bold=True)
 
         # Círculos do anel
         for r, lw_c in [(R_EXT, 1.2), (R_ZOD, 0.9), (R_CSA, 0.7), (R_INT, 1.0)]:
@@ -550,26 +637,27 @@ def _gerar_imagem_locked(dados: "DadosMapa") -> bytes:
             ang_real  = _grau_para_rad(grau_real, asc)
             ang_ajust = _grau_para_rad(grau_ajust, asc)
             cor_p     = COR_PLANETA.get(nome, TEXTO_ESCURO)
-            abrev     = PLANETA_ABREV.get(nome, nome[:3])
+            # Símbolo Unicode se fonte disponível, senão abreviação texto
+            abrev = (PLANETA_ABREV.get(nome) if glyph_fp
+                     else PLANETA_ABREV_TEXTO.get(nome, nome[:3]))
 
-            # Ponto exato (menor)
             px, py = _xy(R_PLN - 0.06, ang_real)
             ax.plot(px, py, "o", color=cor_p, markersize=3.5, zorder=14)
 
-            # Rótulo com abreviação (posição ajustada)
             lx, ly = _xy(R_PLN + 0.06, ang_ajust)
             if abs(ang_real - ang_ajust) > 0.05:
                 ax.plot([px, lx], [py, ly], color=cor_p, lw=0.5, alpha=0.35, zorder=13)
 
-            fs_p = 7 if nome in ("Ascendant", "Medium_Coeli") else 8.5
-            ax.text(lx, ly, abrev,
-                    ha="center", va="center", fontsize=fs_p,
-                    color=cor_p, fontweight="bold", zorder=15)
+            # Sol usa patches (☉ ausente na NotoSansSymbols v1); AC/MC ficam em texto
+            if nome == "Sun" and glyph_fp is not None:
+                _draw_sun_symbol(ax, lx, ly, cor_p, size=0.050, zorder=15)
+            else:
+                fs_p = 7.5 if nome in ("Ascendant", "Medium_Coeli") else 10
+                _text_glyph(ax, lx, ly, abrev, fontsize=fs_p, color=cor_p, zorder=15, bold=True)
 
-            # Grau dentro do signo
+            # Grau dentro do signo — sempre texto simples
             grau_sig = grau_real % 30.0
-            dx, dy = _xy(R_PLN + 0.06, ang_ajust)
-            ax.text(dx, dy - 0.095, f"{grau_sig:.0f}",
+            ax.text(lx, ly - 0.095, f"{grau_sig:.0f}",
                     ha="center", va="center", fontsize=5.5,
                     color=cor_p, alpha=0.75, zorder=15)
 
@@ -714,6 +802,18 @@ def _gerar_imagem_tradicional_locked(dados: "DadosMapa") -> bytes:
 
         asc = dados.ascendente_grau
 
+        # Fonte de símbolos (mesmo objeto compartilhado com _gerar_imagem_locked)
+        glyph_fp = _get_glyph_font()
+
+        def _text_glyph(ax_, x, y, s, fontsize, color, zorder, bold=False, **kw):
+            kwargs = dict(ha="center", va="center", fontsize=fontsize,
+                          color=color, zorder=zorder, **kw)
+            if glyph_fp is not None:
+                kwargs["fontproperties"] = glyph_fp
+            else:
+                kwargs["fontweight"] = "bold" if bold else "normal"
+            ax_.text(x, y, s, **kwargs)
+
         R_EXT    = 1.18
         R_ZOD    = 0.94
         R_PLN    = 0.81
@@ -740,10 +840,8 @@ def _gerar_imagem_tradicional_locked(dados: "DadosMapa") -> bytes:
 
             ang_m = ang0 - SEG_RAD / 2
             sx, sy = _xy((R_ZOD + R_EXT) / 2, ang_m)
-            label = SIGNO_LABEL.get(abrev, abrev[:2])
-            ax.text(sx, sy, label,
-                    ha="center", va="center", fontsize=9,
-                    color=cor, fontweight="bold", zorder=4)
+            label = SIGNO_LABEL.get(abrev) if glyph_fp else SIGNO_LABEL_TEXTO.get(abrev, abrev[:2])
+            _text_glyph(ax, sx, sy, label, fontsize=11, color=cor, zorder=4, bold=True)
 
         # Círculos dos anéis
         for r, lw_c in [(R_EXT, 1.2), (R_ZOD, 0.9), (R_CSA, 0.7), (R_INT, 1.0)]:
@@ -803,7 +901,8 @@ def _gerar_imagem_tradicional_locked(dados: "DadosMapa") -> bytes:
             ang_real  = _grau_para_rad(grau_real, asc)
             ang_ajust = _grau_para_rad(grau_ajust, asc)
             cor_p     = COR_PLANETA.get(nome, TEXTO_ESCURO)
-            abrev     = PLANETA_ABREV.get(nome, nome[:3])
+            abrev = (PLANETA_ABREV.get(nome) if glyph_fp
+                     else PLANETA_ABREV_TEXTO.get(nome, nome[:3]))
 
             px, py = _xy(R_PLN - 0.06, ang_real)
             ax.plot(px, py, "o", color=cor_p, markersize=3.5, zorder=14)
@@ -812,10 +911,11 @@ def _gerar_imagem_tradicional_locked(dados: "DadosMapa") -> bytes:
             if abs(ang_real - ang_ajust) > 0.05:
                 ax.plot([px, lx], [py, ly], color=cor_p, lw=0.5, alpha=0.35, zorder=13)
 
-            fs_p = 7 if nome in ("Ascendant", "Medium_Coeli") else 8.5
-            ax.text(lx, ly, abrev,
-                    ha="center", va="center", fontsize=fs_p,
-                    color=cor_p, fontweight="bold", zorder=15)
+            if nome == "Sun" and glyph_fp is not None:
+                _draw_sun_symbol(ax, lx, ly, cor_p, size=0.050, zorder=15)
+            else:
+                fs_p = 7.5 if nome in ("Ascendant", "Medium_Coeli") else 10
+                _text_glyph(ax, lx, ly, abrev, fontsize=fs_p, color=cor_p, zorder=15, bold=True)
 
             grau_sig = grau_real % 30.0
             ax.text(lx, ly - 0.095, f"{grau_sig:.0f}",
