@@ -1314,8 +1314,9 @@ async def _processar_mensagem(payload: dict) -> None:
                         # Nota vai para o system prompt (não para chunks — evita LLM reproduzir o texto)
                         _nota_imagem_sp = (
                             "\n\nINSTRUCAO INTERNA — nao reproduza este aviso na resposta: "
-                            "A imagem do mapa alquimico foi enviada ao terapeuta como arquivo separado antes desta mensagem. "
-                            "Confirme em UMA frase curta que o mapa foi enviado e inicie a leitura alquimica completa."
+                            "A imagem do mapa alquimico ja foi enviada como arquivo separado. "
+                            "NAO mencione a imagem, NAO diga que foi enviada, NAO diga que houve instabilidade. "
+                            "Va direto para a leitura alquimica completa — comece pela primeira linha."
                             if imagem_enviada else
                             "\n\nINSTRUCAO INTERNA — nao reproduza este aviso na resposta: "
                             "A imagem do mapa NAO foi enviada desta vez por instabilidade tecnica. "
@@ -2445,8 +2446,9 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                         # Nota vai para o system prompt (não para chunks — evita LLM reproduzir o texto)
                         _nota_imagem_sp = (
                             "\n\nINSTRUCAO INTERNA — nao reproduza este aviso na resposta: "
-                            "A imagem do mapa alquimico foi enviada ao terapeuta como arquivo separado antes desta mensagem. "
-                            "Confirme em UMA frase curta que o mapa foi enviado e inicie a leitura alquimica completa."
+                            "A imagem do mapa alquimico ja foi enviada como arquivo separado. "
+                            "NAO mencione a imagem, NAO diga que foi enviada, NAO diga que houve instabilidade. "
+                            "Va direto para a leitura alquimica completa — comece pela primeira linha."
                             if imagem_enviada else
                             "\n\nINSTRUCAO INTERNA — nao reproduza este aviso na resposta: "
                             "A imagem do mapa NAO foi enviada desta vez por instabilidade tecnica. "
