@@ -12,6 +12,130 @@ from typing import Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
+# ---------------------------------------------------------------------------
+# Cache de coordenadas — cidades brasileiras mais comuns.
+# Evita chamada ao Nominatim (que pode pendurar indefinidamente).
+# Fonte: coordenadas geográficas oficiais das capitais e grandes cidades.
+# ---------------------------------------------------------------------------
+_COORDS_BR: dict[str, tuple[float, float, str]] = {
+    # (lat, lon, timezone)
+    "são paulo":          (-23.5505, -46.6333, "America/Sao_Paulo"),
+    "sao paulo":          (-23.5505, -46.6333, "America/Sao_Paulo"),
+    "sp":                 (-23.5505, -46.6333, "America/Sao_Paulo"),
+    "rio de janeiro":     (-22.9068, -43.1729, "America/Sao_Paulo"),
+    "rio":                (-22.9068, -43.1729, "America/Sao_Paulo"),
+    "belo horizonte":     (-19.9167, -43.9345, "America/Sao_Paulo"),
+    "bh":                 (-19.9167, -43.9345, "America/Sao_Paulo"),
+    "salvador":           (-12.9714, -38.5014, "America/Bahia"),
+    "fortaleza":          (-3.7172,  -38.5433, "America/Fortaleza"),
+    "curitiba":           (-25.4290, -49.2671, "America/Sao_Paulo"),
+    "manaus":             (-3.1019,  -60.0250, "America/Manaus"),
+    "recife":             (-8.0476,  -34.8770, "America/Recife"),
+    "porto alegre":       (-30.0346, -51.2177, "America/Sao_Paulo"),
+    "belém":              (-1.4558,  -48.4902, "America/Belem"),
+    "belem":              (-1.4558,  -48.4902, "America/Belem"),
+    "goiânia":            (-16.6869, -49.2648, "America/Sao_Paulo"),
+    "goiania":            (-16.6869, -49.2648, "America/Sao_Paulo"),
+    "florianópolis":      (-27.5954, -48.5480, "America/Sao_Paulo"),
+    "florianopolis":      (-27.5954, -48.5480, "America/Sao_Paulo"),
+    "maceió":             (-9.6658,  -35.7350, "America/Maceio"),
+    "maceio":             (-9.6658,  -35.7350, "America/Maceio"),
+    "natal":              (-5.7945,  -35.2110, "America/Fortaleza"),
+    "campo grande":       (-20.4697, -54.6201, "America/Campo_Grande"),
+    "teresina":           (-5.0920,  -42.8038, "America/Fortaleza"),
+    "são luís":           (-2.5297,  -44.3028, "America/Fortaleza"),
+    "sao luis":           (-2.5297,  -44.3028, "America/Fortaleza"),
+    "joão pessoa":        (-7.1195,  -34.8450, "America/Fortaleza"),
+    "joao pessoa":        (-7.1195,  -34.8450, "America/Fortaleza"),
+    "aracaju":            (-10.9472, -37.0731, "America/Maceio"),
+    "porto velho":        (-8.7612,  -63.9004, "America/Porto_Velho"),
+    "macapá":             (0.0356,   -51.0705, "America/Belem"),
+    "macapa":             (0.0356,   -51.0705, "America/Belem"),
+    "rio branco":         (-9.9754,  -67.8249, "America/Rio_Branco"),
+    "boa vista":          (2.8235,   -60.6758, "America/Boa_Vista"),
+    "palmas":             (-10.2491, -48.3243, "America/Araguaia"),
+    "vitória":            (-20.3155, -40.3128, "America/Sao_Paulo"),
+    "vitoria":            (-20.3155, -40.3128, "America/Sao_Paulo"),
+    "cuiabá":             (-15.6014, -56.0979, "America/Cuiaba"),
+    "cuiaba":             (-15.6014, -56.0979, "America/Cuiaba"),
+    "campinas":           (-22.9099, -47.0626, "America/Sao_Paulo"),
+    "guarulhos":          (-23.4543, -46.5333, "America/Sao_Paulo"),
+    "são bernardo do campo": (-23.6939, -46.5650, "America/Sao_Paulo"),
+    "santo andre":        (-23.6639, -46.5383, "America/Sao_Paulo"),
+    "santos":             (-23.9608, -46.3336, "America/Sao_Paulo"),
+    "são josé dos campos": (-23.1794, -45.8869, "America/Sao_Paulo"),
+    "ribeirao preto":     (-21.1775, -47.8103, "America/Sao_Paulo"),
+    "ribeirão preto":     (-21.1775, -47.8103, "America/Sao_Paulo"),
+    "uberlandia":         (-18.9186, -48.2772, "America/Sao_Paulo"),
+    "uberlândia":         (-18.9186, -48.2772, "America/Sao_Paulo"),
+    "contagem":           (-19.9317, -44.0536, "America/Sao_Paulo"),
+    "londrina":           (-23.3045, -51.1696, "America/Sao_Paulo"),
+    "joinville":          (-26.3044, -48.8487, "America/Sao_Paulo"),
+    "são gonçalo":        (-22.8268, -43.0546, "America/Sao_Paulo"),
+    "duque de caxias":    (-22.7856, -43.3117, "America/Sao_Paulo"),
+    "nova iguaçu":        (-22.7592, -43.4511, "America/Sao_Paulo"),
+    "brasília":           (-15.7797, -47.9297, "America/Sao_Paulo"),
+    "brasilia":           (-15.7797, -47.9297, "America/Sao_Paulo"),
+    "df":                 (-15.7797, -47.9297, "America/Sao_Paulo"),
+    "distrito federal":   (-15.7797, -47.9297, "America/Sao_Paulo"),
+}
+
+
+def _limpar_cidade(cidade: str) -> str:
+    """Remove sufixos desnecessários e normaliza o nome da cidade."""
+    cidade = cidade.lower().strip()
+    # Remove sufixos como "capital", "sp", "mg", "rj" após vírgula ou espaço
+    cidade = re.sub(r"\s*,\s*brasil\s*$", "", cidade)
+    cidade = re.sub(r"\s*,\s*[a-z]{2}\s*$", "", cidade)    # ", SP"
+    cidade = re.sub(r"\s+capital\s*$", "", cidade)          # "São Paulo capital"
+    cidade = re.sub(r"\s*-\s*[a-z]{2}\s*$", "", cidade)    # "São Paulo - SP"
+    cidade = re.sub(r"\s+[a-z]{2}\s*$", "", cidade)         # "São Paulo SP"
+    return cidade.strip()
+
+
+def _geocodificar_cidade(cidade_nascimento: str) -> tuple[float, float, str]:
+    """
+    Retorna (lat, lon, timezone) para a cidade informada.
+    Tenta cache local primeiro; só chama Nominatim se necessário.
+    """
+    chave = _limpar_cidade(cidade_nascimento)
+    if chave in _COORDS_BR:
+        lat, lon, tz = _COORDS_BR[chave]
+        logger.info(f"Coordenadas do cache local para '{cidade_nascimento}': ({lat}, {lon}) tz={tz}")
+        return lat, lon, tz
+
+    # Fallback: Nominatim (pode ser lento em produção)
+    from geopy.geocoders import Nominatim
+    from timezonefinder import TimezoneFinder
+
+    geolocator = Nominatim(user_agent="alquimista-interior-bot/1.0", timeout=10)
+    tentativas = [
+        cidade_nascimento,
+        cidade_nascimento + ", Brasil",
+    ]
+    location = None
+    for tentativa in tentativas:
+        try:
+            time.sleep(1)
+            location = geolocator.geocode(tentativa, language="pt")
+            if location:
+                break
+        except Exception as geo_err:
+            logger.warning(f"Erro de geocodificação para '{tentativa}': {geo_err}")
+
+    if not location:
+        raise ValueError(
+            f"Cidade não encontrada: '{cidade_nascimento}'. "
+            "Tente incluir o estado e o país (ex: 'Belo Horizonte, MG, Brasil')."
+        )
+
+    lat = location.latitude
+    lon = location.longitude
+    tf = TimezoneFinder()
+    tz_str = tf.timezone_at(lat=lat, lng=lon) or "America/Sao_Paulo"
+    logger.info(f"Coordenadas do Nominatim para '{cidade_nascimento}': ({lat}, {lon}) tz={tz_str}")
+    return lat, lon, tz_str
+
 # Mapeamentos de tradução
 SIGNOS_PT = {
     "Ari": "Áries",
@@ -92,14 +216,6 @@ def calcular_mapa_natal(
             "Kerykeion não está instalado. Execute: pip install kerykeion"
         ) from e
 
-    try:
-        from geopy.geocoders import Nominatim
-        from timezonefinder import TimezoneFinder
-    except ImportError as e:
-        raise ImportError(
-            "geopy/timezonefinder não instalados. Execute: pip install geopy timezonefinder"
-        ) from e
-
     # --- Parsing dos dados ---
     try:
         dia, mes, ano = [int(x) for x in data_nascimento.strip().split("/")]
@@ -115,40 +231,8 @@ def calcular_mapa_natal(
             f"Formato de hora inválido: '{hora_nascimento}'. Use HH:MM."
         ) from e
 
-    # --- Geocodificação ---
-    geolocator = Nominatim(user_agent="alquimista-interior-bot/1.0", timeout=10)
-
-    location = None
-    tentativas = [
-        cidade_nascimento,
-        cidade_nascimento + ", Brasil",  # fallback para cidades BR sem sufixo
-    ]
-    for tentativa in tentativas:
-        try:
-            time.sleep(1)  # respeitar rate limit do Nominatim
-            location = geolocator.geocode(tentativa, language="pt")
-            if location:
-                break
-        except Exception as geo_err:
-            logger.warning(f"Erro de geocodificação para '{tentativa}': {geo_err}")
-
-    if not location:
-        raise ValueError(
-            f"Cidade não encontrada: '{cidade_nascimento}'. "
-            "Tente incluir o estado e o país (ex: 'Belo Horizonte, MG, Brasil')."
-        )
-
-    lat = location.latitude
-    lon = location.longitude
-
-    # --- Timezone ---
-    tf = TimezoneFinder()
-    tz_str = tf.timezone_at(lat=lat, lng=lon)
-    if not tz_str:
-        logger.warning(
-            f"Timezone não encontrada para ({lat}, {lon}). Usando America/Sao_Paulo."
-        )
-        tz_str = "America/Sao_Paulo"
+    # --- Geocodificação (cache local primeiro, Nominatim como fallback) ---
+    lat, lon, tz_str = _geocodificar_cidade(cidade_nascimento)
 
     # --- Cálculo astrológico (Kerykeion v5 — offline com coordenadas manuais) ---
     sujeito = AstrologicalSubjectFactory.from_birth_data(
@@ -529,8 +613,6 @@ def gerar_mapa_completo(
     """
     from kerykeion import AstrologicalSubjectFactory
     from kerykeion.aspects.aspects_factory import AspectsFactory
-    from geopy.geocoders import Nominatim
-    from timezonefinder import TimezoneFinder
 
     # --- Parsing dos dados ---
     try:
@@ -547,27 +629,8 @@ def gerar_mapa_completo(
             f"Formato de hora inválido: '{hora_nascimento}'. Use HH:MM."
         ) from e
 
-    # --- Geocodificação ---
-    geolocator = Nominatim(user_agent="alquimista-interior-bot/1.0", timeout=10)
-    location = None
-    tentativas = [cidade_nascimento, cidade_nascimento + ", Brasil"]
-    for tentativa in tentativas:
-        try:
-            time.sleep(1)
-            location = geolocator.geocode(tentativa, language="pt")
-            if location:
-                break
-        except Exception as geo_err:
-            logger.warning(f"Geocodificação falhou para '{tentativa}': {geo_err}")
-
-    if not location:
-        raise ValueError(f"Cidade não encontrada: '{cidade_nascimento}'.")
-
-    lat = location.latitude
-    lon = location.longitude
-
-    tf = TimezoneFinder()
-    tz_str = tf.timezone_at(lat=lat, lng=lon) or "America/Sao_Paulo"
+    # --- Geocodificação (cache local primeiro, Nominatim como fallback) ---
+    lat, lon, tz_str = _geocodificar_cidade(cidade_nascimento)
 
     # --- Cálculo astrológico ---
     sujeito = AstrologicalSubjectFactory.from_birth_data(
