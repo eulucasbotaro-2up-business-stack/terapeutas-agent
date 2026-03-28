@@ -477,7 +477,7 @@ def extrair_dados_nascimento(texto: str) -> Optional[dict]:
             resultado["hora"] = f"{int(hora_extenso.group(1)):02d}:00"
 
     # --- Extração do nome ---
-    # Padrões: "paciente: Nome", "nome: Nome", "nome do paciente: Nome"
+    # Padrão 1: campo explícito "paciente: Nome", "nome: Nome", "nome do paciente: Nome"
     nome_match = re.search(
         r"(?:paciente|nome do paciente|nome)\s*[:\-]\s*([A-ZÀ-Úa-zà-ú][a-zA-ZÀ-ú\s]{2,40}?)(?:\s*[\|\,\n]|$)",
         texto,
@@ -485,6 +485,22 @@ def extrair_dados_nascimento(texto: str) -> Optional[dict]:
     )
     if nome_match:
         resultado["nome"] = nome_match.group(1).strip()
+    else:
+        # Padrão 2: nome livre antes da data — "Lucas Botaro 27/01/1995 ..."
+        # Captura até 3 palavras capitalizadas imediatamente antes de DD/MM/AAAA
+        nome_antes_data = re.search(
+            r"([A-ZÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖÙÚÛÜÝ][a-zA-ZÀ-ÿ]+"
+            r"(?:\s+[A-ZÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖÙÚÛÜÝ][a-zA-ZÀ-ÿ]+){0,3})"
+            r"\s+\d{1,2}[/\-\.]\d{1,2}[/\-\.]\d{4}",
+            texto,
+        )
+        if nome_antes_data:
+            candidato = nome_antes_data.group(1).strip()
+            # Rejeitar palavras reservadas que não são nomes
+            _nao_nomes = {"faça", "faz", "fazer", "calcule", "calcular", "gere", "gerar",
+                          "quero", "preciso", "pode", "mapa", "natal", "astral", "ué"}
+            if candidato.lower() not in _nao_nomes:
+                resultado["nome"] = candidato
 
     # --- Extração da cidade ---
     # Tentativa 1: campo explícito "local: Cidade"

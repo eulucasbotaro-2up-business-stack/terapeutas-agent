@@ -2317,6 +2317,8 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                     texto_busca_nascimento = f"{texto_para_processar}\n{msgs_historico}"
 
                 dados_nasc = extrair_dados_nascimento(texto_busca_nascimento)
+                if dados_nasc:
+                    print(f"[META-NASC] dados_nasc={dados_nasc} | msg='{texto_para_processar[:80]}'", flush=True)
 
                 # Interceptor: "refazer mapa" — busca dados do histórico e regera
                 if _eh_pedido_refazer_mapa(texto_para_processar):
@@ -2469,6 +2471,7 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                         _MAPA_FALHAS[numero_paciente] = _MAPA_FALHAS.get(numero_paciente, 0) + 1
                         tentativas_falha = _MAPA_FALHAS[numero_paciente]
                         if tentativas_falha >= _MAPA_MAX_TENTATIVAS:
+                            # 3ª falha consecutiva — avisar o usuário e sugerir suporte
                             _MAPA_FALHAS[numero_paciente] = 0
                             msg_suporte = (
                                 f"Pedimos desculpas pelo transtorno! Após {_MAPA_MAX_TENTATIVAS} tentativas, "
@@ -2482,13 +2485,7 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                                 )
                             except Exception:
                                 pass
-                        else:
-                            try:
-                                await meta_client.send_text_message(
-                                    phone_number=numero_paciente, message=MSG_ERRO_MAPA_CALCULO,
-                                )
-                            except Exception:
-                                pass
+                        # tentativas 1 e 2: silencioso — não enviar mensagem de erro ainda
                         return  # não chamar LLM após falha de cálculo do mapa
 
             # Selecionar prompt do agente especialista com fallback para None (usa genérico)
