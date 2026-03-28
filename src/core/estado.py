@@ -181,14 +181,22 @@ def gerar_saudacao_ativo(nome: Optional[str], tem_historico_recente: bool = Fals
     nome_fmt = nome.strip().split()[0].capitalize() if nome else ""
 
     if tem_historico_recente:
-        # Conversa já em andamento — saudação mínima, sem listar as 3 frentes
-        variacoes_curtas = [
-            f"{'Fala, ' + nome_fmt + '!' if nome_fmt else 'Fala!'} Pode trazer.",
-            f"{'Opa, ' + nome_fmt + '.' if nome_fmt else 'Opa.'} Tô por aqui.",
-            f"{'E aí, ' + nome_fmt + '!' if nome_fmt else 'E aí!'} Me conta.",
-            f"{'Oi, ' + nome_fmt + '.' if nome_fmt else 'Oi.'} O que você traz?",
+        # Conversa já em andamento — saudação dinâmica com as 3 frentes
+        variacoes_com_opcoes = [
+            (
+                f"{'Boa, ' + nome_fmt + '!' if nome_fmt else 'Boa!'} E agora, quer trazer mais algum caso, entender algo do método ou criar conteúdo?",
+            ),
+            (
+                f"{'Que bom, ' + nome_fmt + '.' if nome_fmt else 'Que bom.'} Tem mais algum caso pra trabalhar, uma dúvida sobre o método, ou quer criar conteúdo agora?",
+            ),
+            (
+                f"{'Fala, ' + nome_fmt + '!' if nome_fmt else 'Fala!'} Mais algum caso clínico, pesquisa no método do Joel, ou produção de conteúdo?",
+            ),
+            (
+                f"{'Opa, ' + nome_fmt + '.' if nome_fmt else 'Opa.'} O que você traz agora — mais um caso, algo sobre o método, ou quer criar conteúdo?",
+            ),
         ]
-        return [random.choice(variacoes_curtas)]
+        return [random.choice(variacoes_com_opcoes)[0]]
 
     # Início de sessão nova — apresenta as 3 frentes
     variacoes = [
