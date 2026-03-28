@@ -1398,8 +1398,8 @@ async def _processar_mensagem(payload: dict) -> None:
                 await _enviar_sequencia_evolution(
                     resposta_texto, evolution, instance_name, numero_paciente,
                 )
-            elif modo == ModoOperacao.CONSULTA and "---SECAO---" in resposta_texto:
-                # Diagnóstico completo: dividir em mensagens por seção
+            elif "---SECAO---" in resposta_texto:
+                # Resposta dividida em seções: cada seção vira uma mensagem separada
                 secoes = [s.strip() for s in resposta_texto.split("---SECAO---") if s.strip()]
                 await _enviar_sequencia_evolution(secoes, evolution, instance_name, numero_paciente)
             else:
@@ -2495,8 +2495,8 @@ async def _processar_mensagem_meta(payload: dict) -> None:
         if resposta_texto:
             if isinstance(resposta_texto, list):
                 await _enviar_sequencia_meta(resposta_texto, meta_client, numero_paciente)
-            elif modo == ModoOperacao.CONSULTA and "---SECAO---" in resposta_texto:
-                # Diagnóstico completo: dividir em mensagens por seção
+            elif "---SECAO---" in resposta_texto:
+                # Resposta dividida em seções: cada seção vira uma mensagem separada
                 secoes = [s.strip() for s in resposta_texto.split("---SECAO---") if s.strip()]
                 await _enviar_sequencia_meta(secoes, meta_client, numero_paciente)
             else:
