@@ -1210,6 +1210,7 @@ async def _processar_mensagem(payload: dict) -> None:
                     logger.info(f"[Evolution] Pedindo ano de nascimento para mapa natal — {numero_paciente}")
                     return
                 elif dados_nasc and not dados_nasc.get("falta_ano"):
+                    _nota_imagem_sp = ""
                     try:
                         mapa_resultado, mapa_png = await asyncio.to_thread(
                             gerar_mapa_completo,
@@ -1226,28 +1227,33 @@ async def _processar_mensagem(payload: dict) -> None:
                                     f"Mapa Natal — {dados_nasc.get('nome', 'Paciente')}\n"
                                     f"{dados_nasc['data']} {dados_nasc['hora']} | {dados_nasc['cidade']}"
                                 )
-                                await evolution.enviar_imagem(
+                                resp_img = await evolution.enviar_imagem(
                                     instance=instance_name,
                                     numero=numero_paciente,
                                     imagem_bytes=mapa_png,
                                     caption=caption_img,
                                 )
                                 imagem_enviada = True
-                                logger.info(f"Imagem do mapa natal enviada para {numero_paciente} — Evolution")
+                                logger.info(f"Imagem do mapa natal enviada para {numero_paciente} — Evolution | resp={resp_img}")
                             except Exception as img_send_err:
                                 logger.warning(
-                                    f"Envio da imagem do mapa natal falhou (Evolution) — continuando: {img_send_err}"
+                                    f"Envio da imagem do mapa natal falhou (Evolution): {img_send_err}",
+                                    exc_info=True,
                                 )
+                        else:
+                            logger.warning(f"mapa_png é None para {numero_paciente} — imagem não gerada (Evolution)")
 
-                        nota_imagem = (
-                            "\n\nNOTA DO SISTEMA: A imagem do mapa natal acabou de ser enviada ao terapeuta "
-                            "antes desta mensagem. Confirme que o gráfico foi enviado e faça a leitura "
-                            "alquímica. Nunca diga que não consegue gerar imagens."
+                        # Nota vai para o system prompt (não para chunks — evita LLM reproduzir o texto)
+                        _nota_imagem_sp = (
+                            "\n\nINSTRUCAO INTERNA — nao reproduza este aviso na resposta: "
+                            "A imagem do mapa alquimico foi enviada ao terapeuta antes desta mensagem. "
+                            "Confirme brevemente que a imagem foi enviada e faca a leitura. "
+                            "Nunca diga que nao consegue gerar imagens."
                             if imagem_enviada else ""
                         )
                         mapa_prefixo = (
-                            f"MAPA NATAL CALCULADO AUTOMATICAMENTE (Swiss Ephemeris — dado preciso, não alucinado):\n"
-                            f"{mapa_resultado}{nota_imagem}\n\n"
+                            f"MAPA NATAL CALCULADO AUTOMATICAMENTE (Swiss Ephemeris — dado preciso, nao alucinado):\n"
+                            f"{mapa_resultado}\n\n"
                         )
                         chunks_texto = mapa_prefixo + chunks_texto
                         logger.info(
@@ -1256,7 +1262,8 @@ async def _processar_mensagem(payload: dict) -> None:
                         )
                     except Exception as mapa_err:
                         logger.warning(
-                            f"Cálculo de mapa natal falhou (Evolution) — continuando sem mapa: {mapa_err}"
+                            f"Cálculo de mapa natal falhou (Evolution) — continuando sem mapa: {mapa_err}",
+                            exc_info=True,
                         )
 
             # Selecionar prompt do agente especialista com fallback para None (usa genérico)
@@ -1278,6 +1285,11 @@ async def _processar_mensagem(payload: dict) -> None:
             except Exception as e:
                 logger.warning(f"Falha ao montar prompt especialista (Evolution): {e}. Usando genérico.")
                 system_prompt_especialista = None
+
+            # Injetar nota da imagem no system prompt (não nos chunks — evita LLM reproduzir o texto)
+            _nota_imagem_sp_evo = locals().get("_nota_imagem_sp", "")
+            if _nota_imagem_sp_evo:
+                system_prompt_especialista = (system_prompt_especialista or "") + _nota_imagem_sp_evo
 
             try:
                 resposta_texto = await gerar_resposta(
@@ -2236,6 +2248,7 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                     logger.info(f"[Meta] Pedindo ano de nascimento para mapa natal — {numero_paciente}")
                     return
                 elif dados_nasc and not dados_nasc.get("falta_ano"):
+                    _nota_imagem_sp = ""
                     try:
                         mapa_resultado, mapa_png = await asyncio.to_thread(
                             gerar_mapa_completo,
@@ -2252,27 +2265,32 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                                     f"Mapa Natal — {dados_nasc.get('nome', 'Paciente')}\n"
                                     f"{dados_nasc['data']} {dados_nasc['hora']} | {dados_nasc['cidade']}"
                                 )
-                                await meta_client.send_image_message(
+                                resp_img = await meta_client.send_image_message(
                                     phone_number=numero_paciente,
                                     imagem_bytes=mapa_png,
                                     caption=caption_img,
                                 )
                                 imagem_enviada = True
-                                logger.info(f"Imagem do mapa natal enviada para {numero_paciente} — Meta")
+                                logger.info(f"Imagem do mapa natal enviada para {numero_paciente} — Meta | resp={resp_img}")
                             except Exception as img_send_err:
                                 logger.warning(
-                                    f"Envio da imagem do mapa natal falhou (Meta) — continuando: {img_send_err}"
+                                    f"Envio da imagem do mapa natal falhou (Meta): {img_send_err}",
+                                    exc_info=True,
                                 )
+                        else:
+                            logger.warning(f"mapa_png é None para {numero_paciente} — imagem não gerada (Meta)")
 
-                        nota_imagem = (
-                            "\n\nNOTA DO SISTEMA: A imagem do mapa natal acabou de ser enviada ao terapeuta "
-                            "antes desta mensagem. Confirme que o gráfico foi enviado e faça a leitura "
-                            "alquímica. Nunca diga que não consegue gerar imagens."
+                        # Nota vai para o system prompt (não para chunks — evita LLM reproduzir o texto)
+                        _nota_imagem_sp = (
+                            "\n\nINSTRUCAO INTERNA — nao reproduza este aviso na resposta: "
+                            "A imagem do mapa alquimico foi enviada ao terapeuta antes desta mensagem. "
+                            "Confirme brevemente que a imagem foi enviada e faca a leitura. "
+                            "Nunca diga que nao consegue gerar imagens."
                             if imagem_enviada else ""
                         )
                         mapa_prefixo = (
-                            f"MAPA NATAL CALCULADO AUTOMATICAMENTE (Swiss Ephemeris — dado preciso, não alucinado):\n"
-                            f"{mapa_resultado}{nota_imagem}\n\n"
+                            f"MAPA NATAL CALCULADO AUTOMATICAMENTE (Swiss Ephemeris — dado preciso, nao alucinado):\n"
+                            f"{mapa_resultado}\n\n"
                         )
                         chunks_texto = mapa_prefixo + chunks_texto
                         logger.info(
@@ -2281,7 +2299,8 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                         )
                     except Exception as mapa_err:
                         logger.warning(
-                            f"Cálculo de mapa natal falhou (Meta) — continuando sem mapa: {mapa_err}"
+                            f"Cálculo de mapa natal falhou (Meta) — continuando sem mapa: {mapa_err}",
+                            exc_info=True,
                         )
 
             # Selecionar prompt do agente especialista com fallback para None (usa genérico)
@@ -2303,6 +2322,11 @@ async def _processar_mensagem_meta(payload: dict) -> None:
             except Exception as e:
                 logger.warning(f"Falha ao montar prompt especialista (Meta): {e}. Usando genérico.")
                 system_prompt_especialista = None
+
+            # Injetar nota da imagem no system prompt (não nos chunks — evita LLM reproduzir o texto)
+            _nota_imagem_sp_meta = locals().get("_nota_imagem_sp", "")
+            if _nota_imagem_sp_meta:
+                system_prompt_especialista = (system_prompt_especialista or "") + _nota_imagem_sp_meta
 
             try:
                 resposta_texto = await gerar_resposta(
