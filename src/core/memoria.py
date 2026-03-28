@@ -93,6 +93,17 @@ _STOP_WORDS = {
     "tudo", "nada", "algo", "alguém", "ninguém",
     # Palavras de prefixos de mídia — nunca devem virar "tópico"
     "mensagem", "audio", "imagem", "recebida", "recebido", "transcrevendo",
+    # Palavras genéricas demais para descrever um tópico — nunca devem aparecer no resumo
+    "coisas", "coisa", "assunto", "assuntos", "caso", "casos",
+    "exemplo", "exemplos", "cliente", "clientes", "pessoa", "pessoas",
+    "fora", "cidade", "lugar", "lugares", "parte", "partes",
+    "tipo", "tipos", "forma", "formas", "modo", "modos",
+    "vez", "vezes", "hora", "horas", "dia", "dias", "tempo",
+    "lado", "lados", "ponto", "pontos", "nível", "níveis",
+    "isso", "aqui", "lá", "faz", "fazer", "feito", "feita",
+    "quer", "quero", "queria", "pode", "podia", "precisa",
+    "preciso", "preciso", "tenho", "tendo", "tive", "tudo",
+    "todo", "toda", "todos", "todas",
 }
 
 # Prefixos de mídia adicionados pelo sistema antes de salvar/processar
@@ -150,7 +161,11 @@ def calcular_similaridade_topico(msgs_anteriores: list[str], nova_msg: str) -> f
 
 
 def _resumo_topico(msgs_usuario: list[str]) -> str:
-    """Extrai 2-3 palavras mais frequentes para nomear o tópico anterior."""
+    """Extrai 2-3 palavras mais significativas para nomear o tópico anterior.
+
+    Prioriza palavras com 5+ caracteres (mais específicas) sobre palavras curtas.
+    Se não encontrar palavras suficientemente descritivas, retorna "assunto anterior".
+    """
     todas: list[str] = []
     for msg in msgs_usuario[-4:]:
         todas.extend(_extrair_palavras_chave(_limpar_msg_para_topico(msg)))
@@ -159,8 +174,20 @@ def _resumo_topico(msgs_usuario: list[str]) -> str:
         return "assunto anterior"
 
     freq = Counter(todas)
-    top = [p for p, _ in freq.most_common(3)]
-    return " / ".join(top)
+
+    # Preferir palavras com 5+ caracteres — mais específicas e descritivas
+    candidatas_longas = [(p, c) for p, c in freq.most_common() if len(p) >= 5]
+    candidatas_curtas = [(p, c) for p, c in freq.most_common() if len(p) < 5]
+
+    # Usar palavras longas primeiro; completar com curtas se necessário
+    top_palavras = [p for p, _ in candidatas_longas[:3]]
+    if len(top_palavras) < 2:
+        top_palavras += [p for p, _ in candidatas_curtas[: 3 - len(top_palavras)]]
+
+    if not top_palavras:
+        return "assunto anterior"
+
+    return " / ".join(top_palavras[:3])
 
 
 def detectar_mudanca_assunto(
