@@ -8,7 +8,7 @@ eliminando alucinações sobre Ascendente e posições planetárias.
 import logging
 import re
 import time
-from typing import Optional
+from typing import Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -400,3 +400,112 @@ def extrair_dados_nascimento(texto: str) -> Optional[dict]:
         return resultado
 
     return None
+
+
+def gerar_mapa_completo(
+    nome: str,
+    data_nascimento: str,
+    hora_nascimento: str,
+    cidade_nascimento: str,
+) -> Tuple[str, Optional[bytes]]:
+    """
+    Calcula o mapa natal e gera a imagem PNG.
+
+    Combina calcular_mapa_natal() (texto formatado) com gerar_imagem_mapa_natal()
+    (PNG em bytes) em uma única chamada conveniente.
+
+    Args:
+        nome: Nome do paciente
+        data_nascimento: Data no formato DD/MM/AAAA
+        hora_nascimento: Hora no formato HH:MM
+        cidade_nascimento: Cidade de nascimento
+
+    Returns:
+        Tuple[str, Optional[bytes]]:
+            - str: texto formatado do mapa natal (sempre presente)
+            - Optional[bytes]: PNG do mapa natal, ou None se geração de imagem falhar
+    """
+    from kerykeion import AstrologicalSubjectFactory
+    from kerykeion.aspects.aspects_factory import AspectsFactory
+    from geopy.geocoders import Nominatim
+    from timezonefinder import TimezoneFinder
+
+    # --- Parsing dos dados ---
+    try:
+        dia, mes, ano = [int(x) for x in data_nascimento.strip().split("/")]
+    except ValueError as e:
+        raise ValueError(
+            f"Formato de data inválido: '{data_nascimento}'. Use DD/MM/AAAA."
+        ) from e
+
+    try:
+        hora, minuto = [int(x) for x in hora_nascimento.strip().split(":")]
+    except ValueError as e:
+        raise ValueError(
+            f"Formato de hora inválido: '{hora_nascimento}'. Use HH:MM."
+        ) from e
+
+    # --- Geocodificação ---
+    geolocator = Nominatim(user_agent="alquimista-interior-bot/1.0", timeout=10)
+    location = None
+    tentativas = [cidade_nascimento, cidade_nascimento + ", Brasil"]
+    for tentativa in tentativas:
+        try:
+            time.sleep(1)
+            location = geolocator.geocode(tentativa, language="pt")
+            if location:
+                break
+        except Exception as geo_err:
+            logger.warning(f"Geocodificação falhou para '{tentativa}': {geo_err}")
+
+    if not location:
+        raise ValueError(f"Cidade não encontrada: '{cidade_nascimento}'.")
+
+    lat = location.latitude
+    lon = location.longitude
+
+    tf = TimezoneFinder()
+    tz_str = tf.timezone_at(lat=lat, lng=lon) or "America/Sao_Paulo"
+
+    # --- Cálculo astrológico ---
+    sujeito = AstrologicalSubjectFactory.from_birth_data(
+        name=nome,
+        year=ano,
+        month=mes,
+        day=dia,
+        hour=hora,
+        minute=minuto,
+        lng=lon,
+        lat=lat,
+        tz_str=tz_str,
+        online=False,
+        zodiac_type="Tropical",
+        houses_system_identifier="P",
+        suppress_geonames_warning=True,
+    )
+
+    # --- Texto formatado (reutiliza lógica existente sem duplicar geocodificação) ---
+    texto = calcular_mapa_natal(
+        nome=nome,
+        data_nascimento=data_nascimento,
+        hora_nascimento=hora_nascimento,
+        cidade_nascimento=cidade_nascimento,
+    )
+
+    # --- Imagem PNG ---
+    imagem_png: Optional[bytes] = None
+    try:
+        from src.rag.chart_generator import dados_mapa_de_sujeito, gerar_imagem_mapa_natal
+        dados = dados_mapa_de_sujeito(
+            sujeito=sujeito,
+            nome_paciente=nome,
+            data_nascimento=data_nascimento,
+            hora_nascimento=hora_nascimento,
+            cidade_nascimento=cidade_nascimento,
+        )
+        imagem_png = gerar_imagem_mapa_natal(dados)
+        logger.info(f"Imagem do mapa natal gerada para '{nome}' ({len(imagem_png) // 1024} KB)")
+    except Exception as img_err:
+        logger.warning(f"Geração de imagem do mapa natal falhou — continuando apenas com texto: {img_err}")
+
+    return texto, imagem_png

@@ -68,7 +68,7 @@ from src.core.memoria import (
 )
 from src.rag.retriever import buscar_contexto
 from src.rag.generator import gerar_resposta, classificar_intencao
-from src.rag.astrologia import calcular_mapa_natal, extrair_dados_nascimento
+from src.rag.astrologia import calcular_mapa_natal, extrair_dados_nascimento, gerar_mapa_completo
 from src.rag.aprendizado import (
     analisar_conversa,
     carregar_contexto_terapeuta,
@@ -1176,8 +1176,8 @@ async def _processar_mensagem(payload: dict) -> None:
                 dados_nasc = extrair_dados_nascimento(texto_busca_nascimento)
                 if dados_nasc:
                     try:
-                        mapa_resultado = await asyncio.to_thread(
-                            calcular_mapa_natal,
+                        mapa_resultado, mapa_png = await asyncio.to_thread(
+                            gerar_mapa_completo,
                             dados_nasc.get("nome", "Paciente"),
                             dados_nasc["data"],
                             dados_nasc["hora"],
@@ -1189,6 +1189,24 @@ async def _processar_mensagem(payload: dict) -> None:
                             f"Mapa natal calculado para '{dados_nasc.get('nome')}' "
                             f"({dados_nasc['data']} {dados_nasc['hora']} em {dados_nasc['cidade']}) — Evolution"
                         )
+                        # Enviar imagem do mapa natal antes da resposta textual
+                        if mapa_png:
+                            try:
+                                caption_img = (
+                                    f"Mapa Natal — {dados_nasc.get('nome', 'Paciente')}\n"
+                                    f"{dados_nasc['data']} {dados_nasc['hora']} | {dados_nasc['cidade']}"
+                                )
+                                await evolution.enviar_imagem(
+                                    instance=instance_name,
+                                    numero=numero_paciente,
+                                    imagem_bytes=mapa_png,
+                                    caption=caption_img,
+                                )
+                                logger.info(f"Imagem do mapa natal enviada para {numero_paciente} — Evolution")
+                            except Exception as img_send_err:
+                                logger.warning(
+                                    f"Envio da imagem do mapa natal falhou (Evolution) — continuando: {img_send_err}"
+                                )
                     except Exception as mapa_err:
                         logger.warning(
                             f"Cálculo de mapa natal falhou (Evolution) — continuando sem mapa: {mapa_err}"
@@ -2076,8 +2094,8 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                 dados_nasc = extrair_dados_nascimento(texto_busca_nascimento)
                 if dados_nasc:
                     try:
-                        mapa_resultado = await asyncio.to_thread(
-                            calcular_mapa_natal,
+                        mapa_resultado, mapa_png = await asyncio.to_thread(
+                            gerar_mapa_completo,
                             dados_nasc.get("nome", "Paciente"),
                             dados_nasc["data"],
                             dados_nasc["hora"],
@@ -2089,6 +2107,23 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                             f"Mapa natal calculado para '{dados_nasc.get('nome')}' "
                             f"({dados_nasc['data']} {dados_nasc['hora']} em {dados_nasc['cidade']}) — Meta"
                         )
+                        # Enviar imagem do mapa natal antes da resposta textual
+                        if mapa_png:
+                            try:
+                                caption_img = (
+                                    f"Mapa Natal — {dados_nasc.get('nome', 'Paciente')}\n"
+                                    f"{dados_nasc['data']} {dados_nasc['hora']} | {dados_nasc['cidade']}"
+                                )
+                                await meta_client.send_image_message(
+                                    phone_number=numero_paciente,
+                                    imagem_bytes=mapa_png,
+                                    caption=caption_img,
+                                )
+                                logger.info(f"Imagem do mapa natal enviada para {numero_paciente} — Meta")
+                            except Exception as img_send_err:
+                                logger.warning(
+                                    f"Envio da imagem do mapa natal falhou (Meta) — continuando: {img_send_err}"
+                                )
                     except Exception as mapa_err:
                         logger.warning(
                             f"Cálculo de mapa natal falhou (Meta) — continuando sem mapa: {mapa_err}"

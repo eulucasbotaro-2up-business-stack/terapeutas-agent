@@ -281,6 +281,50 @@ class EvolutionClient:
             json_body=mensagem_data,
         )
 
+    async def enviar_imagem(
+        self,
+        instance: str,
+        numero: str,
+        imagem_bytes: bytes,
+        caption: str = "",
+        mimetype: str = "image/png",
+        nome_arquivo: str = "mapa_natal.png",
+    ) -> dict[str, Any]:
+        """
+        Envia imagem via WhatsApp usando a Evolution API (base64).
+
+        Args:
+            instance: Nome da instância do terapeuta.
+            numero: Número do destinatário (ex: "5511999999999").
+            imagem_bytes: Bytes da imagem PNG/JPEG.
+            caption: Legenda opcional da imagem.
+            mimetype: Tipo MIME da imagem (default: "image/png").
+            nome_arquivo: Nome do arquivo para exibição.
+
+        Returns:
+            Resposta da API com status do envio.
+        """
+        import base64
+        logger.info(
+            "Enviando imagem (%d KB) para %s via instância '%s'",
+            len(imagem_bytes) // 1024,
+            numero,
+            instance,
+        )
+        imagem_b64 = base64.b64encode(imagem_bytes).decode("utf-8")
+        return await self._request(
+            method="POST",
+            path=f"/message/sendMedia/{instance}",
+            json_body={
+                "number": numero,
+                "mediatype": "image",
+                "mimetype": mimetype,
+                "caption": caption,
+                "media": imagem_b64,
+                "fileName": nome_arquivo,
+            },
+        )
+
     async def configurar_webhook(
         self,
         nome: str,
