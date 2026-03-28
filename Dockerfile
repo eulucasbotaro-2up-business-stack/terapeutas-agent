@@ -5,6 +5,9 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
+# gcc é necessário para compilar pyswisseph (extensão C do kerykeion)
+RUN apt-get update && apt-get install -y --no-install-recommends gcc && rm -rf /var/lib/apt/lists/*
+
 # Instala dependências primeiro (cache do Docker)
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt

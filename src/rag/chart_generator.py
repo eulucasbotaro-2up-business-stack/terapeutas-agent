@@ -166,6 +166,14 @@ def dados_mapa_de_sujeito(
         ("pluto", "Pluto"), ("ascendant", "Ascendant"), ("medium_coeli", "Medium_Coeli"),
     ]
 
+    # Kerykeion v5: house é str "First_House" ... "Twelfth_House", não int
+    _HOUSE_STR_TO_INT = {
+        "First_House": 1, "Second_House": 2, "Third_House": 3,
+        "Fourth_House": 4, "Fifth_House": 5, "Sixth_House": 6,
+        "Seventh_House": 7, "Eighth_House": 8, "Ninth_House": 9,
+        "Tenth_House": 10, "Eleventh_House": 11, "Twelfth_House": 12,
+    }
+
     planetas: dict[str, float] = {}
     signos: dict[str, str] = {}
     casas: dict[str, Optional[int]] = {}
@@ -178,8 +186,14 @@ def dados_mapa_de_sujeito(
             grau_abs = sign_idx * 30.0 + float(ponto.position)
             planetas[nome] = grau_abs % 360.0
             signos[nome] = ponto.sign
-            casa = getattr(ponto, "house", None)
-            casas[nome] = int(casa) if casa else None
+            casa_raw = getattr(ponto, "house", None)
+            # Normalizar: v5 retorna str, v4 retornava int
+            if isinstance(casa_raw, str):
+                casas[nome] = _HOUSE_STR_TO_INT.get(casa_raw)
+            elif isinstance(casa_raw, int):
+                casas[nome] = casa_raw
+            else:
+                casas[nome] = None
 
     asc_grau = planetas.get("Ascendant", 0.0)
 

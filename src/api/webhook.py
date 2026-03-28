@@ -1168,7 +1168,7 @@ async def _processar_mensagem(payload: dict) -> None:
                 # Também escaneia as últimas 10 mensagens do histórico
                 if historico:
                     msgs_historico = " ".join(
-                        m.get("conteudo", "") or m.get("mensagem", "") or ""
+                        m.get("content", "") or m.get("conteudo", "") or m.get("mensagem", "") or ""
                         for m in historico[-10:]
                     )
                     texto_busca_nascimento = f"{texto_para_processar}\n{msgs_historico}"
@@ -2086,7 +2086,7 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                 # Também escaneia as últimas 10 mensagens do histórico
                 if historico:
                     msgs_historico = " ".join(
-                        m.get("conteudo", "") or m.get("mensagem", "") or ""
+                        m.get("content", "") or m.get("conteudo", "") or m.get("mensagem", "") or ""
                         for m in historico[-10:]
                     )
                     texto_busca_nascimento = f"{texto_para_processar}\n{msgs_historico}"

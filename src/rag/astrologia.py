@@ -167,7 +167,66 @@ def calcular_mapa_natal(
         suppress_geonames_warning=True,
     )
 
-    # --- Montar texto formatado ---
+    return _formatar_texto_mapa(
+        sujeito=sujeito,
+        nome=nome,
+        dia=dia,
+        mes=mes,
+        ano=ano,
+        hora=hora,
+        minuto=minuto,
+        cidade_nascimento=cidade_nascimento,
+        lat=lat,
+        lon=lon,
+        tz_str=tz_str,
+    )
+
+
+def _formatar_texto_mapa(
+    sujeito: object,
+    nome: str,
+    dia: int,
+    mes: int,
+    ano: int,
+    hora: int,
+    minuto: int,
+    cidade_nascimento: str,
+    lat: float,
+    lon: float,
+    tz_str: str,
+) -> str:
+    """
+    Converte um AstrologicalSubjectModel já calculado em texto formatado.
+
+    Usado internamente por calcular_mapa_natal e gerar_mapa_completo para evitar
+    geocodificação duplicada.
+    """
+    from kerykeion.aspects.aspects_factory import AspectsFactory
+
+    # Kerykeion v5: house é str "First_House" ... "Twelfth_House", não int
+    _HOUSE_STR_TO_INT = {
+        "First_House": 1, "Second_House": 2, "Third_House": 3,
+        "Fourth_House": 4, "Fifth_House": 5, "Sixth_House": 6,
+        "Seventh_House": 7, "Eighth_House": 8, "Ninth_House": 9,
+        "Tenth_House": 10, "Eleventh_House": 11, "Twelfth_House": 12,
+    }
+
+    def fmt_ponto(ponto_model, nome_pt: str) -> str:
+        if ponto_model is None:
+            return f"  {nome_pt}: — (não calculado)"
+        signo = _signo_pt(ponto_model.sign)
+        grau = ponto_model.position
+        casa_raw = getattr(ponto_model, "house", None)
+        # v5 retorna str ("First_House"), v4 retornava int — normalizar para int
+        if isinstance(casa_raw, str):
+            casa_num = _HOUSE_STR_TO_INT.get(casa_raw)
+        elif isinstance(casa_raw, int):
+            casa_num = casa_raw
+        else:
+            casa_num = None
+        casa_txt = f" | Casa {casa_num}" if casa_num else ""
+        return f"  {nome_pt}: {signo} {grau:.1f}°{casa_txt}"
+
     linhas = []
     linhas.append(f"╔══ MAPA NATAL — {nome.upper()} ══╗")
     linhas.append(
@@ -176,25 +235,13 @@ def calcular_mapa_natal(
     linhas.append(f"Coordenadas: {lat:.4f}N, {lon:.4f}E  |  Fuso: {tz_str}")
     linhas.append("")
 
-    # --- Luminares e Ângulos ---
     linhas.append("▸ LUMINARES E ÂNGULOS")
-
-    def fmt_ponto(ponto_model, nome_pt: str) -> str:
-        if ponto_model is None:
-            return f"  {nome_pt}: — (não calculado)"
-        signo = _signo_pt(ponto_model.sign)
-        grau = ponto_model.position
-        casa = getattr(ponto_model, "house", None)
-        casa_txt = f" | Casa {casa}" if casa else ""
-        return f"  {nome_pt}: {signo} {grau:.1f}°{casa_txt}"
-
     linhas.append(fmt_ponto(sujeito.sun, "Sol ☉"))
     linhas.append(fmt_ponto(sujeito.moon, "Lua ☽"))
     linhas.append(fmt_ponto(sujeito.ascendant, "Ascendente ↑"))
     linhas.append(fmt_ponto(sujeito.medium_coeli, "Meio do Céu (MC)"))
     linhas.append("")
 
-    # --- Planetas pessoais e transpessoais ---
     linhas.append("▸ PLANETAS")
     planetas_ordem = [
         ("mercury", "Mercúrio ☿"),
@@ -211,7 +258,6 @@ def calcular_mapa_natal(
         linhas.append(fmt_ponto(ponto, nome_pt))
     linhas.append("")
 
-    # --- Distribuição dos Elementos ---
     linhas.append("▸ DISTRIBUIÇÃO DOS ELEMENTOS")
     contagem_elem: dict[str, int] = {"Fogo": 0, "Terra": 0, "Ar": 0, "Água": 0}
     pontos_para_elementos = [
@@ -230,26 +276,21 @@ def calcular_mapa_natal(
         linhas.append(f"  {elem}: {qtd} {barra}")
     linhas.append("")
 
-    # --- Aspectos maiores entre planetas pessoais ---
     linhas.append("▸ ASPECTOS PRINCIPAIS")
     try:
         aspectos_model = AspectsFactory.single_chart_aspects(sujeito)
         aspectos_lista = aspectos_model.aspects
-
-        # Filtrar apenas aspectos entre planetas pessoais e ângulos
         planetas_pessoais = {
             "Sun", "Moon", "Mercury", "Venus", "Mars",
             "Jupiter", "Saturn", "Ascendant", "Medium_Coeli",
         }
         aspectos_major = {"conjunction", "opposition", "square", "trine", "sextile"}
-
         aspectos_filtrados = [
             a for a in aspectos_lista
             if a.aspect in aspectos_major
             and a.p1_name in planetas_pessoais
             and a.p2_name in planetas_pessoais
         ]
-
         if aspectos_filtrados:
             for asp in aspectos_filtrados:
                 p1_pt = PLANETAS_PT.get(asp.p1_name, asp.p1_name)
@@ -265,7 +306,6 @@ def calcular_mapa_natal(
 
     linhas.append("")
     linhas.append("╚══ FIM DO MAPA NATAL ══╝")
-
     return "\n".join(linhas)
 
 
@@ -352,21 +392,39 @@ def extrair_dados_nascimento(texto: str) -> Optional[dict]:
         if m:
             cidade_encontrada = m.group(1).strip().rstrip(",")
 
-    # Tentativa 3: "nasceu em <data> <hora> <Cidade>" (sem palavra "em" antes da cidade)
+    # Tentativa 3: hora seguida diretamente de cidade sem "em" —
+    # ex: "nascimento: 22/07/1988 as 08h45 Fortaleza Ceara"
+    #     "ele nasceu em 18/10/1979 14:00 em Belo Horizonte MG" (já coberta pela T2)
+    # Cobre formatos XX:YY <Cidade> e XXhYY <Cidade>
     if not cidade_encontrada:
         m = re.search(
-            r"(?:\d{1,2}:\d{2}(?::\d{2})?)\s+"
+            r"(?:\d{1,2}h\d{2}|\d{1,2}:\d{2}(?::\d{2})?)\s+"
             r"([A-ZÀ-Úa-zà-ú][a-zA-ZÀ-ú\s\,\-]{2,60}?)(?:\s*[\|\n]|$)",
             texto,
         )
         if m:
-            cidade_encontrada = m.group(1).strip().rstrip(",")
+            candidata = m.group(1).strip().rstrip(",")
+            # Rejeitar se começa com preposição solta (em, no, na, de, do, da)
+            # que indicaria que não é a cidade em si
+            if not re.match(r"^(?:em|no|na|de|do|da)\s", candidata, re.IGNORECASE):
+                cidade_encontrada = candidata
 
-    # Tentativa 4: "nascida/nascido/nasceu em <Cidade>" quando cidade vem logo após o verbo
-    # Mas ignoramos caso a cidade contenha dígitos (seria a data)
+    # Tentativa 4: "nascida/nascido/nasceu em <Cidade>" ou
+    # "...nasceu... no/na <Cidade>" quando cidade vem logo após o verbo/preposição.
+    # Remove a preposição capturada por engano (no, na, em).
     if not cidade_encontrada:
         m = re.search(
             r"nascid[oa]\s+em\s+(?!\d)([A-ZÀ-Úa-zà-ú][a-zA-ZÀ-ú\s\,\-]{3,60}?)(?:\s*[\|\n,]|$)",
+            texto,
+            re.IGNORECASE,
+        )
+        if m:
+            cidade_encontrada = m.group(1).strip().rstrip(",")
+
+    # Tentativa 4b: "nasceu... no/na/em <Cidade>" — caso "no Rio de Janeiro" etc.
+    if not cidade_encontrada:
+        m = re.search(
+            r"nasceu\b.*?\b(?:no|na|em)\s+(?!\d)([A-ZÀ-Úa-zà-ú][a-zA-ZÀ-ú\s\,\-]{3,60}?)(?:\s*[\|\n,]|$)",
             texto,
             re.IGNORECASE,
         )
@@ -484,12 +542,20 @@ def gerar_mapa_completo(
         suppress_geonames_warning=True,
     )
 
-    # --- Texto formatado (reutiliza lógica existente sem duplicar geocodificação) ---
-    texto = calcular_mapa_natal(
+    # --- Texto formatado — usa _formatar_texto_mapa com o sujeito já calculado
+    # (evita dupla geocodificação que calcular_mapa_natal faria internamente)
+    texto = _formatar_texto_mapa(
+        sujeito=sujeito,
         nome=nome,
-        data_nascimento=data_nascimento,
-        hora_nascimento=hora_nascimento,
+        dia=dia,
+        mes=mes,
+        ano=ano,
+        hora=hora,
+        minuto=minuto,
         cidade_nascimento=cidade_nascimento,
+        lat=lat,
+        lon=lon,
+        tz_str=tz_str,
     )
 
     # --- Imagem PNG ---
