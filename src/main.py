@@ -27,6 +27,7 @@ from src.api.teste import router as teste_router
 from src.api.dashboard import router as dashboard_router
 from src.api.evolution import router as evolution_router
 from src.api.automation_router import router as automation_router
+from src.api.portal import router as portal_router
 
 
 @asynccontextmanager
@@ -114,6 +115,7 @@ app.include_router(teste_router)
 app.include_router(dashboard_router)
 app.include_router(evolution_router)
 app.include_router(automation_router)
+app.include_router(portal_router)
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
@@ -134,3 +136,15 @@ async def dashboard_page():
 async def landing_page():
     """Serve a landing page de vendas."""
     return FileResponse(_PROJECT_ROOT / "landing.html")
+
+
+@app.get("/portal", tags=["Portal"])
+async def portal_page_root():
+    """Serve o portal do terapeuta (SPA)."""
+    return FileResponse(_PROJECT_ROOT / "portal.html")
+
+
+@app.get("/portal/{path:path}", tags=["Portal"])
+async def portal_page(path: str = ""):
+    """Serve o portal do terapeuta para todas as rotas de navegação SPA."""
+    return FileResponse(_PROJECT_ROOT / "portal.html")

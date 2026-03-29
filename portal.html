@@ -1,0 +1,1495 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal do Terapeuta</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"></script>
+    <style>
+        [x-cloak] { display: none !important; }
+        :root { --roxo: #7B2FBE; --ouro: #D4AF37; }
+        .sidebar-link { transition: all 0.2s; border-radius: 8px; }
+        .sidebar-link:hover { background: rgba(255,255,255,0.1); }
+        .sidebar-link.active { background: rgba(123,47,190,0.6); }
+        .spinner { border: 3px solid #E5E7EB; border-top-color: #7B2FBE; border-radius: 50%; width: 24px; height: 24px; animation: spin 0.6s linear infinite; display: inline-block; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .fade-in { animation: fadeIn 0.3s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .badge { display: inline-flex; align-items: center; padding: 2px 10px; border-radius: 9999px; font-size: 0.72rem; font-weight: 600; }
+        .badge-ativo { background: #D1FAE5; color: #065F46; }
+        .badge-inativo { background: #F3F4F6; color: #6B7280; }
+        .badge-arquivado { background: #FEE2E2; color: #991B1B; }
+        .badge-pendente { background: #FEF3C7; color: #92400E; }
+        .badge-realizado { background: #D1FAE5; color: #065F46; }
+        .badge-cancelado { background: #FEE2E2; color: #991B1B; }
+        .badge-adiado { background: #F3F4F6; color: #6B7280; }
+        .badge-rascunho { background: #EDE9FE; color: #5B21B6; }
+        .badge-finalizado { background: #D1FAE5; color: #065F46; }
+        .card { background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); padding: 1.25rem; }
+        .btn-primary { background: #7B2FBE; color: white; padding: 8px 16px; border-radius: 8px; font-weight: 500; font-size: 0.875rem; transition: background 0.2s; cursor: pointer; }
+        .btn-primary:hover { background: #6b26a8; }
+        .btn-ouro { background: #D4AF37; color: #1a1a1a; padding: 8px 16px; border-radius: 8px; font-weight: 600; font-size: 0.875rem; transition: background 0.2s; cursor: pointer; }
+        .btn-ouro:hover { background: #c49b2e; }
+        .btn-ghost { background: transparent; color: #6B7280; padding: 8px 16px; border-radius: 8px; font-weight: 500; font-size: 0.875rem; border: 1px solid #E5E7EB; transition: all 0.2s; cursor: pointer; }
+        .btn-ghost:hover { background: #F9FAFB; }
+        .input { border: 1px solid #D1D5DB; border-radius: 8px; padding: 8px 12px; font-size: 0.875rem; outline: none; width: 100%; }
+        .input:focus { border-color: #7B2FBE; box-shadow: 0 0 0 2px rgba(123,47,190,0.15); }
+        .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 50; display: flex; align-items: center; justify-content: center; padding: 1rem; }
+        .modal-box { background: white; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.2); width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; }
+        .timeline-item { position: relative; padding-left: 28px; }
+        .timeline-item::before { content: ''; position: absolute; left: 8px; top: 0; bottom: 0; width: 2px; background: #E5E7EB; }
+        .timeline-item::after { content: ''; position: absolute; left: 3px; top: 8px; width: 12px; height: 12px; border-radius: 50%; background: #7B2FBE; border: 2px solid white; box-shadow: 0 0 0 2px #7B2FBE; }
+        .urgente { border-left: 3px solid #EF4444; }
+        .prioridade-1 { border-left: 3px solid #EF4444; }
+        .prioridade-2 { border-left: 3px solid #F59E0B; }
+        .prioridade-3 { border-left: 3px solid #10B981; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen" x-data="portalApp()" x-init="init()" x-cloak>
+
+<!-- ══════════════════════════════════════════════
+     TELA DE LOGIN
+══════════════════════════════════════════════ -->
+<div x-show="!autenticado" class="fixed inset-0 z-50 flex items-center justify-center" style="background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #1e1b4b 100%);">
+    <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md mx-4 fade-in">
+        <div class="text-center mb-8">
+            <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4" style="background: linear-gradient(135deg, #7B2FBE, #D4AF37);">
+                <span class="text-white text-3xl">&#9883;</span>
+            </div>
+            <h1 class="text-2xl font-bold text-gray-900">Portal do Terapeuta</h1>
+            <p class="text-gray-500 mt-1 text-sm">Acesse sua prática clínica</p>
+        </div>
+        <form @submit.prevent="login()">
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">E-mail</label>
+                <input type="email" x-model="loginForm.email" class="input" placeholder="seu@email.com" autofocus required>
+            </div>
+            <div class="mb-2">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Senha</label>
+                <input type="password" x-model="loginForm.senha" class="input" placeholder="Sua senha" required>
+            </div>
+            <p x-show="loginErro" x-text="loginErro" class="text-red-500 text-sm mt-2"></p>
+            <button type="submit" class="btn-primary w-full mt-5 py-2.5 text-base" :disabled="loginLoading">
+                <span x-show="!loginLoading">Entrar</span>
+                <span x-show="loginLoading" class="inline-flex items-center gap-2"><span class="spinner" style="width:18px;height:18px;border-width:2px;border-top-color:white;"></span> Entrando...</span>
+            </button>
+        </form>
+        <p class="text-center text-xs text-gray-400 mt-6">Terapeutas Agent &copy; 2UP Business</p>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     LAYOUT PRINCIPAL
+══════════════════════════════════════════════ -->
+<div x-show="autenticado" class="flex min-h-screen fade-in">
+
+    <!-- SIDEBAR -->
+    <aside class="w-64 bg-indigo-950 text-white flex flex-col flex-shrink-0 fixed h-full z-40">
+        <div class="p-5 border-b border-indigo-800">
+            <div class="flex items-center gap-2">
+                <span class="text-2xl">&#9883;</span>
+                <span class="text-lg font-bold" x-text="terapeuta?.nome_agente || 'Portal'"></span>
+            </div>
+            <p class="text-indigo-300 text-xs mt-0.5" x-text="terapeuta?.email || ''"></p>
+        </div>
+
+        <nav class="flex-1 p-3 space-y-1 overflow-y-auto">
+            <template x-for="item in menuItems" :key="item.id">
+                <button @click="navegar(item.id)"
+                    class="sidebar-link w-full flex items-center gap-3 px-3 py-2.5 text-sm text-left"
+                    :class="secao === item.id ? 'active text-white' : 'text-indigo-200'">
+                    <span x-text="item.icon" class="text-lg w-6 text-center"></span>
+                    <span x-text="item.label"></span>
+                    <span x-show="item.badge && item.badge > 0"
+                        class="ml-auto bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 min-w-[20px] text-center"
+                        x-text="item.badge"></span>
+                </button>
+            </template>
+        </nav>
+
+        <div class="p-3 border-t border-indigo-800">
+            <button @click="logout()" class="sidebar-link w-full flex items-center gap-3 px-3 py-2 text-sm text-indigo-300 hover:text-white">
+                <span class="text-lg w-6 text-center">&#x2197;</span>
+                <span>Sair</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- CONTEÚDO PRINCIPAL -->
+    <main class="flex-1 ml-64 min-h-screen">
+
+        <!-- TOPBAR -->
+        <header class="bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between sticky top-0 z-30">
+            <div>
+                <h2 class="font-semibold text-gray-900 text-base" x-text="tituloSecao"></h2>
+                <p class="text-xs text-gray-400" x-text="new Date().toLocaleDateString('pt-BR', {weekday:'long', day:'numeric', month:'long'})"></p>
+            </div>
+            <div class="flex items-center gap-3">
+                <span x-show="loading" class="spinner"></span>
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold"
+                        style="background: linear-gradient(135deg, #7B2FBE, #D4AF37);"
+                        x-text="terapeuta?.nome?.charAt(0) || 'T'"></div>
+                    <span class="text-sm font-medium text-gray-700" x-text="terapeuta?.nome?.split(' ')[0] || ''"></span>
+                </div>
+            </div>
+        </header>
+
+        <div class="p-6">
+
+        <!-- ── DASHBOARD ──────────────────────────────── -->
+        <div x-show="secao === 'dashboard'" class="fade-in">
+            <!-- Stats cards -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <div class="card">
+                    <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Pacientes Ativos</p>
+                    <p class="text-3xl font-bold text-gray-900 mt-1" x-text="stats.pacientes_ativos ?? '—'"></p>
+                    <p class="text-xs text-gray-400 mt-1">total cadastrados</p>
+                </div>
+                <div class="card">
+                    <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Sessões Hoje</p>
+                    <p class="text-3xl font-bold mt-1" style="color:#7B2FBE" x-text="stats.sessoes_hoje ?? '—'"></p>
+                    <p class="text-xs text-gray-400 mt-1">acompanhamentos</p>
+                </div>
+                <div class="card">
+                    <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Pendências</p>
+                    <p class="text-3xl font-bold text-amber-500 mt-1" x-text="stats.pendencias ?? '—'"></p>
+                    <p class="text-xs text-gray-400 mt-1">follow-ups abertos</p>
+                </div>
+                <div class="card">
+                    <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Diagnósticos</p>
+                    <p class="text-3xl font-bold mt-1" style="color:#D4AF37" x-text="stats.diagnosticos ?? '—'"></p>
+                    <p class="text-xs text-gray-400 mt-1">registros clínicos</p>
+                </div>
+            </div>
+
+            <div class="grid lg:grid-cols-2 gap-6">
+                <!-- Agenda do dia -->
+                <div class="card">
+                    <h3 class="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                        <span>&#128197;</span> Agenda de Hoje
+                    </h3>
+                    <div x-show="agendaHoje.length === 0" class="text-gray-400 text-sm text-center py-6">Nenhum acompanhamento para hoje</div>
+                    <div class="space-y-3">
+                        <template x-for="item in agendaHoje" :key="item.id">
+                            <div class="flex items-start gap-3 p-3 rounded-lg bg-gray-50" :class="'prioridade-' + item.prioridade">
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-sm font-medium text-gray-800" x-text="item.descricao"></p>
+                                    <p class="text-xs text-gray-500 mt-0.5" x-text="item.paciente_nome || 'Paciente'"></p>
+                                </div>
+                                <span class="badge" :class="'badge-' + item.tipo" x-text="item.tipo"></span>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Últimas mensagens -->
+                <div class="card">
+                    <h3 class="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                        <span>&#128172;</span> Atividade Recente
+                    </h3>
+                    <div x-show="ultimasMsgs.length === 0" class="text-gray-400 text-sm text-center py-6">Sem atividade recente</div>
+                    <div class="space-y-3">
+                        <template x-for="msg in ultimasMsgs" :key="msg.id">
+                            <div class="flex items-start gap-3">
+                                <div class="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold text-white"
+                                    style="background:#7B2FBE" x-text="(msg.nome||'?').charAt(0)"></div>
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-sm font-medium text-gray-800" x-text="msg.nome || msg.numero_telefone"></p>
+                                    <p class="text-xs text-gray-500 truncate" x-text="msg.ultima_msg || 'Sem mensagem'"></p>
+                                </div>
+                                <span class="text-xs text-gray-400 flex-shrink-0" x-text="formatarDataCurta(msg.ultima_msg_em)"></span>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── PACIENTES ───────────────────────────────── -->
+        <div x-show="secao === 'pacientes'" class="fade-in">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-3">
+                    <input x-model="buscaPaciente" @input="filtrarPacientes()"
+                        class="input max-w-xs" placeholder="&#128269; Buscar pacientes...">
+                    <select x-model="filtroPacienteStatus" @change="filtrarPacientes()" class="input max-w-[140px]">
+                        <option value="">Todos</option>
+                        <option value="ativo">Ativos</option>
+                        <option value="inativo">Inativos</option>
+                        <option value="arquivado">Arquivados</option>
+                    </select>
+                </div>
+                <div class="flex gap-2">
+                    <button @click="importarWhatsApp()" class="btn-ghost text-xs flex items-center gap-1">
+                        <span>&#128260;</span> Importar WhatsApp
+                    </button>
+                    <button @click="abrirModalPaciente()" class="btn-primary flex items-center gap-1">
+                        <span>+</span> Novo Paciente
+                    </button>
+                </div>
+            </div>
+
+            <div class="card overflow-hidden p-0">
+                <div x-show="pacientesFiltrados.length === 0" class="text-center py-12 text-gray-400">
+                    <p class="text-4xl mb-2">&#128101;</p>
+                    <p class="font-medium">Nenhum paciente encontrado</p>
+                    <p class="text-sm mt-1">Importe do WhatsApp ou cadastre manualmente</p>
+                </div>
+                <table x-show="pacientesFiltrados.length > 0" class="w-full">
+                    <thead class="bg-gray-50 border-b border-gray-100">
+                        <tr>
+                            <th class="text-left text-xs font-semibold text-gray-500 uppercase px-4 py-3">Paciente</th>
+                            <th class="text-left text-xs font-semibold text-gray-500 uppercase px-4 py-3 hidden md:table-cell">Telefone</th>
+                            <th class="text-left text-xs font-semibold text-gray-500 uppercase px-4 py-3 hidden lg:table-cell">Última Sessão</th>
+                            <th class="text-left text-xs font-semibold text-gray-500 uppercase px-4 py-3">Status</th>
+                            <th class="px-4 py-3"></th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-50">
+                        <template x-for="p in pacientesFiltrados" :key="p.id">
+                            <tr class="hover:bg-gray-50 transition cursor-pointer" @click="abrirProntuario(p)">
+                                <td class="px-4 py-3">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0"
+                                            style="background: linear-gradient(135deg, #7B2FBE, #D4AF37);"
+                                            x-text="p.nome.charAt(0)"></div>
+                                        <div>
+                                            <p class="text-sm font-medium text-gray-800" x-text="p.nome"></p>
+                                            <p class="text-xs text-gray-400" x-text="p.email || ''"></p>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-4 py-3 text-sm text-gray-600 hidden md:table-cell" x-text="p.numero_telefone"></td>
+                                <td class="px-4 py-3 text-sm text-gray-500 hidden lg:table-cell" x-text="formatarDataCurta(p.ultima_sessao_em)"></td>
+                                <td class="px-4 py-3">
+                                    <span class="badge" :class="'badge-' + p.status" x-text="p.status"></span>
+                                </td>
+                                <td class="px-4 py-3" @click.stop>
+                                    <button @click="abrirModalPaciente(p)" class="text-gray-400 hover:text-gray-600 px-2 py-1 rounded text-xs">Editar</button>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ── PRONTUÁRIO ─────────────────────────────── -->
+        <div x-show="secao === 'prontuario'" class="fade-in">
+            <div x-show="!prontuario" class="text-center py-16 text-gray-400">
+                <p class="text-5xl mb-3">&#128065;</p>
+                <p class="font-medium text-gray-600">Selecione um paciente</p>
+                <p class="text-sm mt-1">Clique em um paciente na aba Pacientes para ver o prontuário</p>
+                <button @click="navegar('pacientes')" class="btn-primary mt-4">Ver Pacientes</button>
+            </div>
+
+            <div x-show="prontuario">
+                <!-- Cabeçalho do paciente -->
+                <div class="card mb-5 flex items-start justify-between">
+                    <div class="flex items-start gap-4">
+                        <div class="w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold text-white flex-shrink-0"
+                            style="background: linear-gradient(135deg, #7B2FBE, #D4AF37);"
+                            x-text="prontuario?.paciente?.nome?.charAt(0) || '?'"></div>
+                        <div>
+                            <h3 class="text-lg font-bold text-gray-900" x-text="prontuario?.paciente?.nome"></h3>
+                            <p class="text-sm text-gray-500" x-text="prontuario?.paciente?.numero_telefone"></p>
+                            <div class="flex flex-wrap gap-1 mt-2">
+                                <template x-for="tag in (prontuario?.paciente?.tags || [])" :key="tag">
+                                    <span class="badge bg-purple-100 text-purple-700" x-text="tag"></span>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button @click="abrirModalNota()" class="btn-ghost text-xs">+ Nota</button>
+                        <button @click="abrirModalAcomp()" class="btn-ghost text-xs">+ Follow-up</button>
+                        <button @click="abrirModalDiagnostico()" class="btn-primary text-xs">+ Diagnóstico</button>
+                    </div>
+                </div>
+
+                <!-- Stats rápidas -->
+                <div class="grid grid-cols-3 gap-3 mb-5">
+                    <div class="card text-center py-3">
+                        <p class="text-2xl font-bold" style="color:#7B2FBE" x-text="prontuario?.stats?.total_conversas ?? 0"></p>
+                        <p class="text-xs text-gray-500 mt-0.5">Mensagens</p>
+                    </div>
+                    <div class="card text-center py-3">
+                        <p class="text-2xl font-bold" style="color:#D4AF37" x-text="prontuario?.stats?.total_diagnosticos ?? 0"></p>
+                        <p class="text-xs text-gray-500 mt-0.5">Diagnósticos</p>
+                    </div>
+                    <div class="card text-center py-3">
+                        <p class="text-2xl font-bold text-green-600" x-text="prontuario?.stats?.total_mapas ?? 0"></p>
+                        <p class="text-xs text-gray-500 mt-0.5">Mapas Natais</p>
+                    </div>
+                </div>
+
+                <!-- Abas prontuário -->
+                <div class="flex gap-1 mb-4 bg-white rounded-lg p-1 border border-gray-100">
+                    <template x-for="aba in abasProntuario" :key="aba.id">
+                        <button @click="abaProntuario = aba.id"
+                            class="flex-1 py-2 text-xs font-medium rounded-md transition"
+                            :class="abaProntuario === aba.id ? 'bg-purple-700 text-white' : 'text-gray-500 hover:text-gray-700'"
+                            x-text="aba.label"></button>
+                    </template>
+                </div>
+
+                <!-- Timeline -->
+                <div x-show="abaProntuario === 'timeline'" class="space-y-3">
+                    <div x-show="(prontuario?.timeline || []).length === 0" class="text-center py-8 text-gray-400 text-sm">Sem registros na timeline</div>
+                    <template x-for="ev in (prontuario?.timeline || [])" :key="ev.id + ev.tipo">
+                        <div class="timeline-item card ml-4" >
+                            <div class="flex items-start justify-between">
+                                <div>
+                                    <span class="badge text-xs mr-2"
+                                        :class="ev.tipo === 'conversa' ? 'bg-blue-100 text-blue-700' : ev.tipo === 'diagnostico' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'"
+                                        x-text="ev.tipo"></span>
+                                    <span class="text-sm font-medium text-gray-800" x-text="ev.titulo || ev.conteudo?.substring(0, 60) + '...'"></span>
+                                </div>
+                                <span class="text-xs text-gray-400 flex-shrink-0 ml-2" x-text="formatarDataCurta(ev.data)"></span>
+                            </div>
+                            <p x-show="ev.resumo" class="text-xs text-gray-500 mt-1" x-text="ev.resumo"></p>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- Diagnósticos do paciente -->
+                <div x-show="abaProntuario === 'diagnosticos'" class="space-y-3">
+                    <div x-show="(prontuario?.diagnosticos || []).length === 0" class="text-center py-8 text-gray-400 text-sm">Nenhum diagnóstico registrado</div>
+                    <template x-for="d in (prontuario?.diagnosticos || [])" :key="d.id">
+                        <div class="card">
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="flex items-center gap-2">
+                                    <span class="badge" :class="'badge-' + d.status" x-text="d.status"></span>
+                                    <span class="text-sm text-gray-500" x-text="formatarDataCurta(d.sessao_data)"></span>
+                                </div>
+                                <button @click="abrirModalDiagnostico(d)" class="text-xs text-purple-600 hover:underline">Editar</button>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2 text-xs">
+                                <div x-show="d.elemento_dominante"><span class="text-gray-500">Elemento:</span> <span class="font-medium" x-text="d.elemento_dominante"></span></div>
+                                <div x-show="d.setenio_atual"><span class="text-gray-500">Setenio:</span> <span class="font-medium" x-text="'#' + d.setenio_atual"></span></div>
+                                <div x-show="d.dna_comprometido?.length"><span class="text-gray-500">DNA:</span> <span class="font-medium" x-text="(d.dna_comprometido||[]).join(', ')"></span></div>
+                                <div x-show="d.serpentes_ativas?.length"><span class="text-gray-500">Serpentes:</span> <span class="font-medium" x-text="(d.serpentes_ativas||[]).join(', ')"></span></div>
+                            </div>
+                            <p x-show="d.protocolo_texto" class="text-xs text-gray-600 mt-2 border-t border-gray-50 pt-2" x-text="d.protocolo_texto?.substring(0,200) + '...'"></p>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- Anotações -->
+                <div x-show="abaProntuario === 'anotacoes'" class="space-y-3">
+                    <div x-show="(prontuario?.anotacoes || []).length === 0" class="text-center py-8 text-gray-400 text-sm">Nenhuma anotação registrada</div>
+                    <template x-for="nota in (prontuario?.anotacoes || [])" :key="nota.id">
+                        <div class="card">
+                            <div class="flex items-start justify-between mb-1">
+                                <div class="flex items-center gap-2">
+                                    <span class="badge bg-gray-100 text-gray-600" x-text="nota.tipo"></span>
+                                    <span class="text-sm font-medium text-gray-800" x-text="nota.titulo || 'Nota'"></span>
+                                </div>
+                                <span class="text-xs text-gray-400" x-text="formatarDataCurta(nota.data_anotacao)"></span>
+                            </div>
+                            <p class="text-sm text-gray-600" x-text="nota.conteudo"></p>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- Conversas -->
+                <div x-show="abaProntuario === 'conversas'" class="space-y-2">
+                    <div x-show="(prontuario?.conversas || []).length === 0" class="text-center py-8 text-gray-400 text-sm">Nenhuma conversa registrada</div>
+                    <template x-for="c in (prontuario?.conversas || [])" :key="c.id">
+                        <div class="card text-sm">
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="font-medium" :class="c.papel === 'paciente' ? 'text-gray-800' : 'text-purple-700'" x-text="c.papel === 'paciente' ? 'Paciente' : 'Agente'"></span>
+                                <span class="text-xs text-gray-400" x-text="formatarDataCurta(c.criado_em)"></span>
+                            </div>
+                            <p class="text-gray-600" x-text="c.mensagem?.substring(0, 200)"></p>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- Mapas -->
+                <div x-show="abaProntuario === 'mapas'" class="grid grid-cols-2 gap-4">
+                    <div x-show="(prontuario?.mapas || []).length === 0" class="col-span-2 text-center py-8 text-gray-400 text-sm">Nenhum mapa natal gerado</div>
+                    <template x-for="mapa in (prontuario?.mapas || [])" :key="mapa.id">
+                        <div class="card cursor-pointer hover:shadow-md transition" @click="verMapa(mapa)">
+                            <img x-show="mapa.imagem_url" :src="mapa.imagem_url" class="w-full rounded-lg mb-2 object-cover" style="max-height:200px">
+                            <p class="text-sm font-medium text-gray-800" x-text="mapa.tipo || 'Mapa Natal'"></p>
+                            <p class="text-xs text-gray-500" x-text="formatarDataCurta(mapa.criado_em)"></p>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── DIAGNÓSTICOS ────────────────────────────── -->
+        <div x-show="secao === 'diagnosticos'" class="fade-in">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex gap-2">
+                    <select x-model="filtroDiagStatus" @change="carregarDiagnosticos()" class="input max-w-[160px]">
+                        <option value="">Todos</option>
+                        <option value="rascunho">Rascunho</option>
+                        <option value="finalizado">Finalizado</option>
+                        <option value="arquivado">Arquivado</option>
+                    </select>
+                </div>
+                <div class="flex gap-2">
+                    <button @click="abrirModalDiagnostico()" class="btn-primary flex items-center gap-1">
+                        <span>+</span> Novo Diagnóstico
+                    </button>
+                </div>
+            </div>
+
+            <div class="space-y-3">
+                <div x-show="diagnosticos.length === 0" class="text-center py-12 text-gray-400">
+                    <p class="text-4xl mb-2">&#129514;</p>
+                    <p class="font-medium">Nenhum diagnóstico encontrado</p>
+                </div>
+                <template x-for="d in diagnosticos" :key="d.id">
+                    <div class="card hover:shadow-md transition">
+                        <div class="flex items-start justify-between">
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <span class="badge" :class="'badge-' + d.status" x-text="d.status"></span>
+                                    <span class="text-sm font-semibold text-gray-800" x-text="d.paciente_nome || 'Paciente'"></span>
+                                    <span class="text-xs text-gray-400" x-text="formatarDataCurta(d.sessao_data)"></span>
+                                </div>
+                                <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs mt-2">
+                                    <div x-show="d.elemento_dominante" class="bg-orange-50 rounded px-2 py-1">
+                                        <span class="text-gray-400">Elemento</span>
+                                        <p class="font-semibold text-orange-700" x-text="d.elemento_dominante"></p>
+                                    </div>
+                                    <div x-show="d.setenio_atual" class="bg-purple-50 rounded px-2 py-1">
+                                        <span class="text-gray-400">Setenio</span>
+                                        <p class="font-semibold text-purple-700" x-text="'#' + d.setenio_atual"></p>
+                                    </div>
+                                    <div x-show="d.dna_comprometido?.length" class="bg-red-50 rounded px-2 py-1">
+                                        <span class="text-gray-400">DNA</span>
+                                        <p class="font-semibold text-red-700 truncate" x-text="(d.dna_comprometido||[]).join(', ')"></p>
+                                    </div>
+                                    <div x-show="d.florais_prescritos?.length" class="bg-green-50 rounded px-2 py-1">
+                                        <span class="text-gray-400">Florais</span>
+                                        <p class="font-semibold text-green-700 truncate" x-text="(d.florais_prescritos||[]).join(', ')"></p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex gap-2 ml-4">
+                                <button @click="autoExtrair(d.paciente_id)" class="btn-ouro text-xs px-2 py-1" title="Extrair via IA">&#129302; IA</button>
+                                <button @click="abrirModalDiagnostico(d)" class="btn-ghost text-xs">Editar</button>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <!-- ── ACOMPANHAMENTOS ─────────────────────────── -->
+        <div x-show="secao === 'acompanhamentos'" class="fade-in">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex gap-2">
+                    <select x-model="filtroAcompStatus" @change="carregarAcompanhamentos()" class="input max-w-[160px]">
+                        <option value="pendente">Pendentes</option>
+                        <option value="">Todos</option>
+                        <option value="realizado">Realizados</option>
+                        <option value="cancelado">Cancelados</option>
+                    </select>
+                </div>
+                <button @click="abrirModalAcomp()" class="btn-primary flex items-center gap-1">
+                    <span>+</span> Novo Follow-up
+                </button>
+            </div>
+
+            <!-- Agenda 7 dias -->
+            <div x-show="agenda7dias.length > 0" class="mb-6">
+                <h3 class="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">Próximos 7 Dias</h3>
+                <template x-for="grupo in agenda7dias" :key="grupo.data">
+                    <div class="mb-4">
+                        <p class="text-xs font-medium text-gray-500 mb-2" x-text="formatarDataExtenso(grupo.data)"></p>
+                        <div class="space-y-2">
+                            <template x-for="item in grupo.items" :key="item.id">
+                                <div class="card flex items-center gap-3 py-3" :class="'prioridade-' + item.prioridade">
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-sm font-medium text-gray-800" x-text="item.descricao"></p>
+                                        <p class="text-xs text-gray-500 mt-0.5" x-text="item.paciente_nome || 'Paciente'"></p>
+                                    </div>
+                                    <span class="badge" :class="'badge-' + item.tipo" x-text="item.tipo"></span>
+                                    <button @click="marcarRealizado(item)" class="text-xs text-green-600 hover:underline font-medium">Feito</button>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </template>
+            </div>
+
+            <!-- Lista geral -->
+            <h3 class="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">Lista Completa</h3>
+            <div class="space-y-2">
+                <div x-show="acompanhamentos.length === 0" class="text-center py-10 text-gray-400">
+                    <p class="text-3xl mb-2">&#9989;</p>
+                    <p>Nenhum acompanhamento</p>
+                </div>
+                <template x-for="item in acompanhamentos" :key="item.id">
+                    <div class="card flex items-center gap-3" :class="'prioridade-' + item.prioridade">
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-medium text-gray-800" x-text="item.descricao"></p>
+                            <p class="text-xs text-gray-500 mt-0.5">
+                                <span x-text="item.paciente_nome || 'Paciente'"></span>
+                                <span x-show="item.data_prevista"> · <span x-text="formatarDataCurta(item.data_prevista)"></span></span>
+                            </p>
+                        </div>
+                        <span class="badge" :class="'badge-' + item.status" x-text="item.status"></span>
+                        <button @click="abrirModalAcomp(item)" class="text-xs text-gray-500 hover:text-gray-700">&#9998;</button>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <!-- ── MAPAS NATAIS ────────────────────────────── -->
+        <div x-show="secao === 'mapas'" class="fade-in">
+            <div class="flex items-center justify-between mb-4">
+                <p class="text-sm text-gray-500">Galeria de mapas natais gerados pelo agente WhatsApp</p>
+            </div>
+            <div x-show="mapas.length === 0" class="text-center py-16 text-gray-400">
+                <p class="text-5xl mb-3">&#127760;</p>
+                <p class="font-medium">Nenhum mapa natal gerado</p>
+                <p class="text-sm mt-1">Os mapas são gerados automaticamente pelo agente WhatsApp</p>
+            </div>
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                <template x-for="mapa in mapas" :key="mapa.id">
+                    <div class="card p-0 overflow-hidden cursor-pointer hover:shadow-lg transition group" @click="verMapa(mapa)">
+                        <div class="relative">
+                            <img x-show="mapa.imagem_url" :src="mapa.imagem_url" class="w-full object-cover" style="height:200px">
+                            <div x-show="!mapa.imagem_url" class="w-full flex items-center justify-center bg-purple-50 text-5xl" style="height:200px">&#127760;</div>
+                            <div class="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition flex items-center justify-center">
+                                <span class="text-white text-xl opacity-0 group-hover:opacity-100 transition">&#128269;</span>
+                            </div>
+                        </div>
+                        <div class="p-3">
+                            <p class="text-sm font-medium text-gray-800 truncate" x-text="mapa.paciente_nome || 'Paciente'"></p>
+                            <p class="text-xs text-gray-400 mt-0.5" x-text="mapa.tipo || 'Mapa Natal'"></p>
+                            <p class="text-xs text-gray-400" x-text="formatarDataCurta(mapa.criado_em)"></p>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <!-- ── RELATÓRIOS ──────────────────────────────── -->
+        <div x-show="secao === 'relatorios'" class="fade-in">
+            <div class="grid lg:grid-cols-3 gap-6 mb-6">
+                <!-- Visão geral -->
+                <div class="lg:col-span-2 card">
+                    <h3 class="font-semibold text-gray-800 mb-4">Visão Geral da Prática</h3>
+                    <div x-show="!relatorioGeral" class="text-center py-6 text-gray-400">
+                        <button @click="carregarRelatorioGeral()" class="btn-primary">Carregar Relatório</button>
+                    </div>
+                    <div x-show="relatorioGeral" class="grid grid-cols-2 gap-4">
+                        <div class="bg-purple-50 rounded-lg p-4">
+                            <p class="text-xs text-purple-600 font-medium">Total Pacientes</p>
+                            <p class="text-3xl font-bold text-purple-700 mt-1" x-text="relatorioGeral?.total_pacientes ?? 0"></p>
+                        </div>
+                        <div class="bg-yellow-50 rounded-lg p-4">
+                            <p class="text-xs text-yellow-600 font-medium">Diagnósticos</p>
+                            <p class="text-3xl font-bold text-yellow-700 mt-1" x-text="relatorioGeral?.total_diagnosticos ?? 0"></p>
+                        </div>
+                        <div class="bg-green-50 rounded-lg p-4">
+                            <p class="text-xs text-green-600 font-medium">Mensagens</p>
+                            <p class="text-3xl font-bold text-green-700 mt-1" x-text="relatorioGeral?.total_mensagens ?? 0"></p>
+                        </div>
+                        <div class="bg-blue-50 rounded-lg p-4">
+                            <p class="text-xs text-blue-600 font-medium">Mapas Natais</p>
+                            <p class="text-3xl font-bold text-blue-700 mt-1" x-text="relatorioGeral?.total_mapas ?? 0"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Distribuição de elementos -->
+                <div class="card">
+                    <h3 class="font-semibold text-gray-800 mb-4">Top Elementos</h3>
+                    <div x-show="!relatorioGeral" class="text-center py-6 text-gray-400 text-sm">Carregue o relatório</div>
+                    <div x-show="relatorioGeral" class="space-y-2">
+                        <template x-for="[elem, count] in Object.entries(relatorioGeral?.distribuicao_elementos || {})" :key="elem">
+                            <div class="flex items-center gap-2">
+                                <span class="text-sm text-gray-700 w-20 truncate" x-text="elem"></span>
+                                <div class="flex-1 bg-gray-100 rounded-full h-2">
+                                    <div class="h-2 rounded-full" style="background:#7B2FBE"
+                                        :style="'width:' + Math.min(100, (count / Math.max(...Object.values(relatorioGeral?.distribuicao_elementos || {1:1})) * 100)) + '%'"></div>
+                                </div>
+                                <span class="text-xs text-gray-500 w-6 text-right" x-text="count"></span>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Rankings de diagnósticos -->
+            <div class="grid md:grid-cols-2 gap-6">
+                <div class="card">
+                    <h3 class="font-semibold text-gray-800 mb-3">Top Florais Prescritos</h3>
+                    <div x-show="!relatoriosDiag" class="text-center py-4">
+                        <button @click="carregarRelatoriosDiag()" class="btn-ghost text-sm">Carregar</button>
+                    </div>
+                    <div x-show="relatoriosDiag" class="space-y-1.5">
+                        <template x-for="[floral, count] in (relatoriosDiag?.top_florais || [])" :key="floral">
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="text-gray-700" x-text="floral"></span>
+                                <span class="badge bg-green-100 text-green-700" x-text="count + 'x'"></span>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3 class="font-semibold text-gray-800 mb-3">Top DNA Comprometido</h3>
+                    <div x-show="!relatoriosDiag" class="text-center py-4">
+                        <button @click="carregarRelatoriosDiag()" class="btn-ghost text-sm">Carregar</button>
+                    </div>
+                    <div x-show="relatoriosDiag" class="space-y-1.5">
+                        <template x-for="[dna, count] in (relatoriosDiag?.top_dna || [])" :key="dna">
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="text-gray-700" x-text="dna"></span>
+                                <span class="badge bg-red-100 text-red-700" x-text="count + 'x'"></span>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── CONFIGURAÇÕES ───────────────────────────── -->
+        <div x-show="secao === 'configuracoes'" class="fade-in max-w-2xl">
+            <div class="card mb-6">
+                <h3 class="font-semibold text-gray-800 mb-4">Perfil do Terapeuta</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nome</label>
+                        <input class="input" x-model="configForm.nome" placeholder="Seu nome completo">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">E-mail</label>
+                        <input class="input" :value="terapeuta?.email || ''" disabled class="input bg-gray-50">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nome do Agente WhatsApp</label>
+                        <input class="input" x-model="configForm.nome_agente" placeholder="Ex: Dra. Sofia">
+                    </div>
+                    <button @click="salvarConfig()" class="btn-primary">Salvar Alterações</button>
+                </div>
+            </div>
+
+            <div class="card mb-6">
+                <h3 class="font-semibold text-gray-800 mb-4">Alterar Senha</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nova Senha</label>
+                        <input type="password" class="input" x-model="senhaForm.nova" placeholder="Mínimo 8 caracteres">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Confirmar Senha</label>
+                        <input type="password" class="input" x-model="senhaForm.confirmar" placeholder="Repita a senha">
+                    </div>
+                    <p x-show="senhaMsg" x-text="senhaMsg" :class="senhaMsgOk ? 'text-green-600' : 'text-red-500'" class="text-sm"></p>
+                    <button @click="alterarSenha()" class="btn-ghost">Alterar Senha</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3 class="font-semibold text-gray-800 mb-3">Base de Conhecimento</h3>
+                <p class="text-sm text-gray-500 mb-4">Documentos indexados para o seu agente WhatsApp responder</p>
+                <div x-show="documentos.length === 0" class="text-gray-400 text-sm">Nenhum documento indexado</div>
+                <div class="space-y-2">
+                    <template x-for="doc in documentos" :key="doc.id">
+                        <div class="flex items-center justify-between text-sm p-2 bg-gray-50 rounded-lg">
+                            <div class="flex items-center gap-2">
+                                <span>&#128196;</span>
+                                <span class="font-medium text-gray-700" x-text="doc.nome_arquivo || doc.titulo"></span>
+                            </div>
+                            <span class="text-xs text-gray-400" x-text="(doc.total_chunks || 0) + ' chunks'"></span>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+
+        </div> <!-- /p-6 -->
+    </main>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     MODAIS
+══════════════════════════════════════════════ -->
+
+<!-- Modal Paciente -->
+<div x-show="modalAberto === 'paciente'" class="modal-backdrop" @click.self="fecharModal()">
+    <div class="modal-box p-6">
+        <h3 class="text-lg font-bold text-gray-900 mb-5" x-text="editandoPaciente?.id ? 'Editar Paciente' : 'Novo Paciente'"></h3>
+        <div class="space-y-3">
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Nome *</label>
+                <input class="input" x-model="editandoPaciente.nome" placeholder="Nome completo"></div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Telefone *</label>
+                <input class="input" x-model="editandoPaciente.numero_telefone" placeholder="5511999999999"></div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">E-mail</label>
+                <input class="input" type="email" x-model="editandoPaciente.email" placeholder="email@exemplo.com"></div>
+            <div class="grid grid-cols-2 gap-3">
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">Data Nascimento</label>
+                    <input class="input" type="date" x-model="editandoPaciente.data_nascimento"></div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">Hora Nascimento</label>
+                    <input class="input" type="time" x-model="editandoPaciente.hora_nascimento"></div>
+            </div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Cidade de Nascimento</label>
+                <input class="input" x-model="editandoPaciente.cidade_nascimento" placeholder="Cidade, Estado, País"></div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Tags (separadas por vírgula)</label>
+                <input class="input" x-model="editandoPacienteTagsStr" placeholder="ansiosa, florais, meditacao"></div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Notas Gerais</label>
+                <textarea class="input" rows="3" x-model="editandoPaciente.notas_gerais" placeholder="Observações sobre o paciente..."></textarea></div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <select class="input" x-model="editandoPaciente.status">
+                    <option value="ativo">Ativo</option>
+                    <option value="inativo">Inativo</option>
+                    <option value="arquivado">Arquivado</option>
+                </select></div>
+        </div>
+        <div class="flex justify-end gap-3 mt-6">
+            <button @click="fecharModal()" class="btn-ghost">Cancelar</button>
+            <button @click="salvarPaciente()" class="btn-primary" :disabled="loading">
+                <span x-show="!loading" x-text="editandoPaciente?.id ? 'Salvar' : 'Criar'"></span>
+                <span x-show="loading">Salvando...</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Diagnóstico -->
+<div x-show="modalAberto === 'diagnostico'" class="modal-backdrop" @click.self="fecharModal()">
+    <div class="modal-box p-6">
+        <div class="flex items-center justify-between mb-5">
+            <h3 class="text-lg font-bold text-gray-900" x-text="editandoDiag?.id ? 'Editar Diagnóstico' : 'Novo Diagnóstico'"></h3>
+            <button x-show="!editandoDiag?.id && pacienteContexto" @click="autoExtrair(pacienteContexto?.id)"
+                class="btn-ouro text-xs flex items-center gap-1">
+                <span>&#129302;</span> Extrair com IA
+            </button>
+        </div>
+        <div class="space-y-3">
+            <div x-show="!editandoDiag?.id">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Paciente *</label>
+                <select class="input" x-model="editandoDiag.paciente_id">
+                    <option value="">Selecione...</option>
+                    <template x-for="p in pacientes" :key="p.id">
+                        <option :value="p.id" x-text="p.nome"></option>
+                    </template>
+                </select>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">Elemento Dominante</label>
+                    <input class="input" x-model="editandoDiag.elemento_dominante" placeholder="Ex: Fogo"></div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">Elemento Carente</label>
+                    <input class="input" x-model="editandoDiag.elemento_carente" placeholder="Ex: Água"></div>
+            </div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">DNA Comprometido (vírgula)</label>
+                <input class="input" x-model="editandoDiagDNAStr" placeholder="Ex: Yin, Ancestral"></div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Serpentes Ativas (vírgula)</label>
+                <input class="input" x-model="editandoDiagSerpStr" placeholder="Ex: Lúcifer, Lilith"></div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Setenio Atual (1-9)</label>
+                <input class="input" type="number" min="1" max="9" x-model="editandoDiag.setenio_atual"></div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Florais Prescritos (vírgula)</label>
+                <input class="input" x-model="editandoDiagFloraisStr" placeholder="Ex: Rescue, Mimulus, Agrimony"></div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Protocolo Terapêutico</label>
+                <textarea class="input" rows="4" x-model="editandoDiag.protocolo_texto" placeholder="Descreva o protocolo recomendado..."></textarea></div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Data da Sessão</label>
+                <input class="input" type="date" x-model="editandoDiag.sessao_data"></div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <select class="input" x-model="editandoDiag.status">
+                    <option value="rascunho">Rascunho</option>
+                    <option value="finalizado">Finalizado</option>
+                    <option value="arquivado">Arquivado</option>
+                </select></div>
+        </div>
+        <div class="flex justify-end gap-3 mt-6">
+            <button @click="fecharModal()" class="btn-ghost">Cancelar</button>
+            <button @click="salvarDiagnostico()" class="btn-primary" :disabled="loading">
+                <span x-show="!loading" x-text="editandoDiag?.id ? 'Salvar' : 'Criar'"></span>
+                <span x-show="loading">Salvando...</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Anotação -->
+<div x-show="modalAberto === 'nota'" class="modal-backdrop" @click.self="fecharModal()">
+    <div class="modal-box p-6">
+        <h3 class="text-lg font-bold text-gray-900 mb-5" x-text="editandoNota?.id ? 'Editar Anotação' : 'Nova Anotação'"></h3>
+        <div class="space-y-3">
+            <div x-show="!pacienteContexto">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Paciente *</label>
+                <select class="input" x-model="editandoNota.paciente_id">
+                    <option value="">Selecione...</option>
+                    <template x-for="p in pacientes" :key="p.id">
+                        <option :value="p.id" x-text="p.nome"></option>
+                    </template>
+                </select>
+            </div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
+                <select class="input" x-model="editandoNota.tipo">
+                    <option value="sessao">Sessão</option>
+                    <option value="observacao">Observação</option>
+                    <option value="tarefa">Tarefa</option>
+                    <option value="lembrete">Lembrete</option>
+                    <option value="evolucao">Evolução</option>
+                </select></div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Título</label>
+                <input class="input" x-model="editandoNota.titulo" placeholder="Título opcional"></div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Conteúdo *</label>
+                <textarea class="input" rows="5" x-model="editandoNota.conteudo" placeholder="Escreva a anotação aqui..."></textarea></div>
+            <div class="grid grid-cols-2 gap-3">
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">Data da Anotação</label>
+                    <input class="input" type="date" x-model="editandoNota.data_anotacao"></div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">Próxima Sessão</label>
+                    <input class="input" type="date" x-model="editandoNota.proxima_sessao"></div>
+            </div>
+        </div>
+        <div class="flex justify-end gap-3 mt-6">
+            <button @click="fecharModal()" class="btn-ghost">Cancelar</button>
+            <button @click="salvarNota()" class="btn-primary" :disabled="loading">
+                <span x-show="!loading" x-text="editandoNota?.id ? 'Salvar' : 'Criar'"></span>
+                <span x-show="loading">Salvando...</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Acompanhamento -->
+<div x-show="modalAberto === 'acomp'" class="modal-backdrop" @click.self="fecharModal()">
+    <div class="modal-box p-6">
+        <h3 class="text-lg font-bold text-gray-900 mb-5" x-text="editandoAcomp?.id ? 'Editar Follow-up' : 'Novo Follow-up'"></h3>
+        <div class="space-y-3">
+            <div x-show="!pacienteContexto">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Paciente *</label>
+                <select class="input" x-model="editandoAcomp.paciente_id">
+                    <option value="">Selecione...</option>
+                    <template x-for="p in pacientes" :key="p.id">
+                        <option :value="p.id" x-text="p.nome"></option>
+                    </template>
+                </select>
+            </div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
+                <select class="input" x-model="editandoAcomp.tipo">
+                    <option value="retorno">Retorno</option>
+                    <option value="floral">Floral</option>
+                    <option value="tarefa">Tarefa</option>
+                    <option value="contato">Contato</option>
+                    <option value="marco">Marco</option>
+                </select></div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Descrição *</label>
+                <textarea class="input" rows="3" x-model="editandoAcomp.descricao" placeholder="O que precisa ser feito?"></textarea></div>
+            <div class="grid grid-cols-2 gap-3">
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">Data Prevista</label>
+                    <input class="input" type="date" x-model="editandoAcomp.data_prevista"></div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">Prioridade</label>
+                    <select class="input" x-model.number="editandoAcomp.prioridade">
+                        <option :value="1">Alta (vermelho)</option>
+                        <option :value="2">Média (amarelo)</option>
+                        <option :value="3">Baixa (verde)</option>
+                    </select></div>
+            </div>
+            <div x-show="editandoAcomp?.id">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <select class="input" x-model="editandoAcomp.status">
+                    <option value="pendente">Pendente</option>
+                    <option value="realizado">Realizado</option>
+                    <option value="cancelado">Cancelado</option>
+                    <option value="adiado">Adiado</option>
+                </select>
+            </div>
+        </div>
+        <div class="flex justify-end gap-3 mt-6">
+            <button @click="fecharModal()" class="btn-ghost">Cancelar</button>
+            <button @click="salvarAcomp()" class="btn-primary" :disabled="loading">
+                <span x-show="!loading" x-text="editandoAcomp?.id ? 'Salvar' : 'Criar'"></span>
+                <span x-show="loading">Salvando...</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Mapa Natal -->
+<div x-show="modalAberto === 'mapa'" class="modal-backdrop" @click.self="fecharModal()">
+    <div class="modal-box p-2 max-w-3xl">
+        <div class="flex items-center justify-between p-4">
+            <div>
+                <h3 class="font-bold text-gray-900" x-text="mapaVendo?.paciente_nome || 'Mapa Natal'"></h3>
+                <p class="text-xs text-gray-400" x-text="mapaVendo?.tipo + ' · ' + formatarDataCurta(mapaVendo?.criado_em)"></p>
+            </div>
+            <button @click="fecharModal()" class="text-gray-400 hover:text-gray-600 text-xl">&#10005;</button>
+        </div>
+        <img x-show="mapaVendo?.imagem_url" :src="mapaVendo?.imagem_url" class="w-full rounded-lg">
+    </div>
+</div>
+
+<!-- Toast notificações -->
+<div x-show="toast.show" x-transition
+    class="fixed bottom-6 right-6 z-50 px-5 py-3 rounded-xl shadow-xl text-sm font-medium text-white"
+    :class="toast.ok ? 'bg-green-600' : 'bg-red-600'"
+    x-text="toast.msg"></div>
+
+
+<!-- ══════════════════════════════════════════════
+     JAVASCRIPT
+══════════════════════════════════════════════ -->
+<script>
+function portalApp() {
+    return {
+        // ── Estado de auth ─────────────────────────────
+        autenticado: false,
+        terapeuta: null,
+        token: null,
+        loginForm: { email: '', senha: '' },
+        loginErro: '',
+        loginLoading: false,
+
+        // ── Navegação ──────────────────────────────────
+        secao: 'dashboard',
+        loading: false,
+
+        // ── Menu ───────────────────────────────────────
+        menuItems: [
+            { id: 'dashboard',        label: 'Início',          icon: '&#127968;', badge: 0 },
+            { id: 'pacientes',        label: 'Pacientes',       icon: '&#128101;', badge: 0 },
+            { id: 'prontuario',       label: 'Prontuário',      icon: '&#128196;', badge: 0 },
+            { id: 'diagnosticos',     label: 'Diagnósticos',    icon: '&#129514;', badge: 0 },
+            { id: 'acompanhamentos',  label: 'Agenda',          icon: '&#128197;', badge: 0 },
+            { id: 'mapas',            label: 'Mapas Natais',    icon: '&#127760;', badge: 0 },
+            { id: 'relatorios',       label: 'Relatórios',      icon: '&#128202;', badge: 0 },
+            { id: 'configuracoes',    label: 'Configurações',   icon: '&#9881;',   badge: 0 },
+        ],
+
+        // ── Dados ──────────────────────────────────────
+        pacientes: [],
+        pacientesFiltrados: [],
+        buscaPaciente: '',
+        filtroPacienteStatus: '',
+        prontuario: null,
+        abaProntuario: 'timeline',
+        abasProntuario: [
+            { id: 'timeline',    label: 'Timeline' },
+            { id: 'diagnosticos', label: 'Diagnósticos' },
+            { id: 'anotacoes',   label: 'Anotações' },
+            { id: 'conversas',   label: 'Conversas' },
+            { id: 'mapas',       label: 'Mapas' },
+        ],
+        diagnosticos: [],
+        filtroDiagStatus: '',
+        acompanhamentos: [],
+        filtroAcompStatus: 'pendente',
+        agenda7dias: [],
+        agendaHoje: [],
+        ultimasMsgs: [],
+        mapas: [],
+        stats: {},
+        relatorioGeral: null,
+        relatoriosDiag: null,
+        documentos: [],
+
+        // ── Modais ─────────────────────────────────────
+        modalAberto: null,
+        pacienteContexto: null,
+        editandoPaciente: {},
+        editandoPacienteTagsStr: '',
+        editandoDiag: {},
+        editandoDiagDNAStr: '',
+        editandoDiagSerpStr: '',
+        editandoDiagFloraisStr: '',
+        editandoNota: {},
+        editandoAcomp: {},
+        mapaVendo: null,
+
+        // ── Config ─────────────────────────────────────
+        configForm: { nome: '', nome_agente: '' },
+        senhaForm: { nova: '', confirmar: '' },
+        senhaMsg: '',
+        senhaMsgOk: false,
+
+        // ── Toast ──────────────────────────────────────
+        toast: { show: false, msg: '', ok: true },
+
+        // ── Computadas ─────────────────────────────────
+        get tituloSecao() {
+            const item = this.menuItems.find(m => m.id === this.secao);
+            return item?.label || 'Portal';
+        },
+        get headers() {
+            return {
+                'Authorization': `Bearer ${this.token}`,
+                'Content-Type': 'application/json',
+            };
+        },
+
+        // ── Init ───────────────────────────────────────
+        async init() {
+            const t = localStorage.getItem('portal_token');
+            if (t) {
+                this.token = t;
+                try {
+                    const me = await this.api('GET', '/portal/api/auth/me');
+                    this.terapeuta = me;
+                    this.autenticado = true;
+                    await this.carregarDashboard();
+                } catch (e) {
+                    localStorage.removeItem('portal_token');
+                    this.token = null;
+                }
+            }
+        },
+
+        // ── Autenticação ───────────────────────────────
+        async login() {
+            this.loginLoading = true;
+            this.loginErro = '';
+            try {
+                const res = await fetch('/portal/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(this.loginForm),
+                });
+                if (!res.ok) {
+                    const err = await res.json();
+                    this.loginErro = err.detail || 'Credenciais inválidas';
+                    return;
+                }
+                const data = await res.json();
+                this.token = data.access_token;
+                this.terapeuta = data.terapeuta;
+                localStorage.setItem('portal_token', this.token);
+                this.autenticado = true;
+                await this.carregarDashboard();
+            } catch (e) {
+                this.loginErro = 'Erro de conexão. Tente novamente.';
+            } finally {
+                this.loginLoading = false;
+            }
+        },
+
+        logout() {
+            localStorage.removeItem('portal_token');
+            this.token = null;
+            this.autenticado = false;
+            this.terapeuta = null;
+            this.secao = 'dashboard';
+        },
+
+        // ── Navegação ──────────────────────────────────
+        async navegar(id) {
+            this.secao = id;
+            if (id === 'dashboard') await this.carregarDashboard();
+            else if (id === 'pacientes') await this.carregarPacientes();
+            else if (id === 'diagnosticos') await this.carregarDiagnosticos();
+            else if (id === 'acompanhamentos') await this.carregarAcompanhamentos();
+            else if (id === 'mapas') await this.carregarMapas();
+            else if (id === 'configuracoes') await this.carregarConfig();
+        },
+
+        // ── API helper ─────────────────────────────────
+        async api(method, path, body) {
+            const opts = { method, headers: this.headers };
+            if (body) opts.body = JSON.stringify(body);
+            const res = await fetch(path, opts);
+            if (res.status === 401) { this.logout(); throw new Error('401'); }
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.detail || 'Erro na requisição');
+            }
+            return res.json();
+        },
+
+        // ── Dashboard ──────────────────────────────────
+        async carregarDashboard() {
+            this.loading = true;
+            try {
+                const [geral, ag] = await Promise.all([
+                    this.api('GET', '/portal/api/relatorios/visao-geral'),
+                    this.api('GET', '/portal/api/acompanhamentos/agenda'),
+                ]);
+                this.stats = {
+                    pacientes_ativos: geral.total_pacientes,
+                    diagnosticos: geral.total_diagnosticos,
+                    sessoes_hoje: (ag[0]?.items || []).length,
+                    pendencias: geral.pendencias_abertas,
+                };
+                this.agendaHoje = (ag[0]?.items || []).slice(0, 5);
+                this.ultimasMsgs = geral.ultimas_atividades || [];
+            } catch (e) {
+                // falha silenciosa no dashboard
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        // ── Pacientes ──────────────────────────────────
+        async carregarPacientes() {
+            this.loading = true;
+            try {
+                this.pacientes = await this.api('GET', '/portal/api/pacientes');
+                this.filtrarPacientes();
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        filtrarPacientes() {
+            let lista = [...this.pacientes];
+            if (this.buscaPaciente) {
+                const q = this.buscaPaciente.toLowerCase();
+                lista = lista.filter(p => p.nome.toLowerCase().includes(q) || p.numero_telefone.includes(q));
+            }
+            if (this.filtroPacienteStatus) {
+                lista = lista.filter(p => p.status === this.filtroPacienteStatus);
+            }
+            this.pacientesFiltrados = lista;
+        },
+
+        async importarWhatsApp() {
+            this.loading = true;
+            try {
+                const r = await this.api('POST', '/portal/api/pacientes/importar-whatsapp');
+                this.mostrarToast(`${r.importados} pacientes importados!`, true);
+                await this.carregarPacientes();
+            } catch (e) {
+                this.mostrarToast(e.message, false);
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        async abrirProntuario(paciente) {
+            this.pacienteContexto = paciente;
+            this.secao = 'prontuario';
+            this.abaProntuario = 'timeline';
+            this.loading = true;
+            try {
+                this.prontuario = await this.api('GET', `/portal/api/prontuario/${paciente.id}`);
+            } catch (e) {
+                this.mostrarToast('Erro ao carregar prontuário', false);
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        // ── Diagnósticos ───────────────────────────────
+        async carregarDiagnosticos() {
+            this.loading = true;
+            try {
+                const qs = this.filtroDiagStatus ? `?status=${this.filtroDiagStatus}` : '';
+                this.diagnosticos = await this.api('GET', `/portal/api/diagnosticos${qs}`);
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        async autoExtrair(pacienteId) {
+            if (!pacienteId) return;
+            this.loading = true;
+            this.mostrarToast('Extraindo dados com IA... aguarde', true);
+            try {
+                const draft = await this.api('POST', `/portal/api/diagnosticos/auto-extrair/${pacienteId}`);
+                // Preenche o modal com o rascunho extraído
+                this.editandoDiag = {
+                    paciente_id: pacienteId,
+                    ...draft,
+                    id: null,
+                    status: 'rascunho',
+                };
+                this.editandoDiagDNAStr = (draft.dna_comprometido || []).join(', ');
+                this.editandoDiagSerpStr = (draft.serpentes_ativas || []).join(', ');
+                this.editandoDiagFloraisStr = (draft.florais_prescritos || []).join(', ');
+                this.modalAberto = 'diagnostico';
+                this.mostrarToast('Rascunho gerado! Revise e salve.', true);
+            } catch (e) {
+                this.mostrarToast(e.message || 'Erro ao extrair dados', false);
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        // ── Acompanhamentos ────────────────────────────
+        async carregarAcompanhamentos() {
+            this.loading = true;
+            try {
+                const qs = this.filtroAcompStatus ? `?status=${this.filtroAcompStatus}` : '';
+                const [lista, agenda] = await Promise.all([
+                    this.api('GET', `/portal/api/acompanhamentos${qs}`),
+                    this.api('GET', '/portal/api/acompanhamentos/agenda'),
+                ]);
+                this.acompanhamentos = lista;
+                this.agenda7dias = agenda;
+                const badge = lista.filter(a => a.status === 'pendente').length;
+                const mi = this.menuItems.find(m => m.id === 'acompanhamentos');
+                if (mi) mi.badge = badge;
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        async marcarRealizado(item) {
+            try {
+                await this.api('PUT', `/portal/api/acompanhamentos/${item.id}`, { status: 'realizado', data_realizado: new Date().toISOString().split('T')[0] });
+                this.mostrarToast('Marcado como realizado!', true);
+                await this.carregarAcompanhamentos();
+            } catch (e) {
+                this.mostrarToast(e.message, false);
+            }
+        },
+
+        // ── Mapas ──────────────────────────────────────
+        async carregarMapas() {
+            this.loading = true;
+            try {
+                this.mapas = await this.api('GET', '/portal/api/mapas');
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        verMapa(mapa) {
+            this.mapaVendo = mapa;
+            this.modalAberto = 'mapa';
+        },
+
+        // ── Relatórios ─────────────────────────────────
+        async carregarRelatorioGeral() {
+            this.loading = true;
+            try {
+                this.relatorioGeral = await this.api('GET', '/portal/api/relatorios/visao-geral');
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        async carregarRelatoriosDiag() {
+            this.loading = true;
+            try {
+                this.relatoriosDiag = await this.api('GET', '/portal/api/relatorios/diagnosticos');
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        // ── Configurações ──────────────────────────────
+        async carregarConfig() {
+            if (this.terapeuta) {
+                this.configForm.nome = this.terapeuta.nome || '';
+                this.configForm.nome_agente = this.terapeuta.nome_agente || '';
+            }
+            try {
+                this.documentos = await this.api('GET', '/portal/api/documentos');
+            } catch (e) {
+                this.documentos = [];
+            }
+        },
+
+        async salvarConfig() {
+            this.loading = true;
+            try {
+                await this.api('PUT', '/portal/api/configuracoes', this.configForm);
+                if (this.terapeuta) {
+                    this.terapeuta.nome = this.configForm.nome;
+                    this.terapeuta.nome_agente = this.configForm.nome_agente;
+                }
+                this.mostrarToast('Configurações salvas!', true);
+            } catch (e) {
+                this.mostrarToast(e.message, false);
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        async alterarSenha() {
+            this.senhaMsg = '';
+            if (this.senhaForm.nova !== this.senhaForm.confirmar) {
+                this.senhaMsg = 'As senhas não coincidem.';
+                this.senhaMsgOk = false;
+                return;
+            }
+            if (this.senhaForm.nova.length < 8) {
+                this.senhaMsg = 'A senha deve ter no mínimo 8 caracteres.';
+                this.senhaMsgOk = false;
+                return;
+            }
+            try {
+                await this.api('POST', '/portal/api/auth/alterar-senha', { nova_senha: this.senhaForm.nova });
+                this.senhaMsg = 'Senha alterada com sucesso!';
+                this.senhaMsgOk = true;
+                this.senhaForm = { nova: '', confirmar: '' };
+            } catch (e) {
+                this.senhaMsg = e.message;
+                this.senhaMsgOk = false;
+            }
+        },
+
+        // ── Modais: Abrir/Fechar ───────────────────────
+        fecharModal() { this.modalAberto = null; },
+
+        abrirModalPaciente(p) {
+            this.editandoPaciente = p ? { ...p } : { nome: '', numero_telefone: '', email: '', status: 'ativo', tags: [] };
+            this.editandoPacienteTagsStr = (this.editandoPaciente.tags || []).join(', ');
+            this.modalAberto = 'paciente';
+        },
+
+        abrirModalDiagnostico(d) {
+            this.editandoDiag = d ? { ...d } : {
+                paciente_id: this.pacienteContexto?.id || '',
+                elemento_dominante: '', elemento_carente: '',
+                dna_comprometido: [], serpentes_ativas: [],
+                setenio_atual: null, florais_prescritos: [],
+                protocolo_texto: '', status: 'rascunho',
+                sessao_data: new Date().toISOString().split('T')[0],
+            };
+            this.editandoDiagDNAStr = (this.editandoDiag.dna_comprometido || []).join(', ');
+            this.editandoDiagSerpStr = (this.editandoDiag.serpentes_ativas || []).join(', ');
+            this.editandoDiagFloraisStr = (this.editandoDiag.florais_prescritos || []).join(', ');
+            this.modalAberto = 'diagnostico';
+        },
+
+        abrirModalNota() {
+            this.editandoNota = {
+                paciente_id: this.pacienteContexto?.id || '',
+                tipo: 'sessao', titulo: '', conteudo: '',
+                data_anotacao: new Date().toISOString().split('T')[0],
+                proxima_sessao: '',
+            };
+            this.modalAberto = 'nota';
+        },
+
+        abrirModalAcomp(item) {
+            this.editandoAcomp = item ? { ...item } : {
+                paciente_id: this.pacienteContexto?.id || '',
+                tipo: 'retorno', descricao: '',
+                data_prevista: '', prioridade: 2, status: 'pendente',
+            };
+            this.modalAberto = 'acomp';
+        },
+
+        // ── CRUD: Paciente ─────────────────────────────
+        async salvarPaciente() {
+            this.loading = true;
+            try {
+                const dados = {
+                    ...this.editandoPaciente,
+                    tags: this.editandoPacienteTagsStr.split(',').map(t => t.trim()).filter(Boolean),
+                };
+                if (dados.id) {
+                    await this.api('PUT', `/portal/api/pacientes/${dados.id}`, dados);
+                    this.mostrarToast('Paciente atualizado!', true);
+                } else {
+                    await this.api('POST', '/portal/api/pacientes', dados);
+                    this.mostrarToast('Paciente criado!', true);
+                }
+                this.fecharModal();
+                await this.carregarPacientes();
+            } catch (e) {
+                this.mostrarToast(e.message, false);
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        // ── CRUD: Diagnóstico ──────────────────────────
+        async salvarDiagnostico() {
+            this.loading = true;
+            try {
+                const dados = {
+                    ...this.editandoDiag,
+                    dna_comprometido: this.editandoDiagDNAStr.split(',').map(t => t.trim()).filter(Boolean),
+                    serpentes_ativas: this.editandoDiagSerpStr.split(',').map(t => t.trim()).filter(Boolean),
+                    florais_prescritos: this.editandoDiagFloraisStr.split(',').map(t => t.trim()).filter(Boolean),
+                };
+                if (dados.id) {
+                    await this.api('PUT', `/portal/api/diagnosticos/${dados.id}`, dados);
+                    this.mostrarToast('Diagnóstico atualizado!', true);
+                } else {
+                    await this.api('POST', '/portal/api/diagnosticos', dados);
+                    this.mostrarToast('Diagnóstico criado!', true);
+                }
+                this.fecharModal();
+                if (this.secao === 'prontuario' && this.pacienteContexto) {
+                    await this.abrirProntuario(this.pacienteContexto);
+                } else {
+                    await this.carregarDiagnosticos();
+                }
+            } catch (e) {
+                this.mostrarToast(e.message, false);
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        // ── CRUD: Anotação ─────────────────────────────
+        async salvarNota() {
+            this.loading = true;
+            try {
+                const pid = this.pacienteContexto?.id || this.editandoNota.paciente_id;
+                const dados = { ...this.editandoNota, paciente_id: pid };
+                if (dados.id) {
+                    await this.api('PUT', `/portal/api/anotacoes/${dados.id}`, dados);
+                } else {
+                    await this.api('POST', '/portal/api/anotacoes', dados);
+                }
+                this.mostrarToast('Anotação salva!', true);
+                this.fecharModal();
+                if (this.pacienteContexto) await this.abrirProntuario(this.pacienteContexto);
+            } catch (e) {
+                this.mostrarToast(e.message, false);
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        // ── CRUD: Acompanhamento ───────────────────────
+        async salvarAcomp() {
+            this.loading = true;
+            try {
+                const pid = this.pacienteContexto?.id || this.editandoAcomp.paciente_id;
+                const dados = { ...this.editandoAcomp, paciente_id: pid };
+                if (dados.id) {
+                    await this.api('PUT', `/portal/api/acompanhamentos/${dados.id}`, dados);
+                } else {
+                    await this.api('POST', '/portal/api/acompanhamentos', dados);
+                }
+                this.mostrarToast('Follow-up salvo!', true);
+                this.fecharModal();
+                if (this.secao === 'prontuario' && this.pacienteContexto) {
+                    await this.abrirProntuario(this.pacienteContexto);
+                } else {
+                    await this.carregarAcompanhamentos();
+                }
+            } catch (e) {
+                this.mostrarToast(e.message, false);
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        // ── Utilitários ────────────────────────────────
+        mostrarToast(msg, ok) {
+            this.toast = { show: true, msg, ok };
+            setTimeout(() => { this.toast.show = false; }, 3500);
+        },
+
+        formatarDataCurta(dt) {
+            if (!dt) return '—';
+            const d = new Date(dt);
+            if (isNaN(d)) return dt;
+            const hoje = new Date();
+            const diff = Math.floor((hoje - d) / 86400000);
+            if (diff === 0) return 'hoje';
+            if (diff === 1) return 'ontem';
+            if (diff < 7) return diff + 'd atrás';
+            return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+        },
+
+        formatarDataExtenso(dt) {
+            if (!dt) return '';
+            const d = new Date(dt + 'T12:00:00');
+            return d.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
+        },
+    };
+}
+</script>
+</body>
+</html>

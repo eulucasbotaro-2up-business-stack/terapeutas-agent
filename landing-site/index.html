@@ -543,7 +543,7 @@
     <li><a href="#pilares">O que inclui</a></li>
     <li><a href="#planos">Planos</a></li>
     <li><a href="#faq">Dúvidas</a></li>
-    <li><a href="/portal" class="nav-cta" style="background:var(--ouro);color:#1a1a1a;border-radius:8px;padding:6px 14px;font-weight:700;">Acessar Portal →</a></li>
+    <li><a href="https://modest-respect-production.up.railway.app/portal" class="nav-cta" style="background:var(--ouro);color:#1a1a1a;border-radius:8px;padding:6px 14px;font-weight:700;">Acessar Portal →</a></li>
     <li><a href="#planos" class="nav-cta">Começar agora →</a></li>
   </ul>
   <div class="nav-hamburger" onclick="toggleMenu()">
@@ -754,7 +754,7 @@
       </div>
     </div>
     <div style="text-align:center;margin-top:40px;">
-      <a href="/portal" style="display:inline-block;background:#D4AF37;color:#1a1a1a;font-weight:700;font-size:15px;padding:14px 32px;border-radius:10px;text-decoration:none;transition:background 0.2s;" onmouseover="this.style.background='#c49b2e'" onmouseout="this.style.background='#D4AF37'">
+      <a href="https://modest-respect-production.up.railway.app/portal" style="display:inline-block;background:#D4AF37;color:#1a1a1a;font-weight:700;font-size:15px;padding:14px 32px;border-radius:10px;text-decoration:none;transition:background 0.2s;" onmouseover="this.style.background='#c49b2e'" onmouseout="this.style.background='#D4AF37'">
         Acessar meu Portal →
       </a>
       <p style="color:#94a3b8;font-size:13px;margin-top:12px;">Incluído a partir do plano Terapeuta</p>
@@ -1115,7 +1115,7 @@
     }
 
     try {
-      const resp = await fetch('/automation/leads', {
+      const resp = await fetch('https://modest-respect-production.up.railway.app/automation/leads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
