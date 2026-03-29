@@ -623,7 +623,8 @@ Regras obrigatórias:
   "Rio" → "Rio de Janeiro", "BH" → "Belo Horizonte", "BSB" → "Brasília",
   "Sampa" → "São Paulo", use o nome completo da cidade sempre
 - Data obrigatoriamente em DD/MM/AAAA
-- Hora em HH:MM (24h); "meio-dia"/"12h" = "12:00", "meia-noite" = "00:00"
+- Hora em HH:MM (24h); "meio-dia"/"12h" = "12:00", "meia-noite" = "00:00", "13 horas e 15 minutos" = "13:15", "8h30" = "08:30", "às 9 e meia" = "09:30"
+- ATENÇÃO: quando a hora vier por extenso com minutos ("X horas e Y minutos"), capture AMBOS — nunca descarte os minutos
 - Nome: extraia se presente no texto; caso contrário use null
 - Se NÃO há dados de nascimento completos (data + hora + cidade), retorne exatamente:
   {{"nome": null, "data": null, "hora": null, "cidade": null}}

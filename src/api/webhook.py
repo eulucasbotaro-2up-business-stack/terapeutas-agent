@@ -1244,7 +1244,23 @@ async def _processar_mensagem(payload: dict) -> None:
                     )
                     logger.info(f"[Evolution] Pedindo ano de nascimento para mapa natal — {numero_paciente}")
                     return
-                elif dados_nasc and not dados_nasc.get("falta_ano"):
+
+                # Guarda de duplicidade: se mapa já foi gerado nessa conversa, não regerar.
+                # Verifica se alguma resposta do agente no histórico contém marcador de mapa enviado.
+                if dados_nasc and not dados_nasc.get("falta_ano") and historico:
+                    for _h in historico[-20:]:
+                        _c = _h.get("content") or _h.get("conteudo") or _h.get("mensagem") or ""
+                        if _h.get("role") == "agente" and (
+                            "Calculando o mapa" in _c
+                            or "Mapa Natal —" in _c
+                            or "Mapa Alquimico —" in _c
+                            or "imagem do mapa" in _c.lower()
+                        ):
+                            logger.info(f"[Evolution] Mapa já gerado nessa conversa — ignorando reextração para {numero_paciente}")
+                            dados_nasc = None
+                            break
+
+                if dados_nasc and not dados_nasc.get("falta_ano"):
                     _nota_imagem_sp = ""
                     # Pré-mensagem: avisa que está gerando (melhora UX)
                     nome_nasc_pre = dados_nasc.get("nome", "")
@@ -2383,7 +2399,22 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                     )
                     logger.info(f"[Meta] Pedindo ano de nascimento para mapa natal — {numero_paciente}")
                     return
-                elif dados_nasc and not dados_nasc.get("falta_ano"):
+
+                # Guarda de duplicidade: se mapa já foi gerado nessa conversa, não regerar.
+                if dados_nasc and not dados_nasc.get("falta_ano") and historico:
+                    for _h in historico[-20:]:
+                        _c = _h.get("content") or _h.get("conteudo") or _h.get("mensagem") or ""
+                        if _h.get("role") == "agente" and (
+                            "Calculando o mapa" in _c
+                            or "Mapa Natal —" in _c
+                            or "Mapa Alquimico —" in _c
+                            or "imagem do mapa" in _c.lower()
+                        ):
+                            logger.info(f"[Meta] Mapa já gerado nessa conversa — ignorando reextração para {numero_paciente}")
+                            dados_nasc = None
+                            break
+
+                if dados_nasc and not dados_nasc.get("falta_ano"):
                     _nota_imagem_sp = ""
                     # Pré-mensagem: avisa que está gerando (melhora UX)
                     nome_nasc_pre = dados_nasc.get("nome", "")
