@@ -491,10 +491,21 @@ def gerar_abertura_variada(nome: str = "") -> str:
     Returns:
         Frase de abertura humanizada.
     """
+    # Fallback: se nome é None ou vazio/só espaços, usa saudação genérica sem nome
+    nome = (nome or "").strip()
+
     abertura = random.choice(_ABERTURAS_ALTERNATIVAS)
 
     if nome:
         return abertura.format(nome=nome)
     else:
-        # Remove o placeholder de nome e ajusta
-        return abertura.format(nome="").replace("  ", " ").replace(", .", ".").strip()
+        # Remove o placeholder de nome e ajusta artefatos de pontuação
+        resultado = abertura.format(nome="")
+        resultado = resultado.replace("  ", " ").replace(", .", ".").replace(" ,", ",").strip()
+        # Remove vírgula solta no início (ex: ", to aqui." -> "To aqui.")
+        if resultado.startswith(","):
+            resultado = resultado[1:].strip()
+        # Capitaliza primeira letra após limpeza
+        if resultado:
+            resultado = resultado[0].upper() + resultado[1:]
+        return resultado

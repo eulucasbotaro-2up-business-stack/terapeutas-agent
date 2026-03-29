@@ -93,12 +93,18 @@ router = APIRouter(prefix="/webhook", tags=["Webhook WhatsApp"])
 
 # Deduplicação de mensagens Meta: evita processar o mesmo message_id duas vezes.
 # Armazena (message_id -> timestamp). Limpeza automática após 5 minutos.
+# NOTA: Intencionalmente in-memory — dedup é de curto prazo (5min TTL) e perda
+# entre deploys é aceitável (pior caso: uma mensagem duplicada no restart).
+# Mover para banco adicionaria latência em toda mensagem sem benefício real.
 _PROCESSED_MESSAGE_IDS: "OrderedDict[str, float]" = OrderedDict()
 _DEDUP_TTL_SECONDS = 300
 _DEDUP_MAX_SIZE = 1000
 
 # Contador de falhas consecutivas de geração de mapa por número de paciente.
 # Após _MAPA_MAX_TENTATIVAS falhas, envia mensagem de suporte e para de tentar.
+# NOTA: Intencionalmente in-memory — reset entre deploys é aceitável pois apenas
+# controla retries de curto prazo. No pior caso, o paciente recebe mais uma
+# tentativa de geração de mapa após o restart.
 _MAPA_FALHAS: dict[str, int] = {}
 _MAPA_MAX_TENTATIVAS = 3
 
@@ -346,29 +352,16 @@ def _extrair_texto_para_codigo(texto: str) -> str:
 
 def _contar_tentativas_codigo(terapeuta_id: str, numero_paciente: str) -> int:
     """Conta quantas tentativas inválidas de código este número já fez."""
-    from src.core.config import get_settings
-    import requests as _req
-    settings = get_settings()
-    headers = {
-        "apikey": settings.SUPABASE_SERVICE_KEY,
-        "Authorization": f"Bearer {settings.SUPABASE_SERVICE_KEY}",
-    }
-    base_url = f"{settings.SUPABASE_URL}/rest/v1"
     try:
-        resp = _req.get(
-            f"{base_url}/conversas",
-            headers={**headers, "Prefer": "count=exact"},
-            params={
-                "terapeuta_id": f"eq.{terapeuta_id}",
-                "paciente_numero": f"eq.{numero_paciente}",
-                "intencao": "eq.CODIGO_INVALIDO",
-                "select": "id",
-            },
-            timeout=5,
-        )
-        content_range = resp.headers.get("Content-Range", "0/0")
-        total = int(content_range.split("/")[-1]) if "/" in content_range else 0
-        return total
+        sb = get_supabase()
+        res = sb.table("conversas").select("id", count="exact").eq(
+            "terapeuta_id", terapeuta_id
+        ).eq(
+            "paciente_numero", numero_paciente
+        ).eq(
+            "intencao", "CODIGO_INVALIDO"
+        ).execute()
+        return res.count or 0
     except Exception:
         return 0
 
@@ -1250,6 +1243,8 @@ async def _processar_mensagem(payload: dict) -> None:
                 # "refazer mapa" força nova geração e atualiza o cache.
                 _eh_refazer = _eh_pedido_refazer_mapa(texto_para_processar)
                 _mapa_json_cache = None
+                # Inicializa variável de nota de imagem para system prompt (usada mais abaixo)
+                _nota_imagem_sp = ""
                 if dados_nasc and not dados_nasc.get("falta_ano") and not _eh_refazer:
                     _mapa_json_cache = await asyncio.to_thread(
                         _buscar_mapa_salvo, terapeuta_id, numero_paciente,
@@ -1267,7 +1262,6 @@ async def _processar_mensagem(payload: dict) -> None:
                         chunks_texto = mapa_prefixo + chunks_texto
 
                 if not _mapa_json_cache and dados_nasc and not dados_nasc.get("falta_ano"):
-                    _nota_imagem_sp = ""
                     # Pré-mensagem: avisa que está gerando (melhora UX)
                     nome_nasc_pre = dados_nasc.get("nome", "")
                     msg_gerando = (
@@ -1426,9 +1420,8 @@ async def _processar_mensagem(payload: dict) -> None:
                 system_prompt_especialista = None
 
             # Injetar nota da imagem no system prompt (não nos chunks — evita LLM reproduzir o texto)
-            _nota_imagem_sp_evo = locals().get("_nota_imagem_sp", "")
-            if _nota_imagem_sp_evo:
-                system_prompt_especialista = (system_prompt_especialista or "") + _nota_imagem_sp_evo
+            if _nota_imagem_sp:
+                system_prompt_especialista = (system_prompt_especialista or "") + _nota_imagem_sp
 
             try:
                 resposta_texto = await gerar_resposta(
@@ -1472,12 +1465,13 @@ async def _processar_mensagem(payload: dict) -> None:
         # 10. Enviar resposta (com rate limiting anti-ban)
         if resposta_texto:
             if isinstance(resposta_texto, list):
+                resposta_texto = [humanizar_resposta(seg) for seg in resposta_texto]
                 await _enviar_sequencia_evolution(
                     resposta_texto, evolution, instance_name, numero_paciente,
                 )
             elif "---SECAO---" in resposta_texto:
                 # Resposta dividida em seções: cada seção vira uma mensagem separada
-                secoes = [s.strip() for s in resposta_texto.split("---SECAO---") if s.strip()]
+                secoes = [humanizar_resposta(s.strip()) for s in resposta_texto.split("---SECAO---") if s.strip()]
                 await _enviar_sequencia_evolution(secoes, evolution, instance_name, numero_paciente)
             else:
                 resposta_texto = humanizar_resposta(resposta_texto)
@@ -2477,6 +2471,8 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                 # "refazer mapa" força nova geração e atualiza o cache.
                 _eh_refazer = _eh_pedido_refazer_mapa(texto_para_processar)
                 _mapa_json_cache = None
+                # Inicializa variável de nota de imagem para system prompt (usada mais abaixo)
+                _nota_imagem_sp = ""
                 if dados_nasc and not dados_nasc.get("falta_ano") and not _eh_refazer:
                     _mapa_json_cache = await asyncio.to_thread(
                         _buscar_mapa_salvo, terapeuta_id, numero_paciente,
@@ -2494,7 +2490,6 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                         chunks_texto = mapa_prefixo + chunks_texto
 
                 if not _mapa_json_cache and dados_nasc and not dados_nasc.get("falta_ano"):
-                    _nota_imagem_sp = ""
                     # Pré-mensagem: avisa que está gerando (melhora UX)
                     nome_nasc_pre = dados_nasc.get("nome", "")
                     msg_gerando = (
@@ -2659,9 +2654,8 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                 system_prompt_especialista = None
 
             # Injetar nota da imagem no system prompt (não nos chunks — evita LLM reproduzir o texto)
-            _nota_imagem_sp_meta = locals().get("_nota_imagem_sp", "")
-            if _nota_imagem_sp_meta:
-                system_prompt_especialista = (system_prompt_especialista or "") + _nota_imagem_sp_meta
+            if _nota_imagem_sp:
+                system_prompt_especialista = (system_prompt_especialista or "") + _nota_imagem_sp
 
             try:
                 resposta_texto = await gerar_resposta(
@@ -2705,10 +2699,11 @@ async def _processar_mensagem_meta(payload: dict) -> None:
         # 11. Enviar resposta (com rate limiting anti-ban)
         if resposta_texto:
             if isinstance(resposta_texto, list):
+                resposta_texto = [humanizar_resposta(seg) for seg in resposta_texto]
                 await _enviar_sequencia_meta(resposta_texto, meta_client, numero_paciente)
             elif "---SECAO---" in resposta_texto:
                 # Resposta dividida em seções: cada seção vira uma mensagem separada
-                secoes = [s.strip() for s in resposta_texto.split("---SECAO---") if s.strip()]
+                secoes = [humanizar_resposta(s.strip()) for s in resposta_texto.split("---SECAO---") if s.strip()]
                 await _enviar_sequencia_meta(secoes, meta_client, numero_paciente)
             else:
                 resposta_texto = humanizar_resposta(resposta_texto)

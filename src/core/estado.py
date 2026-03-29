@@ -76,6 +76,26 @@ _REGEX_PROFANIDADE = re.compile(
     flags=re.IGNORECASE | re.UNICODE,
 )
 
+# Whitelist de termos clínicos que podem ser falsamente detectados pelo filtro de profanidade.
+# Contexto terapêutico: pacientes discutem suicídio, abuso, drogas etc. de forma legítima.
+# Se a mensagem contiver esses termos em contexto clínico, o filtro de profanidade é desativado.
+_TERMOS_CLINICOS = re.compile(
+    r"(?i)\b("
+    r"suicid[aio]|suicídio|ideação\s+suicida|pensamento\s+suicida"
+    r"|autolesão|automutilação|auto[\s-]?mutilação|auto[\s-]?lesão"
+    r"|abuso\s+(sexual|infantil|emocional|psicológico|fisico|físico|de\s+substância)"
+    r"|violência\s+(doméstica|domestica|sexual|familiar)"
+    r"|transtorno|depressão|depressao|ansiedade|síndrome|sindrome"
+    r"|dependência\s+química|dependencia\s+quimica|uso\s+de\s+(drogas?|substâncias?|substancias?)"
+    r"|trauma|estresse\s+pós|luto|pânico|panico"
+    r"|anorexia|bulimia|compulsão|compulsao"
+    r"|diagnóstico|diagnostico|tratamento|terapia|psicoterapia"
+    r"|medicação|medicacao|medicamento"
+    r"|matar[\s-]?se|quero\s+morrer|não\s+quero\s+mais\s+viver|nao\s+quero\s+mais\s+viver"
+    r")\b",
+    flags=re.UNICODE,
+)
+
 # Detectar mensagem de keyboard mashing (80%+ de chars não-alfabéticos com 8+ chars)
 _REGEX_NONSENSE = re.compile(r"^[^a-záàâãéèêíìîóòôõúùûçA-Z\s]{8,}$", re.UNICODE)
 
@@ -658,11 +678,18 @@ def detectar_profanidade(texto: str) -> bool:
 
     Conservador: prefere falsos negativos a falsos positivos.
     Palavras com contexto clínico legítimo (ex: "sexo") são excluídas da lista.
+    Mensagens com termos clínicos reconhecidos são automaticamente liberadas
+    para evitar bloqueio de conteúdo terapêutico legítimo.
 
     Returns:
         True se conteúdo impróprio for detectado.
     """
     if not texto or not texto.strip():
+        return False
+
+    # Whitelist: se a mensagem contém termos clínicos, não bloqueia.
+    # Contexto terapêutico: pacientes podem discutir suicídio, abuso, drogas etc.
+    if _TERMOS_CLINICOS.search(texto):
         return False
 
     # Palavras proibidas

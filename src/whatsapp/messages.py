@@ -257,6 +257,10 @@ def formatar_aviso_audio() -> str:
     """
     Mensagem quando o paciente envia audio.
     O sistema ainda nao processa audio. Tom natural.
+
+    DEPRECATED: Esta funcao nao e chamada em nenhum lugar do codigo atualmente.
+    O sistema agora transcreve audios via Whisper (webhook.py).
+    Mantida para compatibilidade — remover em versao futura se nao for reutilizada.
     """
     return (
         "Nao consegui ouvir o audio, infelizmente. "

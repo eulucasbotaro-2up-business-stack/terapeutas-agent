@@ -909,7 +909,12 @@ def gerar_msg_retomada_sessao(
         return None
 
     ultimo = resumos[-1]
-    resumo_texto = (ultimo.get("resumo") or "").strip()
+    resumo_raw = ultimo.get("resumo") or ""
+    # O campo 'resumo' pode ser dict (JSONB estruturado) ou string
+    if isinstance(resumo_raw, dict):
+        resumo_texto = (resumo_raw.get("resumo") or "").strip()
+    else:
+        resumo_texto = str(resumo_raw).strip()
 
     if len(resumo_texto) < 30:
         return None

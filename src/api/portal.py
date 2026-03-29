@@ -370,15 +370,40 @@ async def listar_pacientes(
     res = q.order("nome").range(offset, offset + por_pagina - 1).execute()
     pacientes = res.data or []
 
-    # Enriquecer com stats
-    for p in pacientes:
-        numero = p["numero_telefone"]
-        conv = sb.table("conversas").select("id", count="exact").eq("terapeuta_id", terapeuta_id).eq("paciente_numero", numero).execute()
-        diag = sb.table("diagnosticos_alquimicos").select("id", count="exact").eq("paciente_id", p["id"]).execute()
-        acomp = sb.table("acompanhamentos").select("data_prevista").eq("paciente_id", p["id"]).eq("status", "pendente").order("data_prevista").limit(1).execute()
-        p["total_mensagens"] = conv.count or 0
-        p["total_diagnosticos"] = diag.count or 0
-        p["proximo_retorno"] = acomp.data[0]["data_prevista"] if acomp.data else None
+    # Enriquecer com stats — batch queries para evitar N+1
+    if pacientes:
+        numeros = [p["numero_telefone"] for p in pacientes]
+        paciente_ids = [p["id"] for p in pacientes]
+
+        # Batch: contagem de conversas por número
+        conv_all = sb.table("conversas").select("paciente_numero", count="exact").eq("terapeuta_id", terapeuta_id).in_("paciente_numero", numeros).execute()
+        # Agrupar contagens por número (Supabase retorna todos os registros, usamos count por filtro individual)
+        # Como o .in_() retorna o total, precisamos contar por número individualmente via dados retornados
+        conv_por_numero: dict[str, int] = {}
+        for row in (conv_all.data or []):
+            num = row.get("paciente_numero", "")
+            conv_por_numero[num] = conv_por_numero.get(num, 0) + 1
+
+        # Batch: contagem de diagnósticos por paciente_id
+        diag_all = sb.table("diagnosticos_alquimicos").select("paciente_id").in_("paciente_id", paciente_ids).execute()
+        diag_por_paciente: dict[str, int] = {}
+        for row in (diag_all.data or []):
+            pid = row.get("paciente_id", "")
+            diag_por_paciente[pid] = diag_por_paciente.get(pid, 0) + 1
+
+        # Batch: próximo acompanhamento pendente por paciente_id
+        acomp_all = sb.table("acompanhamentos").select("paciente_id, data_prevista").in_("paciente_id", paciente_ids).eq("status", "pendente").order("data_prevista").execute()
+        acomp_por_paciente: dict[str, str] = {}
+        for row in (acomp_all.data or []):
+            pid = row.get("paciente_id", "")
+            # Só guarda o primeiro (mais próximo) de cada paciente
+            if pid not in acomp_por_paciente:
+                acomp_por_paciente[pid] = row["data_prevista"]
+
+        for p in pacientes:
+            p["total_mensagens"] = conv_por_numero.get(p["numero_telefone"], 0)
+            p["total_diagnosticos"] = diag_por_paciente.get(p["id"], 0)
+            p["proximo_retorno"] = acomp_por_paciente.get(p["id"])
 
     total_res = sb.table("pacientes").select("id", count="exact").eq("terapeuta_id", terapeuta_id).execute()
     return {
@@ -648,9 +673,11 @@ Retorne APENAS um JSON válido com esta estrutura (sem markdown, sem explicaçã
 }}"""
 
     import anthropic
+    import asyncio
     settings = get_settings()
-    client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
-    resposta = client.messages.create(
+    # Usa AsyncAnthropic para não bloquear o event loop do FastAPI
+    client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
+    resposta = await client.messages.create(
         model="claude-haiku-4-5-20251001",
         max_tokens=1000,
         messages=[{"role": "user", "content": prompt}],
