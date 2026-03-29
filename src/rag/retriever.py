@@ -71,9 +71,9 @@ MAPA_TERMOS_TAGS: list[tuple[str, list[str]]] = [
     # Transmutação
     (r"\bnigredo\b", ["transmutacao", "nigredo"]),
     (r"\brubedo\b", ["transmutacao", "rubedo"]),
-    (r"\balbedo\b", ["transmutacao"]),
+    (r"\balbedo\b", ["transmutacao", "albedo"]),
     (r"\btransmuta[çc][aã]o\b", ["transmutacao"]),
-    (r"\baliastrum\b", ["transmutacao", "aliastrum"]),
+    (r"\bal+iastrum\b", ["transmutacao", "alliastrum"]),
     (r"\btrindade\b", ["trindade"]),
     (r"\btartarus\b|t[aá]rtaro", ["tartarus"]),
 
@@ -83,6 +83,7 @@ MAPA_TERMOS_TAGS: list[tuple[str, list[str]]] = [
     (r"\bpadr[aã]o\s+(repetitivo|familiar|emocional)", ["matrix", "matrix_padrao"]),
     (r"\bheran[çc]a\b|herdad", ["matrix", "matrix_heranca"]),
     (r"\bmiasma\b", ["miasma"]),
+    (r"\bserpente\b|serpentes\b", ["matrix_padrao", "matrix_heranca"]),
 
     # Astrologia
     (r"\bastrolog", ["astrologia"]),
@@ -91,6 +92,7 @@ MAPA_TERMOS_TAGS: list[tuple[str, list[str]]] = [
     (r"\bciclo\b|ciclos\b", ["astro_ciclo"]),
     (r"\bregente\b", ["astrologia", "astro_regente"]),
     (r"\bcasa\s+astrol[oó]gica\b", ["astrologia", "astro_casa"]),
+    (r"\bcorpus\s+celestes?\b", ["floral", "astrologia", "kit_primus"]),
 
     # Biorritmo
     (r"\bbiorr[ií]tmo|biorritmo", ["biorritmo"]),
@@ -114,6 +116,9 @@ MAPA_TERMOS_TAGS: list[tuple[str, list[str]]] = [
     # Protocolos
     (r"\bprotocolo\b", ["protocolo"]),
     (r"\bkit\s+primus\b|kite\s+primus", ["protocolo", "kit_primus"]),
+    (r"\bkit\s+matrix\b|kit\s+materlux\b|materlux\b", ["matrix", "matrix_trauma", "floral"]),
+    (r"\bkit\s+torus\b", ["torus", "floral"]),
+    (r"\bkit\s+dna\b", ["dna", "dna_leitura"]),
 
     # Vitriol e Torus
     (r"\bvitriol\b", ["vitriol"]),

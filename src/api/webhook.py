@@ -1246,8 +1246,10 @@ async def _processar_mensagem(payload: dict) -> None:
                     return
 
                 # Guarda de duplicidade: se mapa já foi gerado nessa conversa, não regerar.
+                # Exceção: "refazer mapa" — usuário quer explicitamente um novo mapa.
                 # Verifica se alguma resposta do agente no histórico contém marcador de mapa enviado.
-                if dados_nasc and not dados_nasc.get("falta_ano") and historico:
+                _eh_refazer = _eh_pedido_refazer_mapa(texto_para_processar)
+                if not _eh_refazer and dados_nasc and not dados_nasc.get("falta_ano") and historico:
                     for _h in historico[-20:]:
                         _c = _h.get("content") or _h.get("conteudo") or _h.get("mensagem") or ""
                         if _h.get("role") == "agente" and (
@@ -2401,7 +2403,9 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                     return
 
                 # Guarda de duplicidade: se mapa já foi gerado nessa conversa, não regerar.
-                if dados_nasc and not dados_nasc.get("falta_ano") and historico:
+                # Exceção: "refazer mapa" — usuário quer explicitamente um novo mapa.
+                _eh_refazer = _eh_pedido_refazer_mapa(texto_para_processar)
+                if not _eh_refazer and dados_nasc and not dados_nasc.get("falta_ano") and historico:
                     for _h in historico[-20:]:
                         _c = _h.get("content") or _h.get("conteudo") or _h.get("mensagem") or ""
                         if _h.get("role") == "agente" and (
