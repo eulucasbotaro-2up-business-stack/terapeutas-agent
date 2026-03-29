@@ -83,7 +83,7 @@ async def health_check():
         "status": "ok",
         "servico": "Terapeutas Agent API",
         "versao": "0.1.0",
-        "build": "5a6994c-rag-fase2-27docs",
+        "build": "c17302a-fix-retriever-mapa-guard",
     }
 
 
