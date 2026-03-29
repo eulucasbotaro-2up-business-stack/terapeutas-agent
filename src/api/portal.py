@@ -460,6 +460,12 @@ async def get_prontuario(paciente_id: str, authorization: str = Header(...)):
     # Mapas natais
     mapas_res = sb.table("mapas_astrais").select("id, data_nascimento, imagem_url, criado_em").eq("numero_telefone", numero).order("criado_em", desc=True).execute()
 
+    # Resumos de sessão (memória de longo prazo)
+    resumos_res = sb.table("resumos_sessao").select("*").eq("terapeuta_id", terapeuta_id).eq("numero_telefone", numero).order("sessao_inicio", desc=True).limit(20).execute()
+
+    # Perfil de memória do paciente
+    perfil_res = sb.table("perfil_usuario").select("*").eq("terapeuta_id", terapeuta_id).eq("numero_telefone", numero).limit(1).execute()
+
     return {
         "paciente": paciente,
         "conversas": conv_res.data or [],
@@ -467,6 +473,8 @@ async def get_prontuario(paciente_id: str, authorization: str = Header(...)):
         "anotacoes": anot_res.data or [],
         "acompanhamentos": acomp_res.data or [],
         "mapas_natais": mapas_res.data or [],
+        "resumos_sessao": resumos_res.data or [],
+        "perfil_memoria": perfil_res.data[0] if perfil_res.data else None,
     }
 
 
@@ -501,6 +509,18 @@ async def get_timeline(paciente_id: str, authorization: str = Header(...)):
     mapas = sb.table("mapas_astrais").select("id, criado_em, data_nascimento").eq("numero_telefone", numero).execute()
     for m in (mapas.data or []):
         eventos.append({"tipo": "mapa_natal", "data": m["criado_em"], "resumo": f"Mapa natal — {m.get('data_nascimento') or ''}", "id": m["id"]})
+
+    # Resumos de sessão (memória IA)
+    resumos = sb.table("resumos_sessao").select("id, sessao_inicio, resumo, total_mensagens").eq("terapeuta_id", terapeuta_id).eq("numero_telefone", numero).execute()
+    for r in (resumos.data or []):
+        resumo_raw = r.get("resumo", "")
+        if isinstance(resumo_raw, dict):
+            texto = resumo_raw.get("resumo", "")[:100]
+            humor = resumo_raw.get("humor_percebido", "")
+            resumo_str = f"Sessão IA — {texto}" + (f" (humor: {humor})" if humor else "")
+        else:
+            resumo_str = f"Sessão IA — {str(resumo_raw)[:100]}"
+        eventos.append({"tipo": "resumo_sessao", "data": r["sessao_inicio"], "resumo": resumo_str, "id": r["id"]})
 
     eventos.sort(key=lambda x: x.get("data") or "", reverse=True)
     return {"timeline": eventos[:100]}

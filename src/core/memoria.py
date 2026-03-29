@@ -49,7 +49,8 @@ logger = logging.getLogger(__name__)
 SESSION_GAP_HORAS = 3
 
 # Quantos resumos de sessões anteriores injetar no prompt
-MAX_RESUMOS_NO_PROMPT = 3
+# Aumentado de 3 para 5 para dar mais contexto de evolução ao agente
+MAX_RESUMOS_NO_PROMPT = 5
 
 # Quantas mensagens usar ao gerar o resumo da sessão
 MAX_MSGS_PARA_RESUMO = 30
@@ -405,16 +406,23 @@ async def limpar_confirmacao_topico(
 async def gerar_resumo_sessao(
     historico_msgs: list[dict],
     numero_telefone: str,
-) -> Optional[str]:
+) -> Optional[dict]:
     """
-    Usa Claude Haiku para gerar um resumo compacto da sessão.
+    Usa Claude Haiku para gerar um resumo estruturado da sessão.
+
+    Retorna um dict com:
+        - resumo: texto corrido do resumo (≤ 500 chars)
+        - temas_chave: lista de temas/diagnósticos discutidos
+        - pontos_abertos: questões não resolvidas
+        - humor_percebido: estado emocional percebido do paciente
+        - nivel_engajamento: 1-5 (quanto o paciente se engajou)
 
     Args:
         historico_msgs: Mensagens da sessão a resumir.
         numero_telefone: Usado apenas para logging.
 
     Returns:
-        Texto do resumo (≤ 300 chars) ou None se falhou/insuficiente.
+        Dict estruturado ou None se falhou/insuficiente.
     """
     if len(historico_msgs) < 4:
         return None
@@ -422,31 +430,67 @@ async def gerar_resumo_sessao(
     linhas = []
     for msg in historico_msgs[-MAX_MSGS_PARA_RESUMO:]:
         role_label = "Usuário" if msg.get("role") in ("terapeuta", "user") else "Agente"
-        conteudo = msg.get("content", "")[:250].replace("\n", " ")
+        conteudo = msg.get("content", "")[:300].replace("\n", " ")
         linhas.append(f"{role_label}: {conteudo}")
 
     historico_texto = "\n".join(linhas)
 
     prompt = (
-        "Resuma esta conversa em 2-4 linhas corridas. Destaque:\n"
-        "- O que foi discutido (caso clínico, pesquisa, conteúdo criado)\n"
-        "- Pontos principais e qualquer questão em aberto\n"
-        "Seja objetivo. Não use bullets. Terceira pessoa.\n\n"
-        f"CONVERSA:\n{historico_texto}\n\nRESUMO:"
+        "Analise esta conversa terapêutica e retorne um JSON com:\n\n"
+        "1. \"resumo\": resumo em 3-5 frases corridas. Inclua: o que foi discutido, "
+        "diagnósticos mencionados, recomendações feitas, evolução percebida em relação "
+        "a sessões anteriores (se houver referência). Terceira pessoa.\n\n"
+        "2. \"temas_chave\": lista de 2-5 temas/condições discutidos "
+        "(ex: [\"ansiedade\", \"relação com pai\", \"elemento Água\"])\n\n"
+        "3. \"pontos_abertos\": questão principal que ficou sem resolver ou "
+        "próximo passo combinado (string curta ou null)\n\n"
+        "4. \"humor_percebido\": estado emocional predominante do paciente na sessão "
+        "(ex: \"ansioso\", \"esperançoso\", \"resistente\", \"aberto\") — uma palavra\n\n"
+        "5. \"nivel_engajamento\": 1 a 5 (1=paciente desinteressado, "
+        "5=muito engajado e participativo)\n\n"
+        "Responda SOMENTE com o JSON, sem markdown.\n\n"
+        f"CONVERSA:\n{historico_texto}"
     )
 
     settings = get_settings()
     try:
         import anthropic as _anthropic
+        import json as _json
         client = _anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
         resp = await client.messages.create(
             model="claude-haiku-4-5-20251001",
-            max_tokens=250,
+            max_tokens=500,
             messages=[{"role": "user", "content": prompt}],
         )
-        resumo = resp.content[0].text.strip()
-        logger.info(f"Resumo gerado para {numero_telefone}: {len(resumo)} chars")
-        return resumo
+        texto = resp.content[0].text.strip()
+
+        # Remover markdown se houver
+        if texto.startswith("```"):
+            texto = texto.split("\n", 1)[1].rsplit("```", 1)[0].strip()
+
+        try:
+            dados = _json.loads(texto)
+        except _json.JSONDecodeError:
+            # Fallback: usar o texto inteiro como resumo simples
+            logger.warning(f"Resumo não veio como JSON, usando como texto: {texto[:80]}")
+            dados = {"resumo": texto[:500]}
+
+        # Garantir campos
+        resultado = {
+            "resumo": (dados.get("resumo") or texto)[:500],
+            "temas_chave": dados.get("temas_chave") or [],
+            "pontos_abertos": dados.get("pontos_abertos"),
+            "humor_percebido": dados.get("humor_percebido"),
+            "nivel_engajamento": dados.get("nivel_engajamento"),
+        }
+
+        logger.info(
+            f"Resumo estruturado gerado para {numero_telefone}: "
+            f"{len(resultado['resumo'])} chars, "
+            f"{len(resultado['temas_chave'])} temas"
+        )
+        return resultado
+
     except Exception as e:
         logger.error(f"Erro ao gerar resumo de sessão: {e}")
         return None
@@ -455,12 +499,22 @@ async def gerar_resumo_sessao(
 async def salvar_resumo_sessao(
     terapeuta_id: str,
     numero_telefone: str,
-    resumo: str,
+    resumo: dict | str,
     total_mensagens: int,
 ) -> None:
-    """Persiste o resumo da sessão no banco."""
+    """Persiste o resumo da sessão no banco.
+
+    O resumo pode ser um dict estruturado (vindo de gerar_resumo_sessao)
+    ou uma string simples. Em ambos os casos, armazena como JSONB.
+    """
     supabase = get_supabase()
     agora = datetime.now(timezone.utc).isoformat()
+
+    # Normalizar: se for string, empacotar como dict
+    if isinstance(resumo, str):
+        resumo_dados = {"resumo": resumo}
+    else:
+        resumo_dados = resumo
 
     try:
         supabase.table("resumos_sessao").insert({
@@ -468,7 +522,7 @@ async def salvar_resumo_sessao(
             "numero_telefone": numero_telefone,
             "sessao_inicio": agora,
             "sessao_fim": agora,
-            "resumo": resumo,
+            "resumo": resumo_dados,
             "total_mensagens": total_mensagens,
         }).execute()
         logger.info(f"Resumo de sessão salvo para {numero_telefone}")
@@ -794,23 +848,47 @@ def formatar_memoria_para_prompt(
 
     if resumos:
         partes.append("\nSESSÕES ANTERIORES (do mais antigo ao mais recente):")
-        for resumo in resumos[-MAX_RESUMOS_NO_PROMPT:]:
-            data_raw = resumo.get("sessao_inicio", "")
+        for row in resumos[-MAX_RESUMOS_NO_PROMPT:]:
+            data_raw = row.get("sessao_inicio", "")
             try:
                 dt = datetime.fromisoformat(data_raw)
                 data_fmt = dt.strftime("%d/%m/%Y")
             except (ValueError, TypeError):
                 data_fmt = "data não disponível"
 
-            total_m = resumo.get("total_mensagens", 0)
-            texto_resumo = resumo.get("resumo", "")[:500]
-            partes.append(f"[{data_fmt} — {total_m} msgs] {texto_resumo}")
+            total_m = row.get("total_mensagens", 0)
+
+            # O campo 'resumo' pode ser dict (JSONB) ou string
+            resumo_raw = row.get("resumo", "")
+            if isinstance(resumo_raw, dict):
+                texto_resumo = str(resumo_raw.get("resumo", ""))[:500]
+                temas = resumo_raw.get("temas_chave", [])
+                humor = resumo_raw.get("humor_percebido", "")
+                engajamento = resumo_raw.get("nivel_engajamento")
+                pontos = resumo_raw.get("pontos_abertos", "")
+
+                linha = f"[{data_fmt} — {total_m} msgs] {texto_resumo}"
+                if temas:
+                    linha += f" | Temas: {', '.join(temas[:5])}"
+                if humor:
+                    linha += f" | Humor: {humor}"
+                if engajamento:
+                    linha += f" | Engajamento: {engajamento}/5"
+                if pontos:
+                    linha += f" | Pendente: {pontos}"
+                partes.append(linha)
+            else:
+                texto_resumo = str(resumo_raw)[:500]
+                partes.append(f"[{data_fmt} — {total_m} msgs] {texto_resumo}")
 
     partes.append(
-        "\nDIRETRIZ: Use este contexto para dar continuidade natural à conversa. "
+        "\nDIRETRIZ DE CONTINUIDADE: Use este contexto para dar continuidade natural. "
         "NÃO diga 'lembro que você disse' ou 'como mencionei antes'. "
-        "Retome o contexto de forma orgânica, como um colega que estava junto na última conversa. "
-        "Se o usuário trouxer algo que já apareceu antes, aprofunde sem precisar reexplicar o básico."
+        "Retome o contexto de forma orgânica, como um terapeuta que acompanha o caso. "
+        "Se o paciente trouxer algo que já apareceu antes, aprofunde sem reexplicar o básico. "
+        "IMPORTANTE: Compare a sessão atual com as anteriores — identifique evolução, "
+        "melhoras, pioras ou padrões recorrentes. Se houver progresso, reconheça. "
+        "Se houver estagnação ou piora, aborde com cuidado e empatia."
     )
 
     return "\n".join(partes)
