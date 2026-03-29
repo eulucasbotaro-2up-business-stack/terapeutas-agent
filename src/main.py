@@ -18,7 +18,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from src.core.config import get_settings
+from src.core.config import check_startup_config, get_settings
 from src.api.webhook import router as webhook_router
 from src.api.asaas_webhook import router as asaas_webhook_router
 from src.api.terapeutas import router as terapeutas_router
@@ -44,6 +44,9 @@ async def lifespan(app: FastAPI):
     print(f"  RAG Top K: {settings.RAG_TOP_K}")
     print("=" * 50)
 
+    # Verifica configurações críticas e emite warnings no log
+    check_startup_config()
+
     yield  # Aplicação rodando
 
     print("Terapeutas Agent - Encerrando...")
@@ -60,10 +63,17 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Configuração de CORS — permitir acesso do painel web
+# Configuração de CORS — origens controladas via ALLOWED_ORIGINS no .env
+# Em produção: ALLOWED_ORIGINS=https://meusite.com,https://portal.meusite.com
+_settings = get_settings()
+_allowed_origins = (
+    ["*"]
+    if _settings.ALLOWED_ORIGINS.strip() == "*"
+    else [o.strip() for o in _settings.ALLOWED_ORIGINS.split(",") if o.strip()]
+)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Em produção, restringir para o domínio do painel
+    allow_origins=_allowed_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )

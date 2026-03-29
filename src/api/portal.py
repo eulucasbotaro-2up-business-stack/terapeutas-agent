@@ -926,5 +926,45 @@ async def relatorio_diagnosticos(
     }
 
 
+@router.post("/auth/alterar-senha", summary="Alterar senha do terapeuta logado")
+async def alterar_senha(
+    body: dict,
+    authorization: str = Header(...),
+):
+    terapeuta_id = _get_terapeuta_id(authorization)
+    nova_senha = body.get("nova_senha", "")
+    if not nova_senha or len(nova_senha) < 8:
+        raise HTTPException(status_code=400, detail="Senha deve ter no mínimo 8 caracteres.")
+
+    sb = get_supabase()
+    senha_hash = bcrypt.hashpw(nova_senha.encode(), bcrypt.gensalt()).decode()
+    sb.table("portal_auth").update({"senha_hash": senha_hash}).eq("terapeuta_id", terapeuta_id).execute()
+    return {"ok": True}
+
+
+@router.put("/configuracoes", summary="Atualizar configurações do terapeuta (nome, nome_agente)")
+async def atualizar_configuracoes(
+    body: dict,
+    authorization: str = Header(...),
+):
+    terapeuta_id = _get_terapeuta_id(authorization)
+    campos_permitidos = {"nome", "nome_agente", "tom_de_voz", "contato_agendamento", "horario_atendimento"}
+    update_data = {k: v for k, v in body.items() if k in campos_permitidos and v is not None}
+    if not update_data:
+        raise HTTPException(status_code=400, detail="Nenhum campo válido para atualizar.")
+
+    sb = get_supabase()
+    sb.table("terapeutas").update(update_data).eq("id", terapeuta_id).execute()
+    return {"ok": True}
+
+
+@router.get("/documentos", summary="Lista documentos indexados do terapeuta")
+async def listar_documentos(authorization: str = Header(...)):
+    terapeuta_id = _get_terapeuta_id(authorization)
+    sb = get_supabase()
+    res = sb.table("documentos").select("id, nome_arquivo, status, total_chunks, criado_em").eq("terapeuta_id", terapeuta_id).order("criado_em", desc=True).execute()
+    return res.data or []
+
+
 def agora_utc_str() -> str:
     return datetime.now(timezone.utc).isoformat()

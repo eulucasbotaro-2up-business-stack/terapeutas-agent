@@ -3,11 +3,14 @@ Configurações centrais da aplicação.
 Carrega variáveis de ambiente do arquivo .env usando pydantic-settings.
 """
 
+import logging
 from functools import lru_cache
 from pathlib import Path
 
 from dotenv import load_dotenv
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+logger = logging.getLogger(__name__)
 
 # Caminho absoluto do .env (raiz do projeto)
 _ENV_FILE = Path(__file__).resolve().parent.parent.parent / ".env"
@@ -61,6 +64,12 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "trocar-em-producao"
     DATABASE_URL: str = ""
 
+    # --- CORS ---
+    # Origens permitidas separadas por vírgula. Use "*" para desenvolvimento.
+    # Em produção, restringir para o(s) domínio(s) do painel/portal.
+    # Ex: "https://meusite.com,https://portal.meusite.com"
+    ALLOWED_ORIGINS: str = "*"
+
     # --- Configurações do agente ---
     # Modelo Claude usado para respostas
     CLAUDE_MODEL: str = "claude-sonnet-4-6"
@@ -83,3 +92,39 @@ def get_settings() -> Settings:
     Usa lru_cache para garantir que só carrega uma vez.
     """
     return Settings()
+
+
+def check_startup_config() -> None:
+    """
+    Verifica configurações críticas na inicialização e emite warnings.
+    Não interrompe a execução — apenas avisa sobre problemas potenciais.
+    """
+    settings = get_settings()
+
+    # Chaves obrigatórias para funcionamento básico
+    required = {
+        "ANTHROPIC_API_KEY": settings.ANTHROPIC_API_KEY,
+        "OPENAI_API_KEY": settings.OPENAI_API_KEY,
+        "SUPABASE_URL": settings.SUPABASE_URL,
+        "SUPABASE_SERVICE_KEY": settings.SUPABASE_SERVICE_KEY,
+    }
+    for name, value in required.items():
+        if not value:
+            logger.warning("CONFIG: %s não configurada — funcionalidades dependentes falharão", name)
+
+    # Chaves importantes (uma ou outra deve estar configurada)
+    tem_evolution = bool(settings.EVOLUTION_API_URL and settings.EVOLUTION_API_KEY)
+    tem_meta = bool(settings.META_WHATSAPP_TOKEN and settings.META_PHONE_NUMBER_ID)
+    if not tem_evolution and not tem_meta:
+        logger.warning("CONFIG: nenhuma integração WhatsApp configurada (Evolution API ou Meta Cloud API)")
+
+    # SECRET_KEY padrão é insegura em produção
+    if settings.SECRET_KEY == "trocar-em-producao":
+        logger.warning(
+            "CONFIG: SECRET_KEY está com o valor padrão 'trocar-em-producao'. "
+            "Defina uma chave forte no .env antes de ir para produção."
+        )
+
+    # CORS aberto demais
+    if settings.ALLOWED_ORIGINS == "*":
+        logger.info("CONFIG: ALLOWED_ORIGINS=* (aberto). Em produção, defina os domínios no .env.")
