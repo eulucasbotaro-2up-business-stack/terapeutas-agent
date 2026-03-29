@@ -272,7 +272,7 @@ async def login(body: LoginIn):
 async def me(authorization: str = Header(...)):
     terapeuta_id = _get_terapeuta_id(authorization)
     sb = get_supabase()
-    res = sb.table("terapeutas").select("id, nome, email, especialidade, nome_agente, tom_voz").eq("id", terapeuta_id).limit(1).execute()
+    res = sb.table("terapeutas").select("id, nome, email, especialidade, nome_agente, tom_de_voz").eq("id", terapeuta_id).limit(1).execute()
     if not res.data:
         raise HTTPException(status_code=404, detail="Terapeuta não encontrado.")
 
