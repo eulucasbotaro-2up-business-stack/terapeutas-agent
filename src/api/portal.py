@@ -316,7 +316,7 @@ async def setup_senha(body: SetupSenhaIn, x_dashboard_token: str = Header(defaul
 async def _importar_pacientes_whatsapp(terapeuta_id: str) -> dict:
     """Importa perfis do WhatsApp (perfil_usuario) para a tabela pacientes."""
     sb = get_supabase()
-    perfis = sb.table("perfil_usuario").select("numero_telefone, nome_usuario, criado_em, ultima_sessao_em").eq("terapeuta_id", terapeuta_id).execute()
+    perfis = sb.table("perfil_usuario").select("numero_telefone, nome, criado_em, ultima_sessao_em").eq("terapeuta_id", terapeuta_id).execute()
 
     ja_existem_res = sb.table("pacientes").select("numero_telefone").eq("terapeuta_id", terapeuta_id).execute()
     ja_existem = {r["numero_telefone"] for r in (ja_existem_res.data or [])}
@@ -326,7 +326,7 @@ async def _importar_pacientes_whatsapp(terapeuta_id: str) -> dict:
         numero = p.get("numero_telefone")
         if not numero or numero in ja_existem:
             continue
-        nome = p.get("nome_usuario") or numero
+        nome = p.get("nome") or numero
         sb.table("pacientes").insert({
             "terapeuta_id": terapeuta_id,
             "numero_telefone": numero,
