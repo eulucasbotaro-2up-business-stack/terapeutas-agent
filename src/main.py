@@ -83,7 +83,7 @@ async def health_check():
         "status": "ok",
         "servico": "Terapeutas Agent API",
         "versao": "0.1.0",
-        "build": "c17302a-fix-retriever-mapa-guard",
+        "build": "feat-mapas-astrais-cache-db",
     }
 
 

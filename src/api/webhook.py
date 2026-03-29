@@ -1245,24 +1245,28 @@ async def _processar_mensagem(payload: dict) -> None:
                     logger.info(f"[Evolution] Pedindo ano de nascimento para mapa natal — {numero_paciente}")
                     return
 
-                # Guarda de duplicidade: se mapa já foi gerado nessa conversa, não regerar.
-                # Exceção: "refazer mapa" — usuário quer explicitamente um novo mapa.
-                # Verifica se alguma resposta do agente no histórico contém marcador de mapa enviado.
+                # Cache de mapas: consulta o banco antes de recalcular com Kerykeion.
+                # Se o mapa já existe para esse paciente+data+hora, injeta o JSON salvo.
+                # "refazer mapa" força nova geração e atualiza o cache.
                 _eh_refazer = _eh_pedido_refazer_mapa(texto_para_processar)
-                if not _eh_refazer and dados_nasc and not dados_nasc.get("falta_ano") and historico:
-                    for _h in historico[-20:]:
-                        _c = _h.get("content") or _h.get("conteudo") or _h.get("mensagem") or ""
-                        if _h.get("role") == "agente" and (
-                            "Calculando o mapa" in _c
-                            or "Mapa Natal —" in _c
-                            or "Mapa Alquimico —" in _c
-                            or "imagem do mapa" in _c.lower()
-                        ):
-                            logger.info(f"[Evolution] Mapa já gerado nessa conversa — ignorando reextração para {numero_paciente}")
-                            dados_nasc = None
-                            break
+                _mapa_json_cache = None
+                if dados_nasc and not dados_nasc.get("falta_ano") and not _eh_refazer:
+                    _mapa_json_cache = await asyncio.to_thread(
+                        _buscar_mapa_salvo, terapeuta_id, numero_paciente,
+                        dados_nasc["data"], dados_nasc["hora"],
+                    )
+                    if _mapa_json_cache:
+                        logger.info(
+                            f"[Evolution] Mapa em cache para {numero_paciente} "
+                            f"({dados_nasc['data']} {dados_nasc['hora']}) — injetando sem recalcular"
+                        )
+                        mapa_prefixo = (
+                            "MAPA NATAL CALCULADO AUTOMATICAMENTE (Swiss Ephemeris — dado preciso, nao alucinado):\n"
+                            f"{_mapa_json_cache}\n\n"
+                        )
+                        chunks_texto = mapa_prefixo + chunks_texto
 
-                if dados_nasc and not dados_nasc.get("falta_ano"):
+                if not _mapa_json_cache and dados_nasc and not dados_nasc.get("falta_ano"):
                     _nota_imagem_sp = ""
                     # Pré-mensagem: avisa que está gerando (melhora UX)
                     nome_nasc_pre = dados_nasc.get("nome", "")
@@ -1353,6 +1357,14 @@ async def _processar_mensagem(payload: dict) -> None:
                             f"{mapa_resultado}\n\n"
                         )
                         chunks_texto = mapa_prefixo + chunks_texto
+                        # Salvar mapa no banco para cache futuro (background — não bloqueia resposta)
+                        asyncio.create_task(asyncio.to_thread(
+                            _salvar_mapa,
+                            terapeuta_id, numero_paciente,
+                            dados_nasc.get("nome", ""), dados_nasc["data"],
+                            dados_nasc["hora"], dados_nasc["cidade"],
+                            mapa_resultado,
+                        ))
                         logger.info(
                             f"Mapa natal calculado para '{dados_nasc.get('nome')}' "
                             f"({dados_nasc['data']} {dados_nasc['hora']} em {dados_nasc['cidade']}) — Evolution"
@@ -1581,6 +1593,64 @@ def _eh_pedido_refazer_mapa(texto: str) -> bool:
     """Retorna True se o usuário está pedindo para reenviar/refazer o mapa."""
     texto_lower = texto.lower().strip()
     return any(kw in texto_lower for kw in KEYWORDS_REFAZER_MAPA)
+
+
+def _buscar_mapa_salvo(terapeuta_id: str, paciente_numero: str, data: str, hora: str) -> str | None:
+    """
+    Busca mapa_json salvo no banco para evitar recalcular com Kerykeion.
+    Chave: (terapeuta_id, numero_telefone, data_nascimento, hora_nascimento).
+    Retorna o mapa_json (texto) ou None se não existe.
+    """
+    try:
+        sb = get_supabase()
+        res = (
+            sb.table("mapas_astrais")
+            .select("mapa_json, nome")
+            .eq("terapeuta_id", terapeuta_id)
+            .eq("numero_telefone", paciente_numero)
+            .eq("data_nascimento", data)
+            .eq("hora_nascimento", hora)
+            .limit(1)
+            .execute()
+        )
+        if res.data:
+            return res.data[0]["mapa_json"]
+    except Exception as e:
+        logger.warning(f"Erro ao buscar mapa salvo: {e}")
+    return None
+
+
+def _salvar_mapa(
+    terapeuta_id: str,
+    paciente_numero: str,
+    nome: str,
+    data: str,
+    hora: str,
+    cidade: str,
+    mapa_json: str,
+) -> None:
+    """
+    Salva ou atualiza o mapa natal no banco (upsert por terapeuta+número+data+hora).
+    Chamado em background após geração bem-sucedida com Kerykeion.
+    """
+    try:
+        sb = get_supabase()
+        sb.table("mapas_astrais").upsert(
+            {
+                "terapeuta_id": terapeuta_id,
+                "numero_telefone": paciente_numero,
+                "nome": nome or "Paciente",
+                "data_nascimento": data,
+                "hora_nascimento": hora,
+                "cidade_nascimento": cidade,
+                "mapa_json": mapa_json,
+                "atualizado_em": datetime.now(timezone.utc).isoformat(),
+            },
+            on_conflict="terapeuta_id,numero_telefone,data_nascimento,hora_nascimento",
+        ).execute()
+        logger.info(f"Mapa salvo/atualizado no banco para {paciente_numero} ({data} {hora})")
+    except Exception as e:
+        logger.warning(f"Erro ao salvar mapa no banco: {e}")
 
 
 # =============================================
@@ -2402,23 +2472,28 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                     logger.info(f"[Meta] Pedindo ano de nascimento para mapa natal — {numero_paciente}")
                     return
 
-                # Guarda de duplicidade: se mapa já foi gerado nessa conversa, não regerar.
-                # Exceção: "refazer mapa" — usuário quer explicitamente um novo mapa.
+                # Cache de mapas: consulta o banco antes de recalcular com Kerykeion.
+                # Se o mapa já existe para esse paciente+data+hora, injeta o JSON salvo.
+                # "refazer mapa" força nova geração e atualiza o cache.
                 _eh_refazer = _eh_pedido_refazer_mapa(texto_para_processar)
-                if not _eh_refazer and dados_nasc and not dados_nasc.get("falta_ano") and historico:
-                    for _h in historico[-20:]:
-                        _c = _h.get("content") or _h.get("conteudo") or _h.get("mensagem") or ""
-                        if _h.get("role") == "agente" and (
-                            "Calculando o mapa" in _c
-                            or "Mapa Natal —" in _c
-                            or "Mapa Alquimico —" in _c
-                            or "imagem do mapa" in _c.lower()
-                        ):
-                            logger.info(f"[Meta] Mapa já gerado nessa conversa — ignorando reextração para {numero_paciente}")
-                            dados_nasc = None
-                            break
+                _mapa_json_cache = None
+                if dados_nasc and not dados_nasc.get("falta_ano") and not _eh_refazer:
+                    _mapa_json_cache = await asyncio.to_thread(
+                        _buscar_mapa_salvo, terapeuta_id, numero_paciente,
+                        dados_nasc["data"], dados_nasc["hora"],
+                    )
+                    if _mapa_json_cache:
+                        logger.info(
+                            f"[Meta] Mapa em cache para {numero_paciente} "
+                            f"({dados_nasc['data']} {dados_nasc['hora']}) — injetando sem recalcular"
+                        )
+                        mapa_prefixo = (
+                            "MAPA NATAL CALCULADO AUTOMATICAMENTE (Swiss Ephemeris — dado preciso, nao alucinado):\n"
+                            f"{_mapa_json_cache}\n\n"
+                        )
+                        chunks_texto = mapa_prefixo + chunks_texto
 
-                if dados_nasc and not dados_nasc.get("falta_ano"):
+                if not _mapa_json_cache and dados_nasc and not dados_nasc.get("falta_ano"):
                     _nota_imagem_sp = ""
                     # Pré-mensagem: avisa que está gerando (melhora UX)
                     nome_nasc_pre = dados_nasc.get("nome", "")
@@ -2512,6 +2587,14 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                             f"{mapa_resultado}\n\n"
                         )
                         chunks_texto = mapa_prefixo + chunks_texto
+                        # Salvar mapa no banco para cache futuro (background — não bloqueia resposta)
+                        asyncio.create_task(asyncio.to_thread(
+                            _salvar_mapa,
+                            terapeuta_id, numero_paciente,
+                            dados_nasc.get("nome", ""), dados_nasc["data"],
+                            dados_nasc["hora"], dados_nasc["cidade"],
+                            mapa_resultado,
+                        ))
                         logger.info(
                             f"Mapa natal calculado para '{dados_nasc.get('nome')}' "
                             f"({dados_nasc['data']} {dados_nasc['hora']} em {dados_nasc['cidade']}) — Meta"
