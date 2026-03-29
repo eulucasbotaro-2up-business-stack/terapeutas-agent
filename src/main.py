@@ -93,7 +93,7 @@ async def health_check():
         "status": "ok",
         "servico": "Terapeutas Agent API",
         "versao": "0.1.0",
-        "build": "feat-mapas-astrais-cache-db",
+        "build": "feat-ceo-improvements-v2",
     }
 
 
