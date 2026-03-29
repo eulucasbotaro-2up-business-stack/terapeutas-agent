@@ -101,16 +101,24 @@ async def health_check():
 async def verificar_config():
     """
     Verifica quais configurações estão preenchidas (sem expor valores sensíveis).
+    ATENÇÃO: campos *_key_presente indicam apenas que a variável existe no .env —
+    não garantem que a chave é válida ou que o serviço está funcionando.
     Útil para debug durante setup.
     """
     settings = get_settings()
+
+    # Asaas: chave válida começa com '$aact_' (produção) ou '$aaah_' (sandbox)
+    asaas_key = settings.ASAAS_API_KEY
+    asaas_key_valida = bool(asaas_key and (asaas_key.startswith("$aact_") or asaas_key.startswith("$aaah_")))
+
     return {
-        "anthropic_configurado": bool(settings.ANTHROPIC_API_KEY),
-        "openai_configurado": bool(settings.OPENAI_API_KEY),
+        "anthropic_key_presente": bool(settings.ANTHROPIC_API_KEY),
+        "openai_key_presente": bool(settings.OPENAI_API_KEY),
         "supabase_configurado": bool(settings.SUPABASE_URL and settings.SUPABASE_SERVICE_KEY),
         "evolution_configurado": bool(settings.EVOLUTION_API_URL and settings.EVOLUTION_API_KEY),
         "meta_cloud_configurado": bool(settings.META_WHATSAPP_TOKEN and settings.META_PHONE_NUMBER_ID),
-        "asaas_configurado": bool(settings.ASAAS_API_KEY),
+        "asaas_key_presente": bool(asaas_key),
+        "asaas_key_valida": asaas_key_valida,  # false se chave for placeholder ou formato errado
         "modelo_llm": settings.CLAUDE_MODEL,
         "modelo_embedding": settings.EMBEDDING_MODEL,
     }
