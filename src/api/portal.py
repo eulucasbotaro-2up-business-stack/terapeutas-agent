@@ -845,7 +845,7 @@ async def listar_mapas(
         return {"mapas": [], "total": 0}
 
     offset = (pagina - 1) * por_pagina
-    res = sb.table("mapas_astrais").select("id, numero_telefone, data_nascimento, imagem_url, criado_em").in_("numero_telefone", numeros).order("criado_em", desc=True).range(offset, offset + por_pagina - 1).execute()
+    res = sb.table("mapas_astrais").select("id, numero_telefone, nome, data_nascimento, hora_nascimento, cidade_nascimento, mapa_json, imagem_url, criado_em").in_("numero_telefone", numeros).order("criado_em", desc=True).range(offset, offset + por_pagina - 1).execute()
 
     # Enriquecer com nome do paciente
     mapas = res.data or []
