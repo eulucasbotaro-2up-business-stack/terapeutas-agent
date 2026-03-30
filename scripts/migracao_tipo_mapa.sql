@@ -36,3 +36,11 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_mapas_tipo_unico
 -- 6. Recriar índice antigo como não-unique para compatibilidade de queries
 CREATE INDEX IF NOT EXISTS idx_mapas_legado
   ON mapas_astrais (terapeuta_id, numero_telefone, data_nascimento, hora_nascimento);
+
+-- ============================================================================
+-- MIGRAÇÃO: hora_prevista em acompanhamentos
+-- ============================================================================
+
+-- 7. Adicionar coluna hora_prevista para horário das atividades
+ALTER TABLE acompanhamentos
+  ADD COLUMN IF NOT EXISTS hora_prevista TEXT;

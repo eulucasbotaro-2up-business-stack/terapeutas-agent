@@ -24,6 +24,8 @@ Endpoints:
   POST /portal/api/acompanhamentos
   PUT  /portal/api/acompanhamentos/{id}
 
+  GET  /portal/api/conversas                → todas as conversas (agrupáveis por paciente)
+
   GET  /portal/api/mapas
   GET  /portal/api/mapas/{id}
 
@@ -194,6 +196,7 @@ class AcompanhamentoIn(BaseModel):
     tipo: Optional[str] = "retorno"
     descricao: str
     data_prevista: Optional[str] = None
+    hora_prevista: Optional[str] = None
     prioridade: Optional[int] = 2
 
 
@@ -201,6 +204,7 @@ class AcompanhamentoUpdate(BaseModel):
     tipo: Optional[str] = None
     descricao: Optional[str] = None
     data_prevista: Optional[str] = None
+    hora_prevista: Optional[str] = None
     data_realizado: Optional[str] = None
     status: Optional[str] = None
     prioridade: Optional[int] = None
@@ -531,7 +535,10 @@ async def get_timeline(paciente_id: str, authorization: str = Header(...)):
         eventos.append({"tipo": f"anotacao_{a['tipo']}", "data": a["data_anotacao"], "resumo": a.get("titulo") or (a.get("conteudo") or "")[:80], "id": a["id"]})
 
     # Mapas
-    mapas = sb.table("mapas_astrais").select("id, criado_em, data_nascimento, tipo_mapa").eq("numero_telefone", numero).execute()
+    try:
+        mapas = sb.table("mapas_astrais").select("id, criado_em, data_nascimento, tipo_mapa").eq("numero_telefone", numero).execute()
+    except Exception:
+        mapas = sb.table("mapas_astrais").select("id, criado_em, data_nascimento").eq("numero_telefone", numero).execute()
     for m in (mapas.data or []):
         tipo_label = m.get("tipo_mapa") or "Mapa Natal"
         eventos.append({"tipo": "mapa_natal", "data": m["criado_em"], "resumo": f"{tipo_label} — {m.get('data_nascimento') or ''}", "id": m["id"]})
@@ -776,22 +783,27 @@ async def listar_acompanhamentos(
     return {"acompanhamentos": res.data or []}
 
 
-@router.get("/acompanhamentos/agenda", summary="Agenda dos próximos 7 dias")
+@router.get("/acompanhamentos/agenda", summary="Agenda dos próximos 7 dias + atrasados")
 async def get_agenda(authorization: str = Header(...)):
     terapeuta_id = _get_terapeuta_id(authorization)
     sb = get_supabase()
     hoje = datetime.now(timezone.utc).date()
     em_7_dias = (hoje + timedelta(days=7)).isoformat()
 
+    # Buscar pendentes: atrasados (sem limite inferior) + próximos 7 dias
     res = sb.table("acompanhamentos").select("*, pacientes(nome, numero_telefone)").eq("terapeuta_id", terapeuta_id).eq("status", "pendente").lte("data_prevista", em_7_dias).order("data_prevista").execute()
 
-    # Agrupar por data
+    # Agrupar por data e ordenar itens por hora_prevista
     agenda: dict = {}
     for a in (res.data or []):
         data = a.get("data_prevista") or "sem_data"
         if data not in agenda:
             agenda[data] = []
         agenda[data].append(a)
+
+    # Ordenar itens dentro de cada dia por hora_prevista
+    for data in agenda:
+        agenda[data].sort(key=lambda x: x.get("hora_prevista") or "23:59")
 
     return {"agenda": agenda, "hoje": hoje.isoformat()}
 
@@ -816,6 +828,41 @@ async def atualizar_acompanhamento(acomp_id: str, body: AcompanhamentoUpdate, au
         data["data_realizado"] = datetime.now(timezone.utc).date().isoformat()
     res = sb.table("acompanhamentos").update(data).eq("id", acomp_id).eq("terapeuta_id", terapeuta_id).execute()
     return res.data[0] if res.data else {}
+
+
+# ─── CONVERSAS WHATSAPP ──────────────────────────────────────────────────────
+
+@router.get("/conversas", summary="Todas as conversas do terapeuta (agrupáveis por paciente)")
+async def listar_conversas(
+    authorization: str = Header(...),
+    limite: int = Query(200, ge=1, le=500),
+):
+    terapeuta_id = _get_terapeuta_id(authorization)
+    sb = get_supabase()
+
+    # Buscar conversas com join de pacientes para obter o nome
+    res = (
+        sb.table("conversas")
+        .select("id, paciente_numero, mensagem_paciente, resposta_agente, intencao, criado_em")
+        .eq("terapeuta_id", terapeuta_id)
+        .order("criado_em", desc=True)
+        .limit(limite)
+        .execute()
+    )
+
+    # Enriquecer com nomes de pacientes
+    conversas = res.data or []
+    numeros = list(set(c["paciente_numero"] for c in conversas if c.get("paciente_numero")))
+    nomes_map = {}
+    if numeros:
+        pac_res = sb.table("pacientes").select("numero_telefone, nome").eq("terapeuta_id", terapeuta_id).in_("numero_telefone", numeros).execute()
+        for p in (pac_res.data or []):
+            nomes_map[p["numero_telefone"]] = p["nome"]
+
+    for c in conversas:
+        c["paciente_nome"] = nomes_map.get(c["paciente_numero"], c["paciente_numero"])
+
+    return {"conversas": conversas}
 
 
 # ─── MAPAS NATAIS ────────────────────────────────────────────────────────────
