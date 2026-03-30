@@ -199,7 +199,7 @@
             <form @submit.prevent="verificarCodigoRecuperacao()">
                 <div class="flex justify-center gap-2 mb-4">
                     <template x-for="(digit, index) in recuperarForm.codigoDigits" :key="index">
-                        <input type="text" maxlength="1" class="code-input"
+                        <input type="text" inputmode="numeric" maxlength="1" class="code-input"
                             :id="'code-' + index"
                             x-model="recuperarForm.codigoDigits[index]"
                             @input="handleCodeInput($event, index)"
@@ -734,7 +734,7 @@
                 <div class="flex-1 bg-white rounded-xl border border-gray-200 overflow-hidden flex flex-col" :class="conversaSelecionada ? 'flex' : 'hidden sm:flex'">
                     <!-- Header do chat -->
                     <div x-show="conversaSelecionada" class="px-4 py-3 border-b border-gray-100 bg-gray-50 flex items-center gap-3">
-                        <button @click="conversaSelecionada = null" class="sm:hidden w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-600">
+                        <button @click="conversaSelecionada = null" class="sm:hidden w-11 h-11 rounded-full bg-gray-200 flex items-center justify-center text-gray-600" aria-label="Voltar">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
                         </button>
                         <div class="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0"
