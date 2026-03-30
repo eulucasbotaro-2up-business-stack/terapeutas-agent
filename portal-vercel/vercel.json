@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/portal/api/:path*",
+      "destination": "https://modest-respect-production.up.railway.app/portal/api/:path*"
+    }
+  ]
+}

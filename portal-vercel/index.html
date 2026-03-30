@@ -1,0 +1,2841 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal do Terapeuta</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"></script>
+    <style>
+        [x-cloak] { display: none !important; }
+        :root { --roxo: #7B2FBE; --ouro: #D4AF37; }
+        /* Prevent horizontal overflow globally */
+        html, body { overflow-x: hidden; max-width: 100vw; }
+        /* Safe area for notched devices */
+        @supports (padding: env(safe-area-inset-bottom)) {
+            .main-content { padding-bottom: env(safe-area-inset-bottom); }
+        }
+        .sidebar-link { transition: all 0.2s; border-radius: 8px; }
+        .sidebar-link:hover { background: rgba(255,255,255,0.1); }
+        .sidebar-link.active { background: rgba(123,47,190,0.6); }
+        .spinner { border: 3px solid #E5E7EB; border-top-color: #7B2FBE; border-radius: 50%; width: 24px; height: 24px; animation: spin 0.6s linear infinite; display: inline-block; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .fade-in { animation: fadeIn 0.3s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+        .badge { display: inline-flex; align-items: center; padding: 2px 10px; border-radius: 9999px; font-size: 0.72rem; font-weight: 600; }
+        .badge-ativo { background: #D1FAE5; color: #065F46; }
+        .badge-inativo { background: #F3F4F6; color: #6B7280; }
+        .badge-arquivado { background: #FEE2E2; color: #991B1B; }
+        .badge-pendente { background: #FEF3C7; color: #92400E; }
+        .badge-realizado { background: #D1FAE5; color: #065F46; }
+        .badge-cancelado { background: #FEE2E2; color: #991B1B; }
+        .badge-adiado { background: #F3F4F6; color: #6B7280; }
+        .badge-rascunho { background: #EDE9FE; color: #5B21B6; }
+        .badge-finalizado { background: #D1FAE5; color: #065F46; }
+        .badge-trial { background: #DBEAFE; color: #1E40AF; }
+        .badge-vencido { background: #FEE2E2; color: #991B1B; }
+        .badge-pago { background: #D1FAE5; color: #065F46; }
+        .badge-falhou { background: #FEE2E2; color: #991B1B; }
+        /* Tipos de acompanhamento */
+        .badge-retorno { background: #DBEAFE; color: #1E40AF; }
+        .badge-floral { background: #D1FAE5; color: #065F46; }
+        .badge-tarefa { background: #FEF3C7; color: #92400E; }
+        .badge-contato { background: #F3E8FF; color: #6B21A8; }
+        .badge-marco { background: #FEE2E2; color: #991B1B; }
+        .card { background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); padding: 0.875rem; transition: box-shadow 0.2s; }
+        .card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .card-static { background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); padding: 0.875rem; }
+        @media (min-width: 640px) {
+            .card { padding: 1.25rem; }
+            .card-static { padding: 1.25rem; }
+        }
+        .btn-primary { background: #7B2FBE; color: white; padding: 10px 16px; border-radius: 8px; font-weight: 500; font-size: 0.875rem; transition: all 0.2s; cursor: pointer; min-height: 44px; }
+        .btn-primary:hover { background: #6b26a8; transform: translateY(-1px); }
+        .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+        .btn-ouro { background: #D4AF37; color: #1a1a1a; padding: 10px 16px; border-radius: 8px; font-weight: 600; font-size: 0.875rem; transition: all 0.2s; cursor: pointer; min-height: 44px; }
+        .btn-ouro:hover { background: #c49b2e; transform: translateY(-1px); }
+        .btn-ghost { background: transparent; color: #6B7280; padding: 10px 16px; border-radius: 8px; font-weight: 500; font-size: 0.875rem; border: 1px solid #E5E7EB; transition: all 0.2s; cursor: pointer; min-height: 44px; }
+        .btn-ghost:hover { background: #F9FAFB; border-color: #D1D5DB; }
+        .btn-danger { background: #EF4444; color: white; padding: 10px 16px; border-radius: 8px; font-weight: 500; font-size: 0.875rem; transition: all 0.2s; cursor: pointer; min-height: 44px; }
+        .btn-danger:hover { background: #DC2626; }
+        .input { border: 1px solid #D1D5DB; border-radius: 8px; padding: 10px 12px; font-size: 1rem; outline: none; width: 100%; transition: border-color 0.2s, box-shadow 0.2s; min-height: 44px; }
+        .input:focus { border-color: #7B2FBE; box-shadow: 0 0 0 2px rgba(123,47,190,0.15); }
+        .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 50; display: flex; align-items: center; justify-content: center; padding: 1rem; }
+        .modal-box { background: white; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.2); width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; }
+        @media (max-width: 640px) {
+            .modal-backdrop { padding: 0; align-items: stretch; }
+            .modal-box, .modal-box.max-w-4xl { max-width: 100% !important; max-height: 100vh; border-radius: 0; height: 100%; }
+        }
+        .timeline-item { position: relative; padding-left: 28px; }
+        .timeline-item::before { content: ''; position: absolute; left: 8px; top: 0; bottom: 0; width: 2px; background: #E5E7EB; }
+        .timeline-item::after { content: ''; position: absolute; left: 3px; top: 8px; width: 12px; height: 12px; border-radius: 50%; background: #7B2FBE; border: 2px solid white; box-shadow: 0 0 0 2px #7B2FBE; }
+        .urgente { border-left: 3px solid #EF4444; }
+        .prioridade-1 { border-left: 3px solid #EF4444; }
+        .prioridade-2 { border-left: 3px solid #F59E0B; }
+        .prioridade-3 { border-left: 3px solid #10B981; }
+        /* Mobile sidebar */
+        .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 35; }
+        @media (max-width: 768px) {
+            .sidebar-desktop { transform: translateX(-100%); transition: transform 0.3s; }
+            .sidebar-desktop.open { transform: translateX(0); }
+            .sidebar-overlay.open { display: block; }
+            .main-content { margin-left: 0 !important; }
+        }
+        /* Mobile touch-friendly overrides */
+        @media (max-width: 640px) {
+            .sidebar-link { min-height: 44px; display: flex; align-items: center; }
+            .btn-ghost, .btn-primary, .btn-ouro, .btn-danger { min-height: 44px; }
+            .touch-target { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+        }
+        /* Hide scrollbar on horizontal-scroll tabs but keep scrollable */
+        .overflow-x-auto::-webkit-scrollbar { height: 0; width: 0; }
+        .overflow-x-auto { scrollbar-width: none; -ms-overflow-style: none; }
+        /* Code input for recovery */
+        .code-input { width: 42px; height: 50px; text-align: center; font-size: 1.25rem; font-weight: 700; border: 2px solid #D1D5DB; border-radius: 12px; outline: none; transition: border-color 0.2s; }
+        @media (min-width: 640px) {
+            .code-input { width: 48px; height: 56px; font-size: 1.5rem; }
+        }
+        .code-input:focus { border-color: #7B2FBE; box-shadow: 0 0 0 3px rgba(123,47,190,0.15); }
+        /* Progress steps */
+        .step-dot { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; transition: all 0.3s; }
+        .step-dot.active { background: #7B2FBE; color: white; }
+        .step-dot.completed { background: #10B981; color: white; }
+        .step-dot.pending { background: #E5E7EB; color: #9CA3AF; }
+        .step-line { height: 2px; flex: 1; transition: background 0.3s; }
+        .step-line.active { background: #7B2FBE; }
+        .step-line.pending { background: #E5E7EB; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen" x-data="portalApp()" x-init="init()" x-cloak>
+
+<!-- ══════════════════════════════════════════════
+     TELA DE LOGIN
+══════════════════════════════════════════════ -->
+<div x-show="!autenticado" class="fixed inset-0 z-50 flex items-center justify-center" style="background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #1e1b4b 100%);">
+    <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md mx-4 fade-in">
+
+        <!-- Login Form -->
+        <div x-show="recuperarSenhaStep === 0">
+            <div class="text-center mb-8">
+                <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4" style="background: linear-gradient(135deg, #7B2FBE, #D4AF37);">
+                    <span class="text-white text-3xl">&#9883;</span>
+                </div>
+                <h1 class="text-2xl font-bold text-gray-900">Portal do Terapeuta</h1>
+                <p class="text-gray-500 mt-1 text-sm">Acesse sua pratica clinica</p>
+            </div>
+            <form @submit.prevent="login()">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">E-mail</label>
+                    <input type="email" x-model="loginForm.email" class="input" placeholder="seu@email.com" autofocus required>
+                </div>
+                <div class="mb-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Senha</label>
+                    <input type="password" x-model="loginForm.senha" class="input" placeholder="Sua senha" required>
+                </div>
+                <p x-show="loginErro" x-text="loginErro" class="text-red-500 text-sm mt-2"></p>
+                <button type="submit" class="btn-primary w-full mt-5 py-2.5 text-base" :disabled="loginLoading">
+                    <span x-show="!loginLoading">Entrar</span>
+                    <span x-show="loginLoading" class="inline-flex items-center gap-2"><span class="spinner" style="width:18px;height:18px;border-width:2px;border-top-color:white;"></span> Entrando...</span>
+                </button>
+            </form>
+            <div class="text-center mt-4">
+                <button @click="iniciarRecuperarSenha()" class="text-sm text-purple-600 hover:text-purple-800 hover:underline transition min-h-[44px] px-4 py-2">
+                    Esqueceu a senha?
+                </button>
+            </div>
+            <p class="text-center text-xs text-gray-400 mt-6">Terapeutas Agent &copy; 2UP Business</p>
+        </div>
+
+        <!-- Password Recovery Step 1: Enter Email -->
+        <div x-show="recuperarSenhaStep === 1" class="fade-in">
+            <div class="text-center mb-6">
+                <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-3 bg-purple-100">
+                    <span class="text-2xl">&#128274;</span>
+                </div>
+                <h2 class="text-xl font-bold text-gray-900">Recuperar Senha</h2>
+                <p class="text-gray-500 text-sm mt-1">Informe seu e-mail para receber um codigo de verificacao via WhatsApp</p>
+            </div>
+            <!-- Progress Steps -->
+            <div class="flex items-center justify-center gap-2 mb-6">
+                <div class="step-dot active">1</div>
+                <div class="step-line pending"></div>
+                <div class="step-dot pending">2</div>
+                <div class="step-line pending"></div>
+                <div class="step-dot pending">3</div>
+            </div>
+            <form @submit.prevent="enviarCodigoRecuperacao()">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">E-mail cadastrado</label>
+                    <input type="email" x-model="recuperarForm.email" class="input" placeholder="seu@email.com" required>
+                </div>
+                <p x-show="recuperarErro" x-text="recuperarErro" class="text-red-500 text-sm mb-3"></p>
+                <button type="submit" class="btn-primary w-full py-2.5" :disabled="recuperarLoading">
+                    <span x-show="!recuperarLoading">Enviar codigo</span>
+                    <span x-show="recuperarLoading" class="inline-flex items-center gap-2"><span class="spinner" style="width:18px;height:18px;border-width:2px;border-top-color:white;"></span> Enviando...</span>
+                </button>
+            </form>
+            <button @click="recuperarSenhaStep = 0" class="w-full text-center text-sm text-gray-500 hover:text-gray-700 mt-4 transition min-h-[44px] py-2">
+                &#8592; Voltar ao login
+            </button>
+        </div>
+
+        <!-- Password Recovery Step 2: Enter Code -->
+        <div x-show="recuperarSenhaStep === 2" class="fade-in">
+            <div class="text-center mb-6">
+                <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-3 bg-green-100">
+                    <span class="text-2xl">&#128241;</span>
+                </div>
+                <h2 class="text-xl font-bold text-gray-900">Verificar Codigo</h2>
+                <p class="text-gray-500 text-sm mt-1">Digite o codigo de 6 digitos enviado para seu WhatsApp</p>
+            </div>
+            <!-- Progress Steps -->
+            <div class="flex items-center justify-center gap-2 mb-6">
+                <div class="step-dot completed">&#10003;</div>
+                <div class="step-line active"></div>
+                <div class="step-dot active">2</div>
+                <div class="step-line pending"></div>
+                <div class="step-dot pending">3</div>
+            </div>
+            <form @submit.prevent="verificarCodigoRecuperacao()">
+                <div class="flex justify-center gap-2 mb-4">
+                    <template x-for="(digit, index) in recuperarForm.codigoDigits" :key="index">
+                        <input type="text" maxlength="1" class="code-input"
+                            :id="'code-' + index"
+                            x-model="recuperarForm.codigoDigits[index]"
+                            @input="handleCodeInput($event, index)"
+                            @keydown.backspace="handleCodeBackspace($event, index)"
+                            @paste="handleCodePaste($event)">
+                    </template>
+                </div>
+                <p x-show="recuperarErro" x-text="recuperarErro" class="text-red-500 text-sm mb-3 text-center"></p>
+                <button type="submit" class="btn-primary w-full py-2.5" :disabled="recuperarLoading">
+                    <span x-show="!recuperarLoading">Verificar</span>
+                    <span x-show="recuperarLoading" class="inline-flex items-center gap-2"><span class="spinner" style="width:18px;height:18px;border-width:2px;border-top-color:white;"></span> Verificando...</span>
+                </button>
+            </form>
+            <div class="text-center mt-4">
+                <button @click="enviarCodigoRecuperacao()" class="text-sm text-purple-600 hover:underline min-h-[44px] px-4 py-2" :disabled="recuperarLoading">Reenviar codigo</button>
+            </div>
+            <button @click="recuperarSenhaStep = 1" class="w-full text-center text-sm text-gray-500 hover:text-gray-700 mt-2 transition min-h-[44px] py-2">
+                &#8592; Alterar e-mail
+            </button>
+        </div>
+
+        <!-- Password Recovery Step 3: New Password -->
+        <div x-show="recuperarSenhaStep === 3" class="fade-in">
+            <div class="text-center mb-6">
+                <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-3 bg-yellow-100">
+                    <span class="text-2xl">&#128273;</span>
+                </div>
+                <h2 class="text-xl font-bold text-gray-900">Nova Senha</h2>
+                <p class="text-gray-500 text-sm mt-1">Defina sua nova senha de acesso</p>
+            </div>
+            <!-- Progress Steps -->
+            <div class="flex items-center justify-center gap-2 mb-6">
+                <div class="step-dot completed">&#10003;</div>
+                <div class="step-line active"></div>
+                <div class="step-dot completed">&#10003;</div>
+                <div class="step-line active"></div>
+                <div class="step-dot active">3</div>
+            </div>
+            <form @submit.prevent="redefinirSenhaRecuperacao()">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Nova senha</label>
+                    <input type="password" x-model="recuperarForm.novaSenha" class="input" placeholder="Minimo 8 caracteres" required>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Confirmar nova senha</label>
+                    <input type="password" x-model="recuperarForm.confirmarSenha" class="input" placeholder="Repita a senha" required>
+                </div>
+                <p x-show="recuperarErro" x-text="recuperarErro" class="text-red-500 text-sm mb-3"></p>
+                <button type="submit" class="btn-primary w-full py-2.5" :disabled="recuperarLoading">
+                    <span x-show="!recuperarLoading">Redefinir senha</span>
+                    <span x-show="recuperarLoading" class="inline-flex items-center gap-2"><span class="spinner" style="width:18px;height:18px;border-width:2px;border-top-color:white;"></span> Redefinindo...</span>
+                </button>
+            </form>
+        </div>
+
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     LAYOUT PRINCIPAL
+══════════════════════════════════════════════ -->
+<div x-show="autenticado" class="flex min-h-screen fade-in">
+
+    <!-- Mobile sidebar overlay -->
+    <div class="sidebar-overlay" :class="sidebarOpen ? 'open' : ''" @click="sidebarOpen = false"></div>
+
+    <!-- SIDEBAR -->
+    <aside class="w-64 bg-indigo-950 text-white flex flex-col flex-shrink-0 fixed h-full z-40 sidebar-desktop" :class="sidebarOpen ? 'open' : ''">
+        <div class="p-5 border-b border-indigo-800">
+            <div class="flex items-center gap-2">
+                <span class="text-2xl">&#9883;</span>
+                <span class="text-lg font-bold" x-text="terapeuta?.nome_agente || 'Portal'"></span>
+            </div>
+            <p class="text-indigo-300 text-xs mt-0.5" x-text="terapeuta?.email || ''"></p>
+        </div>
+
+        <nav class="flex-1 p-3 space-y-1 overflow-y-auto">
+            <template x-for="item in menuItems" :key="item.id">
+                <button @click="navegar(item.id); sidebarOpen = false"
+                    class="sidebar-link w-full flex items-center gap-3 px-3 py-3 text-sm text-left min-h-[44px]"
+                    :class="secao === item.id ? 'active text-white' : 'text-indigo-200'">
+                    <span x-text="item.icon" class="text-lg w-6 text-center"></span>
+                    <span x-text="item.label"></span>
+                    <span x-show="item.badge && item.badge > 0"
+                        class="ml-auto bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 min-w-[20px] text-center"
+                        x-text="item.badge"></span>
+                </button>
+            </template>
+        </nav>
+
+        <div class="p-3 border-t border-indigo-800">
+            <button @click="logout()" class="sidebar-link w-full flex items-center gap-3 px-3 py-3 text-sm text-indigo-300 hover:text-white min-h-[44px]">
+                <span class="text-lg w-6 text-center">&#x2197;</span>
+                <span>Sair</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- CONTEUDO PRINCIPAL -->
+    <main class="flex-1 ml-64 min-h-screen main-content">
+
+        <!-- TOPBAR -->
+        <header class="bg-white border-b border-gray-100 px-4 md:px-6 py-4 flex items-center justify-between sticky top-0 z-30">
+            <div class="flex items-center gap-3">
+                <!-- Mobile menu button -->
+                <button @click="sidebarOpen = !sidebarOpen" class="md:hidden text-gray-600 hover:text-gray-900 p-2 -ml-2 rounded-lg min-w-[44px] min-h-[44px] flex items-center justify-center">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                </button>
+                <div>
+                    <h2 class="font-semibold text-gray-900 text-base" x-text="tituloSecao"></h2>
+                    <p class="text-xs text-gray-400" x-text="new Date().toLocaleDateString('pt-BR', {weekday:'long', day:'numeric', month:'long'})"></p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <span x-show="loading" class="spinner"></span>
+                <!-- Notification bell -->
+                <button class="relative p-2.5 text-gray-400 hover:text-gray-600 transition rounded-lg min-w-[44px] min-h-[44px] flex items-center justify-center" @click="navegar('acompanhamentos')">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+                    <span x-show="notificationCount > 0"
+                        class="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center"
+                        x-text="notificationCount"></span>
+                </button>
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold"
+                        style="background: linear-gradient(135deg, #7B2FBE, #D4AF37);"
+                        x-text="terapeuta?.nome?.charAt(0)?.toUpperCase() || 'T'"></div>
+                    <span class="text-sm font-medium text-gray-700 hidden sm:inline" x-text="terapeuta?.nome?.split(' ')[0] || ''"></span>
+                </div>
+            </div>
+        </header>
+
+        <div class="p-4 md:p-6">
+
+        <!-- ── DASHBOARD ──────────────────────────────── -->
+        <div x-show="secao === 'dashboard'" class="fade-in">
+            <!-- Stats cards -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+                <div class="card-static">
+                    <p class="text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wide">Pacientes Ativos</p>
+                    <p class="text-2xl sm:text-3xl font-bold text-gray-900 mt-1" x-text="stats.pacientes_ativos ?? '—'"></p>
+                    <p class="text-[10px] sm:text-xs text-gray-400 mt-1">total cadastrados</p>
+                </div>
+                <div class="card-static">
+                    <p class="text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wide">Sessoes Hoje</p>
+                    <p class="text-2xl sm:text-3xl font-bold mt-1" style="color:#7B2FBE" x-text="stats.sessoes_hoje ?? '—'"></p>
+                    <p class="text-[10px] sm:text-xs text-gray-400 mt-1">acompanhamentos</p>
+                </div>
+                <div class="card-static">
+                    <p class="text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wide">Pendencias</p>
+                    <p class="text-2xl sm:text-3xl font-bold text-amber-500 mt-1" x-text="stats.pendencias ?? '—'"></p>
+                    <p class="text-[10px] sm:text-xs text-gray-400 mt-1">follow-ups abertos</p>
+                </div>
+                <div class="card-static">
+                    <p class="text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wide">Diagnosticos</p>
+                    <p class="text-2xl sm:text-3xl font-bold mt-1" style="color:#D4AF37" x-text="stats.diagnosticos ?? '—'"></p>
+                    <p class="text-[10px] sm:text-xs text-gray-400 mt-1">registros clinicos</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                <!-- Agenda do dia -->
+                <div class="card-static">
+                    <h3 class="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                        <span>&#128197;</span> Agenda de Hoje
+                    </h3>
+                    <div x-show="!dashboardLoaded" class="text-center py-6">
+                        <span class="spinner"></span>
+                    </div>
+                    <div x-show="dashboardLoaded && agendaHoje.length === 0" class="text-center py-8">
+                        <p class="text-3xl mb-2">&#128197;</p>
+                        <p class="text-gray-500 font-medium text-sm">Agenda livre hoje</p>
+                        <p class="text-gray-400 text-xs mt-1">Nenhum acompanhamento agendado</p>
+                        <button @click="abrirModalAcomp()" class="btn-primary text-xs mt-3 min-h-[44px] px-4">+ Agendar follow-up</button>
+                    </div>
+                    <div class="space-y-3">
+                        <template x-for="item in agendaHoje" :key="item.id">
+                            <div class="flex items-start gap-3 p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition" :class="'prioridade-' + item.prioridade">
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-sm font-medium text-gray-800" x-text="item.descricao"></p>
+                                    <p class="text-xs text-gray-500 mt-0.5" x-text="item.paciente_nome || 'Paciente'"></p>
+                                </div>
+                                <span class="badge" :class="'badge-' + item.tipo" x-text="item.tipo"></span>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Proximos retornos -->
+                <div class="card-static">
+                    <h3 class="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                        <span>&#128172;</span> Proximos Retornos
+                    </h3>
+                    <div x-show="!dashboardLoaded" class="text-center py-6">
+                        <span class="spinner"></span>
+                    </div>
+                    <div x-show="dashboardLoaded && ultimasMsgs.length === 0" class="text-center py-8">
+                        <p class="text-3xl mb-2">&#128172;</p>
+                        <p class="text-gray-500 font-medium text-sm">Sem retornos pendentes</p>
+                        <p class="text-gray-400 text-xs mt-1">Seus pacientes estao em dia</p>
+                    </div>
+                    <div class="space-y-3">
+                        <template x-for="msg in ultimasMsgs" :key="msg.id">
+                            <div class="flex items-start gap-3 hover:bg-gray-50 rounded-lg p-2 transition">
+                                <div class="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold text-white"
+                                    style="background:#7B2FBE" x-text="(msg.pacientes?.nome||'?').charAt(0)"></div>
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-sm font-medium text-gray-800" x-text="msg.pacientes?.nome || 'Paciente'"></p>
+                                    <p class="text-xs text-gray-500 truncate" x-text="msg.descricao || 'Sem descricao'"></p>
+                                </div>
+                                <span class="text-xs text-gray-400 flex-shrink-0" x-text="formatarDataCurta(msg.data_prevista)"></span>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── PACIENTES ───────────────────────────────── -->
+        <div x-show="secao === 'pacientes'" class="fade-in">
+            <div x-show="!prontuario" class="fade-in">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
+                <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full sm:w-auto">
+                    <div class="relative w-full sm:w-auto">
+                        <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                        <input x-model="buscaPaciente" @input="filtrarPacientes()"
+                            class="input pl-10 w-full sm:max-w-xs" placeholder="Buscar pacientes...">
+                    </div>
+                    <select x-model="filtroPacienteStatus" @change="filtrarPacientes()" class="input w-full sm:max-w-[140px]">
+                        <option value="">Todos</option>
+                        <option value="ativo">Ativos</option>
+                        <option value="inativo">Inativos</option>
+                        <option value="arquivado">Arquivados</option>
+                    </select>
+                </div>
+                <div class="flex gap-2 w-full sm:w-auto">
+                    <button @click="importarWhatsApp()" class="btn-ghost text-xs flex items-center gap-1 flex-1 sm:flex-initial justify-center">
+                        <span>&#128260;</span> Importar
+                    </button>
+                    <button @click="abrirModalPaciente()" class="btn-primary flex items-center gap-1 flex-1 sm:flex-initial justify-center">
+                        <span>+</span> Novo Paciente
+                    </button>
+                </div>
+            </div>
+
+            <div class="card-static overflow-hidden p-0">
+                <!-- Loading state -->
+                <div x-show="loading && pacientesFiltrados.length === 0" class="text-center py-12">
+                    <span class="spinner"></span>
+                    <p class="text-gray-400 text-sm mt-3">Carregando pacientes...</p>
+                </div>
+                <!-- Empty state -->
+                <div x-show="!loading && pacientesFiltrados.length === 0" class="text-center py-12 px-4">
+                    <p class="text-4xl mb-3">&#128101;</p>
+                    <p class="font-medium text-gray-600">Nenhum paciente encontrado</p>
+                    <p class="text-sm text-gray-400 mt-1">Importe do WhatsApp ou cadastre manualmente</p>
+                    <div class="flex flex-col sm:flex-row justify-center gap-2 mt-4">
+                        <button @click="importarWhatsApp()" class="btn-ghost text-xs min-h-[44px] px-4">&#128260; Importar WhatsApp</button>
+                        <button @click="abrirModalPaciente()" class="btn-primary text-xs min-h-[44px] px-4">+ Novo Paciente</button>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                <table x-show="pacientesFiltrados.length > 0" class="w-full min-w-[480px]">
+                    <thead class="bg-gray-50 border-b border-gray-100">
+                        <tr>
+                            <th class="text-left text-xs font-semibold text-gray-500 uppercase px-4 py-3">Paciente</th>
+                            <th class="text-left text-xs font-semibold text-gray-500 uppercase px-4 py-3 hidden md:table-cell">Telefone</th>
+                            <th class="text-left text-xs font-semibold text-gray-500 uppercase px-4 py-3 hidden lg:table-cell">Ultima Sessao</th>
+                            <th class="text-left text-xs font-semibold text-gray-500 uppercase px-4 py-3">Status</th>
+                            <th class="px-4 py-3"></th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-50">
+                        <template x-for="p in pacientesFiltrados" :key="p.id">
+                            <tr class="hover:bg-gray-50 transition cursor-pointer" @click="abrirProntuario(p)">
+                                <td class="px-4 py-3">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0"
+                                            style="background: linear-gradient(135deg, #7B2FBE, #D4AF37);"
+                                            x-text="p.nome.charAt(0)"></div>
+                                        <div>
+                                            <p class="text-sm font-medium text-gray-800" x-text="p.nome"></p>
+                                            <p class="text-xs text-gray-400" x-text="p.email || ''"></p>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-4 py-3 text-sm text-gray-600 hidden md:table-cell" x-text="p.numero_telefone"></td>
+                                <td class="px-4 py-3 text-sm text-gray-500 hidden lg:table-cell" x-text="formatarDataCurta(p.ultima_sessao_em)"></td>
+                                <td class="px-4 py-3">
+                                    <span class="badge" :class="'badge-' + p.status" x-text="p.status"></span>
+                                </td>
+                                <td class="px-4 py-3" @click.stop>
+                                    <button @click="abrirModalPaciente(p)" class="text-gray-400 hover:text-purple-600 px-3 py-2 rounded-lg text-xs transition min-h-[44px] min-w-[44px] flex items-center justify-center">Editar</button>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+                </div>
+            </div>
+            </div><!-- /lista pacientes (hidden when prontuario open) -->
+
+            <!-- ── PRONTUARIO INLINE (dentro de Pacientes) ── -->
+            <div x-show="prontuario && pacienteContexto" class="mt-5 fade-in">
+                <!-- Botao voltar + nome paciente -->
+                <div class="flex items-center gap-3 mb-4">
+                    <button @click="prontuario = null; pacienteContexto = null;" class="btn-ghost text-xs flex items-center gap-1 min-h-[44px]">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                        Voltar
+                    </button>
+                    <div class="flex items-center gap-2">
+                        <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0"
+                            style="background: linear-gradient(135deg, #7B2FBE, #D4AF37);"
+                            x-text="pacienteContexto?.nome?.charAt(0) || '?'"></div>
+                        <h2 class="text-lg font-bold text-gray-800" x-text="'Prontuario de ' + (pacienteContexto?.nome || '')"></h2>
+                    </div>
+                </div>
+
+            <div x-show="prontuario">
+                <!-- Cabecalho do paciente -->
+                <div class="card-static mb-5">
+                    <div class="flex flex-col sm:flex-row items-start justify-between gap-4">
+                        <div class="flex items-start gap-4">
+                            <div class="w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold text-white flex-shrink-0"
+                                style="background: linear-gradient(135deg, #7B2FBE, #D4AF37);"
+                                x-text="prontuario?.paciente?.nome?.charAt(0) || '?'"></div>
+                            <div>
+                                <h3 class="text-lg font-bold text-gray-900" x-text="prontuario?.paciente?.nome"></h3>
+                                <p class="text-sm text-gray-500" x-text="prontuario?.paciente?.numero_telefone"></p>
+                                <div class="flex flex-wrap gap-1 mt-2">
+                                    <template x-for="tag in (prontuario?.paciente?.tags || [])" :key="tag">
+                                        <span class="badge bg-purple-100 text-purple-700" x-text="tag"></span>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex gap-2 flex-wrap w-full sm:w-auto">
+                            <button @click="abrirModalNota()" class="btn-ghost text-xs flex-1 sm:flex-initial min-h-[44px]">+ Nota</button>
+                            <button @click="abrirModalAcomp()" class="btn-ghost text-xs flex-1 sm:flex-initial min-h-[44px]">+ Follow-up</button>
+                            <button @click="abrirModalDiagnostico()" class="btn-primary text-xs flex-1 sm:flex-initial min-h-[44px]">+ Diagnostico</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stats rapidas (clicaveis — navegam para aba correspondente) -->
+                <div class="grid grid-cols-3 gap-2 sm:gap-3 mb-5">
+                    <button @click="abaProntuario = 'conversas'" class="card-static text-center py-3 px-2 cursor-pointer transition hover:shadow-md hover:border-purple-200 border-2" :class="abaProntuario === 'conversas' ? 'border-purple-500 bg-purple-50' : 'border-transparent'">
+                        <p class="text-xl sm:text-2xl font-bold" style="color:#7B2FBE" x-text="(prontuario?.conversas || []).length"></p>
+                        <p class="text-[10px] sm:text-xs text-gray-500 mt-0.5">Mensagens</p>
+                    </button>
+                    <button @click="abaProntuario = 'diagnosticos'" class="card-static text-center py-3 px-2 cursor-pointer transition hover:shadow-md hover:border-amber-200 border-2" :class="abaProntuario === 'diagnosticos' ? 'border-amber-500 bg-amber-50' : 'border-transparent'">
+                        <p class="text-xl sm:text-2xl font-bold" style="color:#D4AF37" x-text="(prontuario?.diagnosticos || []).length"></p>
+                        <p class="text-[10px] sm:text-xs text-gray-500 mt-0.5">Diagnosticos</p>
+                    </button>
+                    <button @click="abaProntuario = 'mapas'" class="card-static text-center py-3 px-2 cursor-pointer transition hover:shadow-md hover:border-green-200 border-2" :class="abaProntuario === 'mapas' ? 'border-green-500 bg-green-50' : 'border-transparent'">
+                        <p class="text-xl sm:text-2xl font-bold text-green-600" x-text="(prontuario?.mapas_natais || []).length"></p>
+                        <p class="text-[10px] sm:text-xs text-gray-500 mt-0.5">Mapas Natais</p>
+                    </button>
+                </div>
+
+                <!-- Abas prontuario -->
+                <div class="flex gap-1 mb-4 bg-gray-50 rounded-xl p-1 border border-gray-200 overflow-x-auto -mx-1 px-1 shadow-sm">
+                    <template x-for="aba in abasProntuario" :key="aba.id">
+                        <button @click="abaProntuario = aba.id"
+                            class="flex-shrink-0 sm:flex-1 py-2.5 text-xs font-semibold rounded-lg transition whitespace-nowrap px-4 min-h-[44px] flex items-center justify-center gap-1.5"
+                            :class="abaProntuario === aba.id ? 'bg-white text-purple-700 shadow-sm border border-purple-200' : 'text-gray-400 hover:text-gray-600 hover:bg-white/50'">
+                            <span x-text="aba.icon || ''"></span>
+                            <span x-text="aba.label"></span>
+                        </button>
+                    </template>
+                </div>
+
+                <!-- Timeline -->
+                <div x-show="abaProntuario === 'timeline'" class="space-y-3">
+                    <div x-show="(prontuario?.timeline || []).length === 0" class="text-center py-8 text-gray-400 text-sm">Sem registros na timeline</div>
+                    <template x-for="ev in (prontuario?.timeline || [])" :key="ev.id + ev.tipo">
+                        <div class="timeline-item card ml-4" >
+                            <div class="flex items-start justify-between">
+                                <div>
+                                    <span class="badge text-xs mr-2"
+                                        :class="ev.tipo === 'conversa' ? 'bg-blue-100 text-blue-700' : ev.tipo === 'diagnostico' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'"
+                                        x-text="ev.tipo"></span>
+                                    <span class="text-sm font-medium text-gray-800" x-text="ev.titulo || ev.conteudo?.substring(0, 60) + '...'"></span>
+                                </div>
+                                <span class="text-xs text-gray-400 flex-shrink-0 ml-2" x-text="formatarDataCurta(ev.data)"></span>
+                            </div>
+                            <p x-show="ev.resumo" class="text-xs text-gray-500 mt-1" x-text="ev.resumo"></p>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- Diagnosticos do paciente -->
+                <div x-show="abaProntuario === 'diagnosticos'" class="space-y-3">
+                    <div x-show="(prontuario?.diagnosticos || []).length === 0" class="text-center py-8 text-gray-400 text-sm">Nenhum diagnostico registrado</div>
+                    <template x-for="d in (prontuario?.diagnosticos || [])" :key="d.id">
+                        <div class="card">
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="flex items-center gap-2">
+                                    <span class="badge" :class="'badge-' + d.status" x-text="d.status"></span>
+                                    <span class="text-sm text-gray-500" x-text="formatarDataCurta(d.sessao_data)"></span>
+                                </div>
+                                <button @click="abrirModalDiagnostico(d)" class="text-xs text-purple-600 hover:underline min-h-[44px] min-w-[44px] flex items-center justify-center px-2 py-2">Editar</button>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                                <div x-show="d.elemento_dominante"><span class="text-gray-500">Elemento:</span> <span class="font-medium" x-text="d.elemento_dominante"></span></div>
+                                <div x-show="d.setenio_atual"><span class="text-gray-500">Setenio:</span> <span class="font-medium" x-text="'#' + d.setenio_atual"></span></div>
+                                <div x-show="d.dna_comprometido?.length"><span class="text-gray-500">DNA:</span> <span class="font-medium" x-text="(d.dna_comprometido||[]).join(', ')"></span></div>
+                                <div x-show="d.serpentes_ativas?.length"><span class="text-gray-500">Serpentes:</span> <span class="font-medium" x-text="(d.serpentes_ativas||[]).join(', ')"></span></div>
+                            </div>
+                            <p x-show="d.protocolo_texto" class="text-xs text-gray-600 mt-2 border-t border-gray-50 pt-2" x-text="d.protocolo_texto?.substring(0,200) + '...'"></p>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- Anotacoes -->
+                <div x-show="abaProntuario === 'anotacoes'" class="space-y-0">
+                    <div x-show="(prontuario?.anotacoes || []).length === 0" class="text-center py-8 text-gray-400 text-sm">Nenhuma anotacao registrada</div>
+                    <template x-for="(nota, idx) in (prontuario?.anotacoes || [])" :key="nota.id">
+                        <div class="flex gap-2 sm:gap-4 relative">
+                            <!-- Data e linha do tempo -->
+                            <div class="hidden sm:flex flex-col items-center" style="min-width: 90px;">
+                                <div class="bg-purple-100 text-purple-800 rounded-lg px-3 py-2 text-center shadow-sm" style="min-width: 85px;">
+                                    <p class="text-xs font-semibold leading-tight" x-text="nota.data_anotacao ? new Date(nota.data_anotacao + 'T12:00:00').toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit', year:'numeric'}) : '--'"></p>
+                                </div>
+                                <div class="w-0.5 flex-1 bg-purple-200 my-1" x-show="idx < (prontuario?.anotacoes || []).length - 1"></div>
+                                <div class="w-3 h-3 rounded-full bg-purple-500 border-2 border-white shadow absolute" style="left: 40px; top: 18px;"></div>
+                            </div>
+                            <!-- Conteudo da nota -->
+                            <div class="card flex-1 mb-3">
+                                <div class="flex items-center gap-2 mb-1.5 flex-wrap">
+                                    <span class="badge bg-gray-100 text-gray-600" x-text="nota.tipo"></span>
+                                    <span class="text-sm font-semibold text-gray-800" x-text="nota.titulo || 'Nota'"></span>
+                                    <span class="text-xs text-gray-400 ml-auto" x-text="'#' + (idx + 1)"></span>
+                                </div>
+                                <p class="text-xs sm:hidden text-purple-600 font-medium mb-1" x-text="nota.data_anotacao ? new Date(nota.data_anotacao + 'T12:00:00').toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit', year:'numeric'}) : ''"></p>
+                                <p class="text-sm text-gray-600 leading-relaxed" x-text="nota.conteudo"></p>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- Conversas (estilo chat) -->
+                <div x-show="abaProntuario === 'conversas'">
+                    <div x-show="(prontuario?.conversas || []).length === 0" class="text-center py-8 text-gray-400 text-sm">Nenhuma conversa registrada</div>
+                    <div class="space-y-1 max-h-[60vh] overflow-y-auto rounded-xl bg-gray-50 p-3 border border-gray-200" style="background: #f0f0f0;">
+                        <template x-for="c in [...(prontuario?.conversas || [])].reverse()" :key="c.id">
+                            <div class="space-y-1.5 mb-3">
+                                <!-- Data separador -->
+                                <div class="text-center">
+                                    <span class="inline-block bg-white/80 text-gray-500 text-[10px] px-2 py-0.5 rounded-full shadow-sm" x-text="formatarDataCurta(c.criado_em)"></span>
+                                </div>
+                                <!-- Msg paciente (esquerda) -->
+                                <div x-show="c.mensagem_paciente" class="flex justify-start">
+                                    <div class="bg-white rounded-xl rounded-tl-sm px-3 py-2 max-w-[80%] shadow-sm border border-gray-100">
+                                        <p class="text-sm text-gray-800 leading-relaxed" x-text="c.mensagem_paciente"></p>
+                                        <p class="text-[10px] text-gray-400 text-right mt-1">Paciente</p>
+                                    </div>
+                                </div>
+                                <!-- Resposta agente (direita, roxo) -->
+                                <div x-show="c.resposta_agente" class="flex justify-end">
+                                    <div class="rounded-xl rounded-tr-sm px-3 py-2 max-w-[80%] shadow-sm" style="background: #ede9fe;">
+                                        <p class="text-sm text-gray-800 leading-relaxed" x-text="c.resposta_agente?.substring(0, 300)"></p>
+                                        <div class="flex items-center justify-end gap-2 mt-1">
+                                            <span x-show="c.intencao" class="text-[9px] text-purple-500 font-medium" x-text="c.intencao"></span>
+                                            <p class="text-[10px] text-purple-400">Agente</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Mapas -->
+                <div x-show="abaProntuario === 'mapas'" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div x-show="(prontuario?.mapas_natais || []).length === 0" class="col-span-2 text-center py-8 text-gray-400 text-sm">Nenhum mapa natal gerado</div>
+                    <template x-for="mapa in (prontuario?.mapas_natais || [])" :key="mapa.id">
+                        <div class="card cursor-pointer hover:shadow-md transition relative" @click="verMapa(mapa)">
+                            <div class="relative">
+                                <img x-show="mapa.imagem_url" :src="mapa.imagem_url" class="w-full rounded-lg mb-2 object-cover" style="max-height:200px">
+                                <span class="absolute top-2 right-2 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold shadow-sm"
+                                    :class="isAlquimico(mapa.mapa_json) ? 'bg-amber-100 text-amber-800 border border-amber-300' : 'bg-purple-100 text-purple-800 border border-purple-300'"
+                                    x-text="mapa.mapa_json?.tipo || mapa.tipo || 'Natal'"></span>
+                            </div>
+                            <p class="text-sm font-medium text-gray-800" x-text="mapa.mapa_json?.tipo || mapa.tipo || 'Mapa Natal'"></p>
+                            <p class="text-xs text-gray-500" x-text="formatarDataCurta(mapa.criado_em)"></p>
+                        </div>
+                    </template>
+                </div>
+            </div>
+            </div><!-- /prontuario inline -->
+        </div><!-- /secao pacientes -->
+
+        <!-- ── CONVERSAS WHATSAPP ──────────────────────── -->
+        <div x-show="secao === 'conversas_whats'" class="fade-in">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
+                <div class="w-full sm:max-w-xs">
+                    <input type="text" x-model="buscaConversas" @input="$nextTick()" placeholder="Buscar paciente..." class="input">
+                </div>
+            </div>
+
+            <div class="flex gap-4" style="min-height: 60vh;">
+                <!-- Lista de contatos (esquerda) -->
+                <div class="w-full sm:w-80 flex-shrink-0 bg-white rounded-xl border border-gray-200 overflow-hidden flex flex-col" :class="conversaSelecionada ? 'hidden sm:flex' : 'flex'">
+                    <div class="px-4 py-3 border-b border-gray-100 bg-gray-50">
+                        <h3 class="text-sm font-bold text-gray-700">Pacientes</h3>
+                        <p class="text-[10px] text-gray-400" x-text="conversasWhatsGruposFiltrados.length + ' conversas'"></p>
+                    </div>
+                    <div class="overflow-y-auto flex-1">
+                        <div x-show="loading" class="text-center py-8"><span class="spinner"></span></div>
+                        <div x-show="!loading && conversasWhatsGruposFiltrados.length === 0" class="text-center py-8 text-gray-400 text-sm">Nenhuma conversa encontrada</div>
+                        <template x-for="grupo in conversasWhatsGruposFiltrados" :key="grupo.numero">
+                            <button @click="abrirConversa(grupo)"
+                                class="w-full text-left px-4 py-3 border-b border-gray-50 hover:bg-purple-50 transition flex items-center gap-3 min-h-[60px]"
+                                :class="conversaSelecionada?.numero === grupo.numero ? 'bg-purple-50 border-l-4 border-l-purple-500' : ''">
+                                <div class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0"
+                                    style="background: linear-gradient(135deg, #7B2FBE, #D4AF37);"
+                                    x-text="grupo.nome.charAt(0)"></div>
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-sm font-medium text-gray-800 truncate" x-text="grupo.nome"></p>
+                                    <p class="text-[10px] text-gray-400 truncate" x-text="grupo.mensagens[grupo.mensagens.length - 1]?.mensagem_paciente?.substring(0, 40) + '...'"></p>
+                                </div>
+                                <div class="flex flex-col items-end flex-shrink-0">
+                                    <span class="text-[10px] text-gray-400" x-text="formatarDataCurta(grupo.ultima)"></span>
+                                    <span class="bg-purple-500 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center mt-1" x-text="grupo.mensagens.length"></span>
+                                </div>
+                            </button>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Chat (direita) -->
+                <div class="flex-1 bg-white rounded-xl border border-gray-200 overflow-hidden flex flex-col" :class="conversaSelecionada ? 'flex' : 'hidden sm:flex'">
+                    <!-- Header do chat -->
+                    <div x-show="conversaSelecionada" class="px-4 py-3 border-b border-gray-100 bg-gray-50 flex items-center gap-3">
+                        <button @click="conversaSelecionada = null" class="sm:hidden w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-600">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+                        </button>
+                        <div class="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0"
+                            style="background: linear-gradient(135deg, #7B2FBE, #D4AF37);"
+                            x-text="conversaSelecionada?.nome?.charAt(0) || '?'"></div>
+                        <div>
+                            <p class="text-sm font-bold text-gray-800" x-text="conversaSelecionada?.nome"></p>
+                            <p class="text-[10px] text-gray-400" x-text="conversaSelecionada?.numero"></p>
+                        </div>
+                        <div class="ml-auto">
+                            <span class="badge bg-green-100 text-green-700 text-[10px]" x-text="conversasMensagens.length + ' mensagens'"></span>
+                        </div>
+                    </div>
+                    <!-- Mensagens -->
+                    <div x-show="conversaSelecionada" class="flex-1 overflow-y-auto p-4 space-y-2" style="background: #f0f0f0; max-height: 55vh;">
+                        <template x-for="msg in conversasMensagens" :key="msg.id">
+                            <div class="space-y-1.5 mb-2">
+                                <!-- Msg paciente (esquerda) -->
+                                <div x-show="msg.mensagem_paciente" class="flex justify-start">
+                                    <div class="bg-white rounded-xl rounded-tl-sm px-3 py-2 max-w-[80%] shadow-sm border border-gray-100">
+                                        <p class="text-sm text-gray-800 leading-relaxed" x-text="msg.mensagem_paciente"></p>
+                                        <p class="text-[10px] text-gray-400 text-right mt-1" x-text="new Date(msg.criado_em).toLocaleString('pt-BR', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})"></p>
+                                    </div>
+                                </div>
+                                <!-- Resposta agente (direita) -->
+                                <div x-show="msg.resposta_agente" class="flex justify-end">
+                                    <div class="rounded-xl rounded-tr-sm px-3 py-2 max-w-[80%] shadow-sm" style="background: #ede9fe;">
+                                        <p class="text-sm text-gray-800 leading-relaxed" x-text="msg.resposta_agente"></p>
+                                        <div class="flex items-center justify-end gap-2 mt-1">
+                                            <span x-show="msg.intencao" class="text-[9px] text-purple-500 font-medium" x-text="msg.intencao"></span>
+                                            <p class="text-[10px] text-purple-400" x-text="new Date(msg.criado_em).toLocaleString('pt-BR', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})"></p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                    <!-- Estado vazio -->
+                    <div x-show="!conversaSelecionada" class="flex-1 flex items-center justify-center text-center p-8">
+                        <div>
+                            <p class="text-4xl mb-3">\u{1F4AC}</p>
+                            <p class="text-gray-500 font-medium">Selecione uma conversa</p>
+                            <p class="text-gray-400 text-sm mt-1">Escolha um paciente para ver o historico completo</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── DIAGNOSTICOS ────────────────────────────── -->
+        <div x-show="secao === 'diagnosticos'" class="fade-in">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
+                <div class="flex gap-2 w-full sm:w-auto">
+                    <select x-model="filtroDiagStatus" @change="carregarDiagnosticos()" class="input w-full sm:max-w-[160px]">
+                        <option value="">Todos</option>
+                        <option value="rascunho">Rascunho</option>
+                        <option value="finalizado">Finalizado</option>
+                        <option value="arquivado">Arquivado</option>
+                    </select>
+                </div>
+                <div class="flex gap-2 w-full sm:w-auto">
+                    <button @click="abrirModalDiagnostico()" class="btn-primary flex items-center gap-1 w-full sm:w-auto justify-center">
+                        <span>+</span> Novo Diagnostico
+                    </button>
+                </div>
+            </div>
+
+            <div class="space-y-3">
+                <!-- Loading -->
+                <div x-show="loading && diagnosticos.length === 0" class="text-center py-12">
+                    <span class="spinner"></span>
+                    <p class="text-gray-400 text-sm mt-3">Carregando diagnosticos...</p>
+                </div>
+                <!-- Empty -->
+                <div x-show="!loading && diagnosticos.length === 0" class="text-center py-12">
+                    <p class="text-4xl mb-3">&#129514;</p>
+                    <p class="font-medium text-gray-600">Nenhum diagnostico encontrado</p>
+                    <p class="text-sm text-gray-400 mt-1">Crie um diagnostico para comecar</p>
+                    <button @click="abrirModalDiagnostico()" class="btn-primary mt-4 text-sm min-h-[44px] px-4">+ Novo Diagnostico</button>
+                </div>
+                <template x-for="d in diagnosticos" :key="d.id">
+                    <div class="card hover:shadow-md transition">
+                        <div class="flex flex-col sm:flex-row items-start justify-between gap-3">
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2 mb-2 flex-wrap">
+                                    <span class="badge" :class="'badge-' + d.status" x-text="d.status"></span>
+                                    <span class="text-sm font-semibold text-gray-800" x-text="d.pacientes?.nome || 'Paciente'"></span>
+                                    <span class="text-xs text-gray-400" x-text="formatarDataCurta(d.sessao_data)"></span>
+                                </div>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2 text-xs mt-2">
+                                    <div x-show="d.elemento_dominante" class="bg-orange-50 rounded px-2 py-1">
+                                        <span class="text-gray-400">Elemento</span>
+                                        <p class="font-semibold text-orange-700" x-text="d.elemento_dominante"></p>
+                                    </div>
+                                    <div x-show="d.setenio_atual" class="bg-purple-50 rounded px-2 py-1">
+                                        <span class="text-gray-400">Setenio</span>
+                                        <p class="font-semibold text-purple-700" x-text="'#' + d.setenio_atual"></p>
+                                    </div>
+                                    <div x-show="d.dna_comprometido?.length" class="bg-red-50 rounded px-2 py-1">
+                                        <span class="text-gray-400">DNA</span>
+                                        <p class="font-semibold text-red-700 truncate" x-text="(d.dna_comprometido||[]).join(', ')"></p>
+                                    </div>
+                                    <div x-show="d.florais_prescritos?.length" class="bg-green-50 rounded px-2 py-1">
+                                        <span class="text-gray-400">Florais</span>
+                                        <p class="font-semibold text-green-700 truncate" x-text="(d.florais_prescritos||[]).join(', ')"></p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex gap-2 w-full sm:w-auto flex-shrink-0">
+                                <button @click="autoExtrair(d.paciente_id)" class="text-xs px-3 py-2 bg-green-50 border border-green-400 text-green-700 rounded-lg hover:bg-green-100 transition font-medium flex-1 sm:flex-initial min-h-[44px]" title="Envia um resumo completo do paciente via WhatsApp">&#128172; Enviar resumo</button>
+                                <button @click="abrirModalDiagnostico(d)" class="btn-ghost text-xs flex-1 sm:flex-initial">Editar</button>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <!-- ── ACOMPANHAMENTOS ─────────────────────────── -->
+        <div x-show="secao === 'acompanhamentos'" class="fade-in">
+            <!-- Stats summary bar -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 px-3 sm:px-5 py-3 mb-4 flex items-center gap-3 sm:gap-6 text-xs sm:text-sm flex-wrap">
+                <span class="font-semibold text-gray-700" x-show="agenda7dias.filter(g => g.data < new Date().toISOString().split('T')[0]).reduce((a, g) => a + g.itens.length, 0) > 0">
+                    <span class="text-red-500 font-bold" x-text="agenda7dias.filter(g => g.data < new Date().toISOString().split('T')[0]).reduce((a, g) => a + g.itens.length, 0)"></span>
+                    <span class="text-red-400">atrasados</span>
+                </span>
+                <span class="text-gray-300" x-show="agenda7dias.filter(g => g.data < new Date().toISOString().split('T')[0]).reduce((a, g) => a + g.itens.length, 0) > 0">|</span>
+                <span class="font-semibold text-gray-700">
+                    <span class="text-amber-500" x-text="agenda7dias.filter(g => g.data === new Date().toISOString().split('T')[0]).reduce((a, g) => a + g.itens.filter(i => i.status !== 'realizado').length, 0)"></span>
+                    <span class="text-gray-500">para hoje</span>
+                </span>
+                <span class="text-gray-300">|</span>
+                <span class="font-semibold text-gray-700">
+                    <span class="text-purple-600" x-text="agenda7dias.reduce((acc, g) => acc + g.itens.length, 0)"></span>
+                    <span class="text-gray-500">total semana</span>
+                </span>
+            </div>
+
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
+                <div class="flex gap-2 w-full sm:w-auto">
+                    <select x-model="filtroAcompStatus" @change="carregarAcompanhamentos()" class="input w-full sm:max-w-[160px]">
+                        <option value="pendente">Pendentes</option>
+                        <option value="">Todos</option>
+                        <option value="realizado">Realizados</option>
+                        <option value="cancelado">Cancelados</option>
+                    </select>
+                </div>
+                <button @click="abrirModalAcomp()" class="btn-primary flex items-center gap-1 w-full sm:w-auto justify-center">
+                    <span>+</span> Novo Follow-up
+                </button>
+            </div>
+
+            <!-- Agenda 7 dias — separado por Atrasados / Hoje / Proximos -->
+            <div x-show="agenda7dias.length > 0" class="mb-6 space-y-5">
+
+                <!-- ATRASADOS (data < hoje) -->
+                <div x-show="agenda7dias.filter(g => g.data < new Date().toISOString().split('T')[0]).length > 0">
+                    <h3 class="text-sm font-bold text-red-600 uppercase tracking-wide mb-3 flex items-center gap-2">
+                        <span class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span> Atrasados
+                    </h3>
+                    <template x-for="grupo in agenda7dias.filter(g => g.data < new Date().toISOString().split('T')[0])" :key="grupo.data">
+                        <div class="mb-3">
+                            <p class="text-xs font-medium text-red-400 mb-2" x-text="formatarDataExtenso(grupo.data)"></p>
+                            <div class="space-y-2 bg-red-50/50 rounded-xl p-3 -mx-1 border border-red-200">
+                                <template x-for="item in grupo.itens" :key="item.id">
+                                    <div class="card py-3 border-l-4 border-red-400 bg-red-50/30">
+                                        <div class="flex items-start sm:items-center gap-3">
+                                            <div class="flex-1 min-w-0">
+                                                <div class="flex items-center gap-2 flex-wrap">
+                                                    <p class="text-sm font-medium text-gray-800" x-text="item.descricao"></p>
+                                                    <span class="badge bg-red-100 text-red-700 text-[10px]">ATRASADO</span>
+                                                </div>
+                                                <p class="text-xs text-gray-500 mt-0.5">
+                                                    <span x-text="item.pacientes?.nome || 'Paciente'"></span>
+                                                    <span x-show="item.hora_prevista" class="ml-1 text-red-500 font-medium" x-text="item.hora_prevista ? ' \u{1F552} ' + item.hora_prevista : ''"></span>
+                                                </p>
+                                            </div>
+                                            <span class="badge hidden sm:inline-flex" :class="'badge-' + item.tipo">
+                                                <span x-text="item.tipo === 'retorno' ? '\u{1F504}' : item.tipo === 'floral' ? '\u{1F338}' : item.tipo === 'tarefa' ? '\u2705' : item.tipo === 'contato' ? '\u{1F4DE}' : '\u2B50'"></span>
+                                                <span class="ml-1" x-text="item.tipo"></span>
+                                            </span>
+                                            <div class="flex items-center gap-1.5 flex-shrink-0">
+                                                <button @click="marcarRealizado(item)" class="w-11 h-11 sm:w-8 sm:h-8 rounded-full bg-green-100 hover:bg-green-200 text-green-600 flex items-center justify-center transition" title="Marcar como feito">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                                </button>
+                                                <button @click="adiarAcompanhamento(item)" class="w-11 h-11 sm:w-8 sm:h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center transition" title="Adiar para amanha">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- HOJE -->
+                <div x-show="agenda7dias.filter(g => g.data === new Date().toISOString().split('T')[0]).length > 0">
+                    <h3 class="text-sm font-bold text-purple-700 uppercase tracking-wide mb-3 flex items-center gap-2">
+                        <span class="w-2 h-2 bg-purple-500 rounded-full"></span> Hoje
+                        <span class="badge bg-purple-100 text-purple-700" x-text="agenda7dias.filter(g => g.data === new Date().toISOString().split('T')[0]).reduce((a, g) => a + g.itens.length, 0) + ' atividades'"></span>
+                    </h3>
+                    <template x-for="grupo in agenda7dias.filter(g => g.data === new Date().toISOString().split('T')[0])" :key="grupo.data">
+                        <div class="space-y-2 bg-purple-50/50 rounded-xl p-3 -mx-1 border border-purple-100">
+                            <template x-for="item in grupo.itens" :key="item.id">
+                                <div class="card py-3"
+                                    :style="'border-left: 4px solid ' + (item.prioridade == 1 ? '#EF4444' : item.prioridade == 3 ? '#10B981' : '#F59E0B')">
+                                    <div class="flex items-start sm:items-center gap-3">
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-sm font-medium text-gray-800" x-text="item.descricao"></p>
+                                            <p class="text-xs text-gray-500 mt-0.5">
+                                                <span x-text="item.pacientes?.nome || 'Paciente'"></span>
+                                                <span x-show="item.hora_prevista" class="ml-1 text-purple-600 font-semibold" x-text="item.hora_prevista ? ' \u{1F552} ' + item.hora_prevista : ''"></span>
+                                            </p>
+                                        </div>
+                                        <span class="badge hidden sm:inline-flex" :class="'badge-' + item.tipo">
+                                            <span x-text="item.tipo === 'retorno' ? '\u{1F504}' : item.tipo === 'floral' ? '\u{1F338}' : item.tipo === 'tarefa' ? '\u2705' : item.tipo === 'contato' ? '\u{1F4DE}' : '\u2B50'"></span>
+                                            <span class="ml-1" x-text="item.tipo"></span>
+                                        </span>
+                                        <div class="flex items-center gap-1.5 flex-shrink-0">
+                                            <button @click="marcarRealizado(item)" class="w-11 h-11 sm:w-8 sm:h-8 rounded-full bg-green-100 hover:bg-green-200 text-green-600 flex items-center justify-center transition" title="Marcar como feito">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                            </button>
+                                            <button @click="adiarAcompanhamento(item)" class="w-11 h-11 sm:w-8 sm:h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center transition" title="Adiar para amanha">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <span class="badge sm:hidden mt-2 inline-flex" :class="'badge-' + item.tipo">
+                                        <span x-text="item.tipo === 'retorno' ? '\u{1F504}' : item.tipo === 'floral' ? '\u{1F338}' : item.tipo === 'tarefa' ? '\u2705' : item.tipo === 'contato' ? '\u{1F4DE}' : '\u2B50'"></span>
+                                        <span class="ml-1" x-text="item.tipo"></span>
+                                    </span>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- PROXIMOS DIAS (data > hoje) -->
+                <div x-show="agenda7dias.filter(g => g.data > new Date().toISOString().split('T')[0]).length > 0">
+                    <h3 class="text-sm font-bold text-gray-600 uppercase tracking-wide mb-3 flex items-center gap-2">
+                        <span class="w-2 h-2 bg-gray-400 rounded-full"></span> Proximos Dias
+                    </h3>
+                    <template x-for="grupo in agenda7dias.filter(g => g.data > new Date().toISOString().split('T')[0])" :key="grupo.data">
+                        <div class="mb-3">
+                            <p class="text-xs font-medium text-gray-500 mb-2" x-text="formatarDataExtenso(grupo.data)"></p>
+                            <div class="space-y-2">
+                                <template x-for="item in grupo.itens" :key="item.id">
+                                    <div class="card py-3"
+                                        :style="'border-left: 4px solid ' + (item.prioridade == 1 ? '#EF4444' : item.prioridade == 3 ? '#10B981' : '#F59E0B')">
+                                        <div class="flex items-start sm:items-center gap-3">
+                                            <div class="flex-1 min-w-0">
+                                                <p class="text-sm font-medium text-gray-800" x-text="item.descricao"></p>
+                                                <p class="text-xs text-gray-500 mt-0.5">
+                                                    <span x-text="item.pacientes?.nome || 'Paciente'"></span>
+                                                    <span x-show="item.hora_prevista" class="ml-1 text-gray-500" x-text="item.hora_prevista ? ' \u{1F552} ' + item.hora_prevista : ''"></span>
+                                                </p>
+                                            </div>
+                                            <span class="badge hidden sm:inline-flex" :class="'badge-' + item.tipo">
+                                                <span x-text="item.tipo === 'retorno' ? '\u{1F504}' : item.tipo === 'floral' ? '\u{1F338}' : item.tipo === 'tarefa' ? '\u2705' : item.tipo === 'contato' ? '\u{1F4DE}' : '\u2B50'"></span>
+                                                <span class="ml-1" x-text="item.tipo"></span>
+                                            </span>
+                                            <div class="flex items-center gap-1.5 flex-shrink-0">
+                                                <button @click="marcarRealizado(item)" class="w-11 h-11 sm:w-8 sm:h-8 rounded-full bg-green-100 hover:bg-green-200 text-green-600 flex items-center justify-center transition" title="Marcar como feito">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                                </button>
+                                                <button @click="adiarAcompanhamento(item)" class="w-11 h-11 sm:w-8 sm:h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center transition" title="Adiar para amanha">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <span class="badge sm:hidden mt-2 inline-flex" :class="'badge-' + item.tipo">
+                                            <span x-text="item.tipo === 'retorno' ? '\u{1F504}' : item.tipo === 'floral' ? '\u{1F338}' : item.tipo === 'tarefa' ? '\u2705' : item.tipo === 'contato' ? '\u{1F4DE}' : '\u2B50'"></span>
+                                            <span class="ml-1" x-text="item.tipo"></span>
+                                        </span>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <!-- Lista geral -->
+            <h3 class="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">Lista Completa</h3>
+            <div class="space-y-2">
+                <div x-show="loading && acompanhamentos.length === 0" class="text-center py-10">
+                    <span class="spinner"></span>
+                </div>
+                <div x-show="!loading && acompanhamentos.length === 0" class="text-center py-10">
+                    <p class="text-3xl mb-2">&#9989;</p>
+                    <p class="font-medium text-gray-600">Nenhum acompanhamento</p>
+                    <p class="text-sm text-gray-400 mt-1">Crie um follow-up para acompanhar seus pacientes</p>
+                    <button @click="abrirModalAcomp()" class="btn-primary mt-4 text-xs min-h-[44px] px-4">+ Novo Follow-up</button>
+                </div>
+                <template x-for="item in acompanhamentos" :key="item.id">
+                    <div class="card" :class="'prioridade-' + item.prioridade"
+                        :style="'border-left: 4px solid ' + (item.prioridade == 1 ? '#EF4444' : item.prioridade == 3 ? '#10B981' : '#F59E0B')">
+                      <div class="flex items-start sm:items-center gap-3">
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-medium text-gray-800" x-text="item.descricao"></p>
+                            <p class="text-xs text-gray-500 mt-0.5">
+                                <span x-text="item.pacientes?.nome || 'Paciente'"></span>
+                                <span x-show="item.data_prevista"> · <span x-text="formatarDataCurta(item.data_prevista)"></span></span>
+                            </p>
+                        </div>
+                        <span class="badge hidden sm:inline-flex" :class="'badge-' + item.tipo">
+                            <span x-text="item.tipo === 'retorno' ? '\u{1F504}' : item.tipo === 'floral' ? '\u{1F338}' : item.tipo === 'tarefa' ? '\u2705' : item.tipo === 'contato' ? '\u{1F4DE}' : item.tipo === 'marco' ? '\u2B50' : ''"></span>
+                            <span class="ml-1" x-text="item.tipo"></span>
+                        </span>
+                        <span class="badge hidden sm:inline-flex" :class="'badge-' + item.status" x-text="item.status"></span>
+                        <div class="flex items-center gap-1.5 flex-shrink-0">
+                            <button x-show="item.status === 'pendente'" @click="marcarRealizado(item)" class="w-11 h-11 sm:w-8 sm:h-8 rounded-full bg-green-100 hover:bg-green-200 text-green-600 flex items-center justify-center transition" title="Marcar como feito">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                            </button>
+                            <button x-show="item.status === 'pendente'" @click="adiarAcompanhamento(item)" class="w-11 h-11 sm:w-8 sm:h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center transition" title="Adiar para amanha">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            </button>
+                            <button @click="abrirModalAcomp(item)" class="w-11 h-11 sm:w-8 sm:h-8 rounded-full bg-gray-50 hover:bg-gray-200 text-gray-500 flex items-center justify-center transition text-xs">&#9998;</button>
+                        </div>
+                      </div>
+                      <div class="flex gap-2 mt-2 sm:hidden">
+                        <span class="badge" :class="'badge-' + item.tipo">
+                            <span x-text="item.tipo === 'retorno' ? '\u{1F504}' : item.tipo === 'floral' ? '\u{1F338}' : item.tipo === 'tarefa' ? '\u2705' : item.tipo === 'contato' ? '\u{1F4DE}' : item.tipo === 'marco' ? '\u2B50' : ''"></span>
+                            <span class="ml-1" x-text="item.tipo"></span>
+                        </span>
+                        <span class="badge" :class="'badge-' + item.status" x-text="item.status"></span>
+                      </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <!-- ── MAPAS NATAIS ────────────────────────────── -->
+        <div x-show="secao === 'mapas'" class="fade-in">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-5">
+                <p class="text-sm text-gray-500">Galeria de mapas natais agrupados por paciente</p>
+                <div class="relative w-full sm:w-72">
+                    <input type="text" x-model="buscaMapas" placeholder="Buscar paciente..."
+                        class="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-300 focus:border-purple-400 outline-none transition min-h-[44px]">
+                    <svg class="absolute left-3 top-2.5 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                    </svg>
+                </div>
+            </div>
+            <!-- Loading -->
+            <div x-show="loading && mapas.length === 0" class="text-center py-16">
+                <span class="spinner"></span>
+            </div>
+            <!-- Empty state -->
+            <div x-show="!loading && mapas.length === 0" class="text-center py-16">
+                <p class="text-5xl mb-3">&#127760;</p>
+                <p class="font-medium text-gray-600">Nenhum mapa natal gerado</p>
+                <p class="text-sm text-gray-400 mt-1">Os mapas sao gerados automaticamente pelo agente WhatsApp</p>
+            </div>
+            <!-- No search results -->
+            <div x-show="!loading && mapas.length > 0 && getMapasAgrupados().length === 0" class="text-center py-16">
+                <p class="text-5xl mb-3">&#128270;</p>
+                <p class="font-medium text-gray-600">Nenhum paciente encontrado</p>
+                <p class="text-sm text-gray-400 mt-1">Tente buscar por outro nome</p>
+            </div>
+            <!-- Patient cards grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                <template x-for="grupo in getMapasAgrupados()" :key="grupo.tel">
+                    <div class="card p-4 hover:shadow-lg transition">
+                        <!-- Patient header -->
+                        <div class="mb-3">
+                            <h3 class="text-base font-bold text-gray-800 truncate" x-text="grupo.nome"></h3>
+                            <p class="text-xs text-gray-400 mt-0.5">
+                                <span x-show="grupo.data_nascimento" x-text="formatarDataBR(grupo.data_nascimento)"></span>
+                                <span x-show="grupo.data_nascimento && grupo.cidade_nascimento"> &middot; </span>
+                                <span x-show="grupo.cidade_nascimento" x-text="grupo.cidade_nascimento"></span>
+                            </p>
+                        </div>
+                        <!-- Maps side by side — compact thumbnails -->
+                        <div class="grid grid-cols-2 gap-2.5">
+                            <!-- Mapa Alquimico -->
+                            <div class="cursor-pointer group/thumb" @click="let m = getMapaPorTipo(grupo.mapas, 'alquimico'); if(m) verMapa(m);">
+                                <template x-if="getMapaPorTipo(grupo.mapas, 'alquimico')">
+                                    <div>
+                                        <div class="relative rounded-lg overflow-hidden border border-amber-200 bg-amber-50/30" style="aspect-ratio:4/3">
+                                            <img :src="getMapaPorTipo(grupo.mapas, 'alquimico')?.imagem_url"
+                                                class="w-full h-full object-contain" loading="lazy">
+                                            <div class="absolute inset-0 bg-black/0 group-hover/thumb:bg-black/10 transition"></div>
+                                        </div>
+                                        <p class="text-[11px] font-semibold text-amber-700 mt-1 text-center">&#128302; Alquimico</p>
+                                    </div>
+                                </template>
+                                <template x-if="!getMapaPorTipo(grupo.mapas, 'alquimico')">
+                                    <div>
+                                        <div class="rounded-lg border-2 border-dashed border-gray-200 bg-gray-50 flex items-center justify-center" style="aspect-ratio:4/3">
+                                            <span class="text-gray-300 text-2xl">&#128302;</span>
+                                        </div>
+                                        <p class="text-[11px] text-gray-400 mt-1 text-center italic">Pendente</p>
+                                    </div>
+                                </template>
+                            </div>
+                            <!-- Mapa Natal -->
+                            <div class="cursor-pointer group/thumb" @click="let m = getMapaPorTipo(grupo.mapas, 'natal'); if(m) verMapa(m);">
+                                <template x-if="getMapaPorTipo(grupo.mapas, 'natal')">
+                                    <div>
+                                        <div class="relative rounded-lg overflow-hidden border border-purple-200 bg-purple-50/30" style="aspect-ratio:4/3">
+                                            <img :src="getMapaPorTipo(grupo.mapas, 'natal')?.imagem_url"
+                                                class="w-full h-full object-contain" loading="lazy">
+                                            <div class="absolute inset-0 bg-black/0 group-hover/thumb:bg-black/10 transition"></div>
+                                        </div>
+                                        <p class="text-[11px] font-semibold text-purple-700 mt-1 text-center">&#11088; Natal</p>
+                                    </div>
+                                </template>
+                                <template x-if="!getMapaPorTipo(grupo.mapas, 'natal')">
+                                    <div>
+                                        <div class="rounded-lg border-2 border-dashed border-gray-200 bg-gray-50 flex items-center justify-center" style="aspect-ratio:4/3">
+                                            <span class="text-gray-300 text-2xl">&#11088;</span>
+                                        </div>
+                                        <p class="text-[11px] text-gray-400 mt-1 text-center italic">Pendente</p>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                        <!-- Ver Resumo button -->
+                        <button class="w-full mt-3 py-3 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 transition bg-gradient-to-r from-amber-500 to-purple-500 text-white hover:from-amber-600 hover:to-purple-600 shadow-sm hover:shadow min-h-[44px]"
+                            @click="let m = grupo.mapas[0]; if(m) verMapa(m);">
+                            &#128220; Ver Resumo Completo
+                        </button>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <!-- ── RELATORIOS ──────────────────────────────── -->
+        <div x-show="secao === 'relatorios'" class="fade-in">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 mb-6">
+                <!-- Visao geral -->
+                <div class="lg:col-span-2 card-static">
+                    <h3 class="font-semibold text-gray-800 mb-4">Visao Geral da Pratica</h3>
+                    <div x-show="!relatorioGeral" class="text-center py-6">
+                        <button @click="carregarRelatorioGeral()" class="btn-primary min-h-[44px]">Carregar Relatorio</button>
+                    </div>
+                    <div x-show="relatorioGeral" class="grid grid-cols-2 gap-3 sm:gap-4">
+                        <div class="bg-purple-50 rounded-lg p-3 sm:p-4">
+                            <p class="text-[10px] sm:text-xs text-purple-600 font-medium">Pacientes Ativos</p>
+                            <p class="text-2xl sm:text-3xl font-bold text-purple-700 mt-1" x-text="relatorioGeral?.pacientes_ativos ?? 0"></p>
+                        </div>
+                        <div class="bg-yellow-50 rounded-lg p-3 sm:p-4">
+                            <p class="text-[10px] sm:text-xs text-yellow-600 font-medium">Diagnosticos (este mes)</p>
+                            <p class="text-2xl sm:text-3xl font-bold text-yellow-700 mt-1" x-text="relatorioGeral?.diagnosticos_este_mes ?? 0"></p>
+                        </div>
+                        <div class="bg-green-50 rounded-lg p-3 sm:p-4">
+                            <p class="text-[10px] sm:text-xs text-green-600 font-medium">Mensagens Total</p>
+                            <p class="text-2xl sm:text-3xl font-bold text-green-700 mt-1" x-text="relatorioGeral?.total_conversas ?? 0"></p>
+                        </div>
+                        <div class="bg-blue-50 rounded-lg p-3 sm:p-4">
+                            <p class="text-[10px] sm:text-xs text-blue-600 font-medium">Mensagens (este mes)</p>
+                            <p class="text-2xl sm:text-3xl font-bold text-blue-700 mt-1" x-text="relatorioGeral?.conversas_este_mes ?? 0"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Distribuicao de elementos -->
+                <div class="card-static">
+                    <h3 class="font-semibold text-gray-800 mb-4">Top Elementos</h3>
+                    <div x-show="!relatorioGeral" class="text-center py-6 text-gray-400 text-sm">Carregue o relatorio</div>
+                    <div x-show="relatorioGeral" class="space-y-3">
+                        <template x-for="[elem, count] in Object.entries(relatorioGeral?.elementos_distribuicao || {})" :key="elem">
+                            <div class="flex items-center gap-3">
+                                <span class="text-lg w-8 text-center"
+                                    x-text="elem.toLowerCase().includes('agua') || elem.toLowerCase().includes('água') ? '\u{1F4A7}' : elem.toLowerCase().includes('fogo') ? '\u{1F525}' : elem.toLowerCase().includes('terra') ? '\u{1F33F}' : elem.toLowerCase().includes('ar') ? '\u{1F4A8}' : '\u2728'"></span>
+                                <span class="text-sm font-medium text-gray-800 w-16" x-text="elem"></span>
+                                <div class="flex-1 bg-gray-100 rounded-full h-5 overflow-hidden">
+                                    <div class="h-5 rounded-full flex items-center justify-end pr-2 transition-all duration-500"
+                                        :style="'width:' + Math.max(8, Math.min(100, (count / Math.max(...Object.values(relatorioGeral?.elementos_distribuicao || {1:1})) * 100))) + '%; background: linear-gradient(90deg, ' + (elem.toLowerCase().includes('agua') || elem.toLowerCase().includes('água') ? '#93C5FD, #3B82F6' : elem.toLowerCase().includes('fogo') ? '#FCA5A5, #EF4444' : elem.toLowerCase().includes('terra') ? '#6EE7B7, #10B981' : elem.toLowerCase().includes('ar') ? '#FCD34D, #F59E0B' : '#C4B5FD, #7B2FBE') + ')'">
+                                        <span class="text-xs font-bold text-white drop-shadow" x-text="count"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Rankings de diagnosticos -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                <div class="card-static">
+                    <h3 class="font-semibold text-gray-800 mb-3">Top Florais Prescritos</h3>
+                    <div x-show="!relatoriosDiag" class="text-center py-4">
+                        <button @click="carregarRelatoriosDiag()" class="btn-ghost text-sm min-h-[44px]">Carregar</button>
+                    </div>
+                    <div x-show="relatoriosDiag" class="space-y-1.5">
+                        <template x-for="[floral, count] in (relatoriosDiag?.florais_ranking || [])" :key="floral">
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="text-gray-700" x-text="floral"></span>
+                                <span class="badge bg-green-100 text-green-700" x-text="count + 'x'"></span>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+                <div class="card-static">
+                    <h3 class="font-semibold text-gray-800 mb-3">Top DNA Comprometido</h3>
+                    <div x-show="!relatoriosDiag" class="text-center py-4">
+                        <button @click="carregarRelatoriosDiag()" class="btn-ghost text-sm min-h-[44px]">Carregar</button>
+                    </div>
+                    <div x-show="relatoriosDiag" class="space-y-1.5">
+                        <template x-for="[dna, count] in (relatoriosDiag?.dna_ranking || [])" :key="dna">
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="text-gray-700" x-text="dna"></span>
+                                <span class="badge bg-red-100 text-red-700" x-text="count + 'x'"></span>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── ASSINATURA ──────────────────────────────── -->
+        <div x-show="secao === 'assinatura'" class="fade-in max-w-3xl">
+            <!-- Loading -->
+            <div x-show="assinaturaLoading" class="text-center py-16">
+                <span class="spinner"></span>
+                <p class="text-gray-400 text-sm mt-3">Carregando dados da assinatura...</p>
+            </div>
+
+            <div x-show="!assinaturaLoading">
+                <!-- Status do plano -->
+                <div class="card-static mb-6">
+                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                        <div class="flex items-start gap-4">
+                            <div class="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl"
+                                :class="assinatura.status === 'ativo' ? 'bg-green-100' : assinatura.status === 'trial' ? 'bg-blue-100' : 'bg-red-100'">
+                                <span x-text="assinatura.status === 'ativo' ? '&#9989;' : assinatura.status === 'trial' ? '&#128337;' : '&#9888;'"></span>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold text-gray-900">Plano Terapeutas Agent</h3>
+                                <div class="flex items-center gap-2 mt-1">
+                                    <span class="badge" :class="'badge-' + assinatura.status"
+                                        x-text="assinatura.status === 'ativo' ? 'Ativo' : assinatura.status === 'trial' ? 'Trial' : 'Vencido'"></span>
+                                    <span class="text-sm text-gray-500" x-text="assinatura.status === 'trial' ? ('Expira em ' + assinatura.dias_restantes + ' dias') : ''"></span>
+                                </div>
+                                <p class="text-2xl font-bold mt-2" style="color:#7B2FBE">
+                                    R$ <span x-text="assinatura.valor || '297'"></span><span class="text-sm font-normal text-gray-500">/mes</span>
+                                </p>
+                            </div>
+                        </div>
+                        <div class="w-full sm:w-auto">
+                            <button @click="gerenciarAssinatura()" class="btn-primary w-full sm:w-auto">Gerenciar Assinatura</button>
+                        </div>
+                    </div>
+
+                    <!-- Trial progress bar -->
+                    <div x-show="assinatura.status === 'trial'" class="mt-5 pt-4 border-t border-gray-100">
+                        <div class="flex items-center justify-between text-sm mb-2">
+                            <span class="text-gray-600">Periodo de teste</span>
+                            <span class="font-medium" :class="assinatura.dias_restantes <= 2 ? 'text-red-600' : 'text-gray-700'"
+                                x-text="assinatura.dias_restantes + ' de 7 dias restantes'"></span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2.5">
+                            <div class="h-2.5 rounded-full transition-all"
+                                :class="assinatura.dias_restantes <= 2 ? 'bg-red-500' : 'bg-purple-600'"
+                                :style="'width: ' + ((7 - assinatura.dias_restantes) / 7 * 100) + '%'"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detalhes do plano -->
+                <div class="card-static mb-6">
+                    <h3 class="font-semibold text-gray-800 mb-4">O que esta incluso</h3>
+                    <div class="grid sm:grid-cols-2 gap-3">
+                        <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                            <span class="text-green-500 text-lg">&#10003;</span>
+                            <span class="text-sm text-gray-700">Agente WhatsApp dedicado</span>
+                        </div>
+                        <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                            <span class="text-green-500 text-lg">&#10003;</span>
+                            <span class="text-sm text-gray-700">Base de conhecimento ilimitada</span>
+                        </div>
+                        <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                            <span class="text-green-500 text-lg">&#10003;</span>
+                            <span class="text-sm text-gray-700">Portal completo do terapeuta</span>
+                        </div>
+                        <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                            <span class="text-green-500 text-lg">&#10003;</span>
+                            <span class="text-sm text-gray-700">Relatorios e diagnosticos IA</span>
+                        </div>
+                        <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                            <span class="text-green-500 text-lg">&#10003;</span>
+                            <span class="text-sm text-gray-700">Gestao de pacientes</span>
+                        </div>
+                        <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                            <span class="text-green-500 text-lg">&#10003;</span>
+                            <span class="text-sm text-gray-700">Suporte prioritario</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Historico de pagamentos -->
+                <div class="card-static">
+                    <h3 class="font-semibold text-gray-800 mb-4">Historico de Pagamentos</h3>
+                    <div x-show="(assinatura.pagamentos || []).length === 0" class="text-center py-8">
+                        <p class="text-3xl mb-2">&#128179;</p>
+                        <p class="text-gray-500 font-medium text-sm">Nenhum pagamento registrado</p>
+                        <p class="text-gray-400 text-xs mt-1">Os pagamentos apareceriao aqui apos a primeira cobranca</p>
+                    </div>
+                    <div x-show="(assinatura.pagamentos || []).length > 0" class="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0">
+                        <table class="w-full text-sm min-w-[420px]">
+                            <thead class="border-b border-gray-100">
+                                <tr>
+                                    <th class="text-left py-2 px-3 text-xs font-semibold text-gray-500 uppercase">Data</th>
+                                    <th class="text-left py-2 px-3 text-xs font-semibold text-gray-500 uppercase">Valor</th>
+                                    <th class="text-left py-2 px-3 text-xs font-semibold text-gray-500 uppercase">Status</th>
+                                    <th class="text-left py-2 px-3 text-xs font-semibold text-gray-500 uppercase">Metodo</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-50">
+                                <template x-for="pag in (assinatura.pagamentos || [])" :key="pag.id">
+                                    <tr class="hover:bg-gray-50 transition">
+                                        <td class="py-2.5 px-3 text-gray-700" x-text="formatarDataBR(pag.data)"></td>
+                                        <td class="py-2.5 px-3 font-medium text-gray-800" x-text="'R$ ' + (pag.valor || '0,00')"></td>
+                                        <td class="py-2.5 px-3">
+                                            <span class="badge" :class="'badge-' + pag.status" x-text="pag.status"></span>
+                                        </td>
+                                        <td class="py-2.5 px-3 text-gray-500" x-text="pag.metodo || '—'"></td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── CONFIGURACOES ───────────────────────────── -->
+        <div x-show="secao === 'configuracoes'" class="fade-in max-w-2xl">
+
+            <!-- Perfil do Terapeuta -->
+            <div class="card-static mb-6">
+                <h3 class="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                    <span>&#128100;</span> Perfil do Terapeuta
+                </h3>
+                <div class="space-y-4">
+                    <div class="grid sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Nome</label>
+                            <input class="input" x-model="configForm.nome" placeholder="Seu nome completo">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">E-mail</label>
+                            <input class="input bg-gray-50 text-gray-500 cursor-not-allowed" :value="terapeuta?.email || ''" disabled>
+                        </div>
+                    </div>
+                    <div class="grid sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Telefone</label>
+                            <input class="input" x-model="configForm.telefone" placeholder="5511999999999">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Nome do Agente WhatsApp</label>
+                            <input class="input" x-model="configForm.nome_agente" placeholder="Ex: Dra. Sofia">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">URL da Foto de Perfil</label>
+                        <input class="input" x-model="configForm.foto_url" placeholder="https://exemplo.com/foto.jpg">
+                    </div>
+                    <button @click="salvarConfig()" class="btn-primary w-full sm:w-auto" :disabled="loading">
+                        <span x-show="!loading">Salvar Alteracoes</span>
+                        <span x-show="loading">Salvando...</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Alterar Senha -->
+            <div class="card-static">
+                <h3 class="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                    <span>&#128274;</span> Alterar Senha
+                </h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nova Senha</label>
+                        <input type="password" class="input" x-model="senhaForm.nova" placeholder="Minimo 8 caracteres">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Confirmar Senha</label>
+                        <input type="password" class="input" x-model="senhaForm.confirmar" placeholder="Repita a senha">
+                    </div>
+                    <p x-show="senhaMsg" x-text="senhaMsg" :class="senhaMsgOk ? 'text-green-600' : 'text-red-500'" class="text-sm"></p>
+                    <button @click="alterarSenha()" class="btn-ghost w-full sm:w-auto">Alterar Senha</button>
+                </div>
+            </div>
+        </div>
+
+        </div> <!-- /p-6 -->
+    </main>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     MODAIS
+══════════════════════════════════════════════ -->
+
+<!-- Modal Paciente -->
+<div x-show="modalAberto === 'paciente'" class="modal-backdrop" @click.self="fecharModal()">
+    <div class="modal-box p-6">
+        <h3 class="text-lg font-bold text-gray-900 mb-5" x-text="editandoPaciente?.id ? 'Editar Paciente' : 'Novo Paciente'"></h3>
+        <div class="space-y-3">
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Nome *</label>
+                <input class="input" x-model="editandoPaciente.nome" placeholder="Nome completo"></div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Telefone *</label>
+                <input class="input" x-model="editandoPaciente.numero_telefone" placeholder="5511999999999"></div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">E-mail</label>
+                <input class="input" type="email" x-model="editandoPaciente.email" placeholder="email@exemplo.com"></div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">Data Nascimento</label>
+                    <input class="input" type="date" x-model="editandoPaciente.data_nascimento"></div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">Hora Nascimento</label>
+                    <input class="input" type="time" x-model="editandoPaciente.hora_nascimento"></div>
+            </div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Cidade de Nascimento</label>
+                <input class="input" x-model="editandoPaciente.cidade_nascimento" placeholder="Cidade, Estado, Pais"></div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Tags (separadas por virgula)</label>
+                <input class="input" x-model="editandoPacienteTagsStr" placeholder="ansiosa, florais, meditacao"></div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Notas Gerais</label>
+                <textarea class="input" rows="3" x-model="editandoPaciente.notas_gerais" placeholder="Observacoes sobre o paciente..."></textarea></div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <select class="input" x-model="editandoPaciente.status">
+                    <option value="ativo">Ativo</option>
+                    <option value="inativo">Inativo</option>
+                    <option value="arquivado">Arquivado</option>
+                </select></div>
+        </div>
+        <div class="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 mt-6">
+            <button @click="fecharModal()" class="btn-ghost w-full sm:w-auto">Cancelar</button>
+            <button @click="salvarPaciente()" class="btn-primary w-full sm:w-auto" :disabled="loading">
+                <span x-show="!loading" x-text="editandoPaciente?.id ? 'Salvar' : 'Criar'"></span>
+                <span x-show="loading">Salvando...</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Diagnostico -->
+<div x-show="modalAberto === 'diagnostico'" class="modal-backdrop" @click.self="fecharModal()">
+    <div class="modal-box p-6">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-5">
+            <h3 class="text-lg font-bold text-gray-900" x-text="editandoDiag?.id ? 'Editar Diagnostico' : 'Novo Diagnostico'"></h3>
+            <button x-show="!editandoDiag?.id && pacienteContexto" @click="autoExtrair(pacienteContexto?.id)"
+                class="btn-ouro text-xs flex items-center gap-1 w-full sm:w-auto justify-center">
+                <span>&#129302;</span> Extrair com IA
+            </button>
+        </div>
+        <div class="space-y-3">
+            <div x-show="!editandoDiag?.id">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Paciente *</label>
+                <select class="input" x-model="editandoDiag.paciente_id">
+                    <option value="">Selecione...</option>
+                    <template x-for="p in pacientes" :key="p.id">
+                        <option :value="p.id" x-text="p.nome"></option>
+                    </template>
+                </select>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">Elemento Dominante</label>
+                    <input class="input" x-model="editandoDiag.elemento_dominante" placeholder="Ex: Fogo"></div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">Elemento Carente</label>
+                    <input class="input" x-model="editandoDiag.elemento_carente" placeholder="Ex: Agua"></div>
+            </div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">DNA Comprometido (virgula)</label>
+                <input class="input" x-model="editandoDiagDNAStr" placeholder="Ex: Yin, Ancestral"></div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Serpentes Ativas (virgula)</label>
+                <input class="input" x-model="editandoDiagSerpStr" placeholder="Ex: Lucifer, Lilith"></div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Setenio Atual (1-9)</label>
+                <input class="input" type="number" min="1" max="9" x-model="editandoDiag.setenio_atual"></div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Florais Prescritos (virgula)</label>
+                <input class="input" x-model="editandoDiagFloraisStr" placeholder="Ex: Rescue, Mimulus, Agrimony"></div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Protocolo Terapeutico</label>
+                <textarea class="input" rows="4" x-model="editandoDiag.protocolo_texto" placeholder="Descreva o protocolo recomendado..."></textarea></div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Data da Sessao</label>
+                <input class="input" type="date" x-model="editandoDiag.sessao_data"></div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <select class="input" x-model="editandoDiag.status">
+                    <option value="rascunho">Rascunho</option>
+                    <option value="finalizado">Finalizado</option>
+                    <option value="arquivado">Arquivado</option>
+                </select></div>
+        </div>
+        <div class="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 mt-6">
+            <button @click="fecharModal()" class="btn-ghost w-full sm:w-auto">Cancelar</button>
+            <button @click="salvarDiagnostico()" class="btn-primary w-full sm:w-auto" :disabled="loading">
+                <span x-show="!loading" x-text="editandoDiag?.id ? 'Salvar' : 'Criar'"></span>
+                <span x-show="loading">Salvando...</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Anotacao -->
+<div x-show="modalAberto === 'nota'" class="modal-backdrop" @click.self="fecharModal()">
+    <div class="modal-box p-6">
+        <h3 class="text-lg font-bold text-gray-900 mb-5" x-text="editandoNota?.id ? 'Editar Anotacao' : 'Nova Anotacao'"></h3>
+        <div class="space-y-3">
+            <div x-show="!pacienteContexto">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Paciente *</label>
+                <select class="input" x-model="editandoNota.paciente_id">
+                    <option value="">Selecione...</option>
+                    <template x-for="p in pacientes" :key="p.id">
+                        <option :value="p.id" x-text="p.nome"></option>
+                    </template>
+                </select>
+            </div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
+                <select class="input" x-model="editandoNota.tipo">
+                    <option value="sessao">Sessao</option>
+                    <option value="observacao">Observacao</option>
+                    <option value="tarefa">Tarefa</option>
+                    <option value="lembrete">Lembrete</option>
+                    <option value="evolucao">Evolucao</option>
+                </select></div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Titulo</label>
+                <input class="input" x-model="editandoNota.titulo" placeholder="Titulo opcional"></div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Conteudo *</label>
+                <textarea class="input" rows="5" x-model="editandoNota.conteudo" placeholder="Escreva a anotacao aqui..."></textarea></div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">Data da Anotacao</label>
+                    <input class="input" type="date" x-model="editandoNota.data_anotacao"></div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">Proxima Sessao</label>
+                    <input class="input" type="date" x-model="editandoNota.proxima_sessao"></div>
+            </div>
+        </div>
+        <div class="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 mt-6">
+            <button @click="fecharModal()" class="btn-ghost w-full sm:w-auto">Cancelar</button>
+            <button @click="salvarNota()" class="btn-primary w-full sm:w-auto" :disabled="loading">
+                <span x-show="!loading" x-text="editandoNota?.id ? 'Salvar' : 'Criar'"></span>
+                <span x-show="loading">Salvando...</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Acompanhamento -->
+<div x-show="modalAberto === 'acomp'" class="modal-backdrop" @click.self="fecharModal()">
+    <div class="modal-box p-6">
+        <h3 class="text-lg font-bold text-gray-900 mb-5" x-text="editandoAcomp?.id ? 'Editar Follow-up' : 'Novo Follow-up'"></h3>
+        <div class="space-y-3">
+            <div x-show="!pacienteContexto">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Paciente *</label>
+                <select class="input" x-model="editandoAcomp.paciente_id">
+                    <option value="">Selecione...</option>
+                    <template x-for="p in pacientes" :key="p.id">
+                        <option :value="p.id" x-text="p.nome"></option>
+                    </template>
+                </select>
+            </div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
+                <select class="input" x-model="editandoAcomp.tipo">
+                    <option value="retorno">Retorno</option>
+                    <option value="floral">Floral</option>
+                    <option value="tarefa">Tarefa</option>
+                    <option value="contato">Contato</option>
+                    <option value="marco">Marco</option>
+                </select></div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Descricao *</label>
+                <textarea class="input" rows="3" x-model="editandoAcomp.descricao" placeholder="O que precisa ser feito?"></textarea></div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">Data Prevista</label>
+                    <input class="input" type="date" x-model="editandoAcomp.data_prevista"></div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">Horario</label>
+                    <input class="input" type="time" x-model="editandoAcomp.hora_prevista" placeholder="HH:MM"></div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">Prioridade</label>
+                    <select class="input" x-model.number="editandoAcomp.prioridade">
+                        <option :value="1">Alta (vermelho)</option>
+                        <option :value="2">Media (amarelo)</option>
+                        <option :value="3">Baixa (verde)</option>
+                    </select></div>
+            </div>
+            <div x-show="editandoAcomp?.id">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <select class="input" x-model="editandoAcomp.status">
+                    <option value="pendente">Pendente</option>
+                    <option value="realizado">Realizado</option>
+                    <option value="cancelado">Cancelado</option>
+                    <option value="adiado">Adiado</option>
+                </select>
+            </div>
+        </div>
+        <div class="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 mt-6">
+            <button @click="fecharModal()" class="btn-ghost w-full sm:w-auto">Cancelar</button>
+            <button @click="salvarAcomp()" class="btn-primary w-full sm:w-auto" :disabled="loading">
+                <span x-show="!loading" x-text="editandoAcomp?.id ? 'Salvar' : 'Criar'"></span>
+                <span x-show="loading">Salvando...</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Mapa Natal -->
+<div x-show="modalAberto === 'mapa'" class="modal-backdrop" @click.self="fecharModal()">
+    <div class="modal-box p-0 max-w-4xl sm:rounded-2xl" style="max-height: 90vh; display: flex; flex-direction: column;">
+    <!-- Note: On mobile (<640px), modal-box becomes full-screen via CSS -->
+        <!-- Header fixo -->
+        <div class="flex items-start justify-between p-4 sm:p-5 border-b flex-shrink-0">
+            <div class="flex-1 min-w-0 mr-3">
+                <h3 class="font-bold text-gray-900 text-base sm:text-lg truncate" x-text="mapaVendo?.nome || mapaVendo?.nome_paciente || mapaVendo?.pacientes?.nome || ''"></h3>
+                <p x-show="!(mapaVendo?.nome || mapaVendo?.nome_paciente || mapaVendo?.pacientes?.nome)" class="text-gray-400 italic text-sm">Sem paciente vinculado</p>
+                <p class="text-xs sm:text-sm text-gray-500 mt-0.5" x-text="mapasDoMesmoPaciente.length + ' mapa(s) deste paciente'"></p>
+            </div>
+            <button @click="fecharModal()" class="text-gray-400 hover:text-gray-600 text-xl transition flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100">&#10005;</button>
+        </div>
+        <!-- Conteudo scrollavel -->
+        <div class="p-3 sm:p-5 space-y-4 sm:space-y-6 overflow-y-auto flex-1">
+            <!-- Dados de nascimento (uma vez) -->
+            <div class="bg-indigo-50 rounded-xl p-4">
+                <h4 class="font-semibold text-indigo-900 mb-3 flex items-center gap-2"><span>&#127775;</span> Dados de Nascimento</h4>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
+                    <div class="bg-white rounded-lg p-3">
+                        <p class="text-xs text-gray-500 mb-0.5">Data de Nascimento</p>
+                        <p class="font-semibold text-gray-800 text-sm" x-text="formatarDataBR(mapaVendo?.data_nascimento)"></p>
+                    </div>
+                    <div class="bg-white rounded-lg p-3">
+                        <p class="text-xs text-gray-500 mb-0.5">Hora de Nascimento</p>
+                        <p class="font-semibold text-gray-800 text-sm" x-text="mapaVendo?.hora_nascimento || '-'"></p>
+                    </div>
+                    <div class="bg-white rounded-lg p-3">
+                        <p class="text-xs text-gray-500 mb-0.5">Cidade de Nascimento</p>
+                        <p class="font-semibold text-gray-800 text-sm" x-text="mapaVendo?.cidade_nascimento || '-'"></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loop: cada mapa do paciente -->
+            <template x-for="(mp, idx) in mapasDoMesmoPaciente" :key="mp.id">
+                <div class="border rounded-xl overflow-hidden shadow-sm">
+                    <!-- Header do mapa — Natal = roxo, Alquimico = dourado -->
+                    <div class="px-4 py-3 flex items-center gap-3" :class="isAlquimico(mp.mapa_json) ? 'bg-amber-50 border-b border-amber-200' : 'bg-purple-50 border-b border-purple-200'">
+                        <div class="w-9 h-9 rounded-full flex items-center justify-center text-lg flex-shrink-0" :class="isAlquimico(mp.mapa_json) ? 'bg-amber-200 text-amber-800' : 'bg-purple-200 text-purple-800'">
+                            <span x-text="isAlquimico(mp.mapa_json) ? '\u{1F52E}' : '\u{2B50}'"></span>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <h4 class="font-bold text-gray-900" x-text="mp.mapa_json?.tipo || 'Mapa Natal'"></h4>
+                            <p class="text-xs text-gray-500" x-text="'Gerado em ' + formatarDataCurta(mp.criado_em)"></p>
+                        </div>
+                        <span class="badge text-xs flex-shrink-0" :class="isAlquimico(mp.mapa_json) ? 'bg-amber-100 text-amber-700' : 'bg-purple-100 text-purple-700'" x-text="isAlquimico(mp.mapa_json) ? 'Alquimico' : 'Natal'"></span>
+                    </div>
+
+                    <div class="p-4 space-y-4">
+                        <!-- Imagem do mapa -->
+                        <img x-show="mp.imagem_url" :src="mp.imagem_url" class="w-full rounded-lg shadow-sm">
+
+                        <!-- Dados astrologicos — MAPA NATAL (sol/lua/ascendente como objetos) -->
+                        <div x-show="mp.mapa_json && !isAlquimico(mp.mapa_json)" class="space-y-3">
+                            <h5 class="text-xs font-semibold text-purple-600 uppercase tracking-wider flex items-center gap-1.5">&#9734; Posicoes Planetarias</h5>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+                                <template x-for="[key, val] in Object.entries(mp.mapa_json || {}).filter(([k]) => !['tipo','aspectos'].includes(k))" :key="key">
+                                    <div class="bg-purple-50/50 rounded-lg p-3 border border-purple-100">
+                                        <p class="text-xs text-purple-500 mb-0.5 capitalize font-medium" x-text="key.replace(/_/g, ' ')"></p>
+                                        <p class="font-semibold text-gray-800 text-sm" x-text="typeof val === 'object' && val !== null ? (val.signo ? val.signo + ' Casa ' + (val.casa || '?') + (val.grau ? ' (' + val.grau + '\u00B0)' : '') : (Array.isArray(val) ? val.map(v => typeof v === 'object' ? (v.p1||'') + ' ' + (v.tipo||'') + ' ' + (v.p2||'') : v).join(', ') : JSON.stringify(val))) : val"></p>
+                                    </div>
+                                </template>
+                                <!-- Aspectos separados com formatacao propria -->
+                                <template x-if="mp.mapa_json?.aspectos && mp.mapa_json.aspectos.length > 0">
+                                    <div class="col-span-full bg-purple-50/50 rounded-lg p-3 border border-purple-100">
+                                        <p class="text-xs text-purple-500 mb-1.5 font-medium">Aspectos</p>
+                                        <div class="flex flex-wrap gap-1.5">
+                                            <template x-for="asp in mp.mapa_json.aspectos.slice(0, 8)" :key="asp.p1+asp.p2+asp.tipo">
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
+                                                    :class="asp.tipo === 'square' || asp.tipo === 'opposition' ? 'bg-red-100 text-red-700' : asp.tipo === 'trine' || asp.tipo === 'sextile' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'"
+                                                    x-text="(asp.p1||'').replace('Medium_Coeli','MC').replace('Ascendant','AC').slice(0,3) + ' ' + ({conjunction:'\u260C',opposition:'\u260D',square:'\u25A1',trine:'\u25B3',sextile:'\u2731'}[asp.tipo]||asp.tipo) + ' ' + (asp.p2||'').replace('Medium_Coeli','MC').replace('Ascendant','AC').slice(0,3)">
+                                                </span>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+
+                        <!-- Dados astrologicos — MAPA ALQUIMICO (com badges coloridos) -->
+                        <div x-show="mp.mapa_json && isAlquimico(mp.mapa_json)" class="space-y-4">
+                            <!-- Elementos -->
+                            <div x-show="mp.mapa_json?.elemento_dominante || mp.mapa_json?.elemento_carente">
+                                <h5 class="text-xs font-semibold text-amber-600 uppercase tracking-wider flex items-center gap-1.5 mb-2">&#9878; Elementos</h5>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+                                    <div x-show="mp.mapa_json?.elemento_dominante" class="bg-amber-50/50 rounded-lg p-3 border border-amber-100">
+                                        <p class="text-xs text-amber-500 mb-0.5 font-medium">Elemento Dominante</p>
+                                        <p class="font-semibold text-gray-800 text-sm" x-text="mp.mapa_json?.elemento_dominante"></p>
+                                    </div>
+                                    <div x-show="mp.mapa_json?.elemento_carente" class="bg-amber-50/50 rounded-lg p-3 border border-amber-100">
+                                        <p class="text-xs text-amber-500 mb-0.5 font-medium">Elemento Carente</p>
+                                        <p class="font-semibold text-gray-800 text-sm" x-text="mp.mapa_json?.elemento_carente"></p>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- DNA Comprometido -->
+                            <div x-show="mp.mapa_json?.dna_comprometido">
+                                <h5 class="text-xs font-semibold text-red-500 uppercase tracking-wider flex items-center gap-1.5 mb-2">&#9763; DNA Comprometido</h5>
+                                <div class="flex flex-wrap gap-1.5">
+                                    <template x-for="item in (Array.isArray(mp.mapa_json?.dna_comprometido) ? mp.mapa_json.dna_comprometido : [mp.mapa_json?.dna_comprometido])" :key="item">
+                                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700 border border-red-200" x-text="item"></span>
+                                    </template>
+                                </div>
+                            </div>
+                            <!-- Serpentes Ativas -->
+                            <div x-show="mp.mapa_json?.serpentes_ativas">
+                                <h5 class="text-xs font-semibold text-orange-500 uppercase tracking-wider flex items-center gap-1.5 mb-2">&#128013; Serpentes Ativas</h5>
+                                <div class="flex flex-wrap gap-1.5">
+                                    <template x-for="item in (Array.isArray(mp.mapa_json?.serpentes_ativas) ? mp.mapa_json.serpentes_ativas : [mp.mapa_json?.serpentes_ativas])" :key="item">
+                                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-700 border border-orange-200" x-text="item"></span>
+                                    </template>
+                                </div>
+                            </div>
+                            <!-- Fase e Setenio -->
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+                                <div x-show="mp.mapa_json?.fase_alquimica" class="bg-amber-50/50 rounded-lg p-3 border border-amber-100">
+                                    <p class="text-xs text-amber-500 mb-0.5 font-medium">Fase Alquimica</p>
+                                    <p class="font-semibold text-gray-800 text-sm" x-text="mp.mapa_json?.fase_alquimica"></p>
+                                </div>
+                                <div x-show="mp.mapa_json?.setenio" class="bg-amber-50/50 rounded-lg p-3 border border-amber-100">
+                                    <p class="text-xs text-amber-500 mb-0.5 font-medium">Setenio</p>
+                                    <p class="font-semibold text-gray-800 text-sm" x-text="mp.mapa_json?.setenio"></p>
+                                </div>
+                            </div>
+                            <!-- Outros campos alquimicos nao mapeados -->
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+                                <template x-for="[key, val] in Object.entries(mp.mapa_json || {}).filter(([k]) => !['tipo','elemento_dominante','elemento_carente','dna_comprometido','serpentes_ativas','fase_alquimica','setenio','aspectos'].includes(k))" :key="key">
+                                    <div class="bg-gray-50 rounded-lg p-3 border border-gray-100">
+                                        <p class="text-xs text-gray-500 mb-0.5 capitalize font-medium" x-text="key.replace(/_/g, ' ')"></p>
+                                        <p class="font-semibold text-gray-800 text-sm" x-text="typeof val === 'object' && val !== null ? (val.signo ? val.signo + ' Casa ' + (val.casa || '?') + (val.grau ? ' (' + val.grau + '\u00B0)' : '') : (Array.isArray(val) ? val.map(v => typeof v === 'object' ? (v.signo ? v.signo + ' Casa ' + (v.casa||'?') : JSON.stringify(v)) : v).join(', ') : JSON.stringify(val))) : val"></p>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+
+                        <!-- Resumo do Signo -->
+                        <div x-show="gerarResumoSigno(mp.mapa_json)" class="rounded-xl border p-4" :class="isAlquimico(mp.mapa_json) ? 'bg-amber-50/30 border-amber-200' : 'bg-purple-50/30 border-purple-200'">
+                            <h5 class="text-sm font-semibold mb-2 flex items-center gap-2" :class="isAlquimico(mp.mapa_json) ? 'text-amber-700' : 'text-purple-700'">
+                                <span>&#128220;</span> Resumo
+                            </h5>
+                            <p class="text-sm text-gray-700 leading-relaxed" x-text="gerarResumoSigno(mp.mapa_json)"></p>
+                        </div>
+                    </div>
+                </div>
+            </template>
+
+            <!-- Aviso se falta algum mapa -->
+            <div x-show="mapasDoMesmoPaciente.length < 2" class="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+                <div class="flex items-start gap-3">
+                    <span class="text-2xl flex-shrink-0">&#9888;&#65039;</span>
+                    <div>
+                        <p class="text-yellow-800 font-medium">Este paciente possui apenas <span x-text="mapasDoMesmoPaciente.length"></span> mapa.</p>
+                        <p class="text-yellow-600 text-sm mt-1">O ideal e ter o Mapa Natal + Mapa Alquimico para uma analise completa.</p>
+                        <p class="text-yellow-700 text-sm mt-2 font-medium">Envie ao paciente via WhatsApp: <span class="bg-yellow-100 px-2 py-0.5 rounded font-mono text-xs">"Gostaria de gerar meu mapa"</span></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Botao Fechar fixo no rodape -->
+        <div class="p-4 border-t bg-gray-50 sm:rounded-b-2xl flex-shrink-0 flex justify-end">
+            <button @click="fecharModal()" class="btn-ghost w-full sm:w-auto">Fechar</button>
+        </div>
+    </div>
+</div>
+
+<!-- Toast notificacoes -->
+<div x-show="toast.show" x-transition
+    class="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:bottom-6 z-50 px-5 py-3 rounded-xl shadow-xl text-sm font-medium text-white sm:max-w-sm"
+    :class="toast.ok ? 'bg-green-600' : 'bg-red-600'"
+    x-text="toast.msg"></div>
+
+
+<!-- ══════════════════════════════════════════════
+     JAVASCRIPT
+══════════════════════════════════════════════ -->
+<script>
+function portalApp() {
+    return {
+        // ── Estado de auth ─────────────────────────────
+        autenticado: false,
+        terapeuta: null,
+        token: null,
+        loginForm: { email: '', senha: '' },
+        loginErro: '',
+        loginLoading: false,
+
+        // ── Recuperar Senha ────────────────────────────
+        recuperarSenhaStep: 0, // 0=login, 1=email, 2=code, 3=new password
+        recuperarForm: {
+            email: '',
+            codigoDigits: ['', '', '', '', '', ''],
+            novaSenha: '',
+            confirmarSenha: '',
+        },
+        recuperarErro: '',
+        recuperarLoading: false,
+
+        // ── Navegacao ──────────────────────────────────
+        secao: 'dashboard',
+        loading: false,
+        sidebarOpen: false,
+        dashboardLoaded: false,
+        notificationCount: 0,
+
+        // ── Menu ───────────────────────────────────────
+        menuItems: [
+            { id: 'dashboard',        label: 'Inicio',          icon: '\u{1F3E0}', badge: 0 },
+            { id: 'pacientes',        label: 'Pacientes',       icon: '\u{1F465}', badge: 0 },
+            { id: 'conversas_whats',  label: 'Conversas',       icon: '\u{1F4AC}', badge: 0 },
+            { id: 'diagnosticos',     label: 'Diagnosticos',    icon: '\u{1F9EA}', badge: 0 },
+            { id: 'acompanhamentos',  label: 'Agenda',          icon: '\u{1F4C5}', badge: 0 },
+            { id: 'mapas',            label: 'Mapas Natais',    icon: '\u{1F310}', badge: 0 },
+            { id: 'relatorios',       label: 'Relatorios',      icon: '\u{1F4CA}', badge: 0 },
+            { id: 'assinatura',       label: 'Assinatura',      icon: '\u{1F4B3}', badge: 0 },
+            { id: 'configuracoes',    label: 'Configuracoes',   icon: '\u2699',    badge: 0 },
+        ],
+
+        // ── Dados ──────────────────────────────────────
+        pacientes: [],
+        pacientesFiltrados: [],
+        buscaPaciente: '',
+        filtroPacienteStatus: '',
+        prontuario: null,
+        abaProntuario: 'timeline',
+        abasProntuario: [
+            { id: 'timeline',     label: 'Timeline',     icon: '\u{1F4CB}' },
+            { id: 'diagnosticos', label: 'Diagnosticos', icon: '\u{1FA7A}' },
+            { id: 'anotacoes',    label: 'Notas',        icon: '\u{270F}\u{FE0F}' },
+            { id: 'conversas',    label: 'Conversas',    icon: '\u{1F4AC}' },
+            { id: 'mapas',        label: 'Mapas',        icon: '\u{2B50}' },
+        ],
+        diagnosticos: [],
+        filtroDiagStatus: '',
+        acompanhamentos: [],
+        filtroAcompStatus: 'pendente',
+        agenda7dias: [],
+        agendaHoje: [],
+        ultimasMsgs: [],
+        mapas: [],
+        buscaMapas: '',
+        stats: {},
+        relatorioGeral: null,
+        relatoriosDiag: null,
+        documentos: [],
+
+        // ── Conversas WhatsApp ────────────────────────
+        conversasWhats: [],
+        conversasWhatsGrupos: [],
+        buscaConversas: '',
+        conversaSelecionada: null,
+        conversasMensagens: [],
+
+        // ── Assinatura ─────────────────────────────────
+        assinatura: {
+            status: 'trial',
+            valor: '297',
+            dias_restantes: 7,
+            pagamentos: [],
+        },
+        assinaturaLoading: false,
+
+        // ── Modais ─────────────────────────────────────
+        modalAberto: null,
+        pacienteContexto: null,
+        editandoPaciente: {},
+        editandoPacienteTagsStr: '',
+        editandoDiag: {},
+        editandoDiagDNAStr: '',
+        editandoDiagSerpStr: '',
+        editandoDiagFloraisStr: '',
+        editandoNota: {},
+        editandoAcomp: {},
+        mapaVendo: null,
+        mapasDoMesmoPaciente: [],
+
+        // ── Config ─────────────────────────────────────
+        configForm: {
+            nome: '',
+            nome_agente: '',
+            telefone: '',
+            foto_url: '',
+            tom_de_voz: 'acolhedor',
+            horario_inicio: '08:00',
+            horario_fim: '18:00',
+            mensagem_boas_vindas: '',
+        },
+        senhaForm: { nova: '', confirmar: '' },
+        senhaMsg: '',
+        senhaMsgOk: false,
+
+        // ── Toast ──────────────────────────────────────
+        toast: { show: false, msg: '', ok: true },
+
+        // ── Computadas ─────────────────────────────────
+        get tituloSecao() {
+            const item = this.menuItems.find(m => m.id === this.secao);
+            return item?.label || 'Portal';
+        },
+        get headers() {
+            return {
+                'Authorization': `Bearer ${this.token}`,
+                'Content-Type': 'application/json',
+            };
+        },
+
+        // ── Init ───────────────────────────────────────
+        async init() {
+            const t = localStorage.getItem('portal_token');
+            if (t) {
+                this.token = t;
+                try {
+                    const me = await this.api('GET', '/portal/api/auth/me');
+                    this.terapeuta = me;
+                    this.autenticado = true;
+                    await this.carregarDashboard();
+                } catch (e) {
+                    localStorage.removeItem('portal_token');
+                    this.token = null;
+                }
+            }
+        },
+
+        // ── Autenticacao ───────────────────────────────
+        async login() {
+            this.loginLoading = true;
+            this.loginErro = '';
+            try {
+                const res = await fetch('/portal/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(this.loginForm),
+                });
+                if (!res.ok) {
+                    const err = await res.json();
+                    this.loginErro = err.detail || 'Credenciais invalidas';
+                    return;
+                }
+                const data = await res.json();
+                this.token = data.access_token;
+                this.terapeuta = data.terapeuta;
+                localStorage.setItem('portal_token', this.token);
+                this.autenticado = true;
+                await this.carregarDashboard();
+            } catch (e) {
+                this.loginErro = 'Erro de conexao. Tente novamente.';
+            } finally {
+                this.loginLoading = false;
+            }
+        },
+
+        logout() {
+            localStorage.removeItem('portal_token');
+            this.token = null;
+            this.autenticado = false;
+            this.terapeuta = null;
+            this.secao = 'dashboard';
+            this.recuperarSenhaStep = 0;
+        },
+
+        // ── Recuperar Senha ────────────────────────────
+        iniciarRecuperarSenha() {
+            this.recuperarSenhaStep = 1;
+            this.recuperarErro = '';
+            this.recuperarForm = {
+                email: this.loginForm.email || '',
+                codigoDigits: ['', '', '', '', '', ''],
+                novaSenha: '',
+                confirmarSenha: '',
+            };
+        },
+
+        async enviarCodigoRecuperacao() {
+            this.recuperarLoading = true;
+            this.recuperarErro = '';
+            try {
+                const res = await fetch('/portal/api/auth/recuperar-senha', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: this.recuperarForm.email }),
+                });
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    this.recuperarErro = err.detail || 'Erro ao enviar codigo. Verifique o e-mail.';
+                    return;
+                }
+                this.recuperarSenhaStep = 2;
+                this.mostrarToast('Codigo enviado para seu WhatsApp!', true);
+                // Focus first code input after render
+                setTimeout(() => {
+                    const el = document.getElementById('code-0');
+                    if (el) el.focus();
+                }, 100);
+            } catch (e) {
+                this.recuperarErro = 'Erro de conexao. Tente novamente.';
+            } finally {
+                this.recuperarLoading = false;
+            }
+        },
+
+        async verificarCodigoRecuperacao() {
+            const codigo = this.recuperarForm.codigoDigits.join('');
+            if (codigo.length !== 6) {
+                this.recuperarErro = 'Digite o codigo de 6 digitos completo.';
+                return;
+            }
+            this.recuperarLoading = true;
+            this.recuperarErro = '';
+            try {
+                const res = await fetch('/portal/api/auth/verificar-codigo', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: this.recuperarForm.email, codigo }),
+                });
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    this.recuperarErro = err.detail || 'Codigo invalido ou expirado.';
+                    return;
+                }
+                this.recuperarSenhaStep = 3;
+            } catch (e) {
+                this.recuperarErro = 'Erro de conexao. Tente novamente.';
+            } finally {
+                this.recuperarLoading = false;
+            }
+        },
+
+        async redefinirSenhaRecuperacao() {
+            if (this.recuperarForm.novaSenha.length < 8) {
+                this.recuperarErro = 'A senha deve ter no minimo 8 caracteres.';
+                return;
+            }
+            if (this.recuperarForm.novaSenha !== this.recuperarForm.confirmarSenha) {
+                this.recuperarErro = 'As senhas nao coincidem.';
+                return;
+            }
+            this.recuperarLoading = true;
+            this.recuperarErro = '';
+            try {
+                const codigo = this.recuperarForm.codigoDigits.join('');
+                const res = await fetch('/portal/api/auth/redefinir-senha', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: this.recuperarForm.email,
+                        codigo,
+                        nova_senha: this.recuperarForm.novaSenha,
+                    }),
+                });
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    this.recuperarErro = err.detail || 'Erro ao redefinir senha.';
+                    return;
+                }
+                const data = await res.json();
+                // Auto-login if the endpoint returns a token
+                if (data.access_token) {
+                    this.token = data.access_token;
+                    this.terapeuta = data.terapeuta;
+                    localStorage.setItem('portal_token', this.token);
+                    this.autenticado = true;
+                    this.recuperarSenhaStep = 0;
+                    this.mostrarToast('Senha redefinida com sucesso!', true);
+                    await this.carregarDashboard();
+                } else {
+                    // Fallback: redirect to login
+                    this.recuperarSenhaStep = 0;
+                    this.loginForm.email = this.recuperarForm.email;
+                    this.loginForm.senha = '';
+                    this.mostrarToast('Senha redefinida! Faca login com a nova senha.', true);
+                }
+            } catch (e) {
+                this.recuperarErro = 'Erro de conexao. Tente novamente.';
+            } finally {
+                this.recuperarLoading = false;
+            }
+        },
+
+        // Code input helpers
+        handleCodeInput(event, index) {
+            const value = event.target.value;
+            if (value && index < 5) {
+                const next = document.getElementById('code-' + (index + 1));
+                if (next) next.focus();
+            }
+        },
+        handleCodeBackspace(event, index) {
+            if (!this.recuperarForm.codigoDigits[index] && index > 0) {
+                const prev = document.getElementById('code-' + (index - 1));
+                if (prev) prev.focus();
+            }
+        },
+        handleCodePaste(event) {
+            event.preventDefault();
+            const paste = (event.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').substring(0, 6);
+            for (let i = 0; i < 6; i++) {
+                this.recuperarForm.codigoDigits[i] = paste[i] || '';
+            }
+            // Focus last filled or last input
+            const lastIdx = Math.min(paste.length, 5);
+            const el = document.getElementById('code-' + lastIdx);
+            if (el) el.focus();
+        },
+
+        // ── Navegacao ──────────────────────────────────
+        async navegar(id) {
+            this.secao = id;
+            if (id === 'dashboard') await this.carregarDashboard();
+            else if (id === 'pacientes') { this.prontuario = null; this.pacienteContexto = null; await this.carregarPacientes(); }
+            else if (id === 'diagnosticos') await this.carregarDiagnosticos();
+            else if (id === 'acompanhamentos') await this.carregarAcompanhamentos();
+            else if (id === 'mapas') await this.carregarMapas();
+            else if (id === 'configuracoes') await this.carregarConfig();
+            else if (id === 'relatorios') { this.carregarRelatorioGeral(); this.carregarRelatoriosDiag(); }
+            else if (id === 'assinatura') await this.carregarAssinatura();
+            else if (id === 'conversas_whats') await this.carregarConversasWhats();
+        },
+
+        // ── API helper ─────────────────────────────────
+        async api(method, path, body) {
+            const opts = { method, headers: this.headers };
+            if (body) opts.body = JSON.stringify(body);
+            const res = await fetch(path, opts);
+            if (res.status === 401) { this.logout(); throw new Error('401'); }
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.detail || 'Erro na requisicao');
+            }
+            return res.json();
+        },
+
+        // ── Dashboard ──────────────────────────────────
+        async carregarDashboard() {
+            this.loading = true;
+            this.dashboardLoaded = false;
+            try {
+                const [geral, ag] = await Promise.all([
+                    this.api('GET', '/portal/api/relatorios/visao-geral'),
+                    this.api('GET', '/portal/api/acompanhamentos/agenda'),
+                ]);
+                const hojeStr = ag.hoje || new Date().toISOString().split('T')[0];
+                const itensHoje = (ag.agenda && ag.agenda[hojeStr]) || [];
+                const pendencias = (geral.proximos_retornos || []).length;
+                this.stats = {
+                    pacientes_ativos: geral.pacientes_ativos || 0,
+                    diagnosticos: geral.diagnosticos_este_mes || 0,
+                    sessoes_hoje: itensHoje.length,
+                    pendencias: pendencias,
+                };
+                this.agendaHoje = itensHoje.slice(0, 5).map(item => ({
+                    ...item,
+                    paciente_nome: item.pacientes?.nome || 'Paciente',
+                }));
+                this.ultimasMsgs = geral.proximos_retornos || [];
+                this.notificationCount = pendencias;
+                // Update agenda badge
+                const mi = this.menuItems.find(m => m.id === 'acompanhamentos');
+                if (mi) mi.badge = pendencias;
+            } catch (e) {
+                // silent fail on dashboard
+            } finally {
+                this.loading = false;
+                this.dashboardLoaded = true;
+            }
+        },
+
+        // ── Pacientes ──────────────────────────────────
+        async carregarPacientes() {
+            this.loading = true;
+            try {
+                const res = await this.api('GET', '/portal/api/pacientes?status=todos');
+                this.pacientes = res.pacientes || res;
+                this.filtrarPacientes();
+            } catch (e) {
+                this.mostrarToast('Erro ao carregar pacientes', false);
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        filtrarPacientes() {
+            let lista = [...this.pacientes];
+            if (this.buscaPaciente) {
+                const q = this.buscaPaciente.toLowerCase();
+                lista = lista.filter(p => p.nome.toLowerCase().includes(q) || (p.numero_telefone || '').includes(q) || (p.email || '').toLowerCase().includes(q));
+            }
+            if (this.filtroPacienteStatus) {
+                lista = lista.filter(p => p.status === this.filtroPacienteStatus);
+            }
+            this.pacientesFiltrados = lista;
+        },
+
+        async importarWhatsApp() {
+            this.loading = true;
+            try {
+                const r = await this.api('POST', '/portal/api/pacientes/importar-whatsapp');
+                this.mostrarToast(`${r.importados} pacientes importados!`, true);
+                await this.carregarPacientes();
+            } catch (e) {
+                this.mostrarToast(e.message, false);
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        async abrirProntuario(paciente) {
+            this.pacienteContexto = paciente;
+            // Prontuario agora e inline dentro de Pacientes — nao muda de secao
+            if (this.secao !== 'pacientes') this.secao = 'pacientes';
+            this.abaProntuario = 'timeline';
+            this.loading = true;
+            try {
+                const [pront, tl] = await Promise.all([
+                    this.api('GET', `/portal/api/prontuario/${paciente.id}`),
+                    this.api('GET', `/portal/api/prontuario/${paciente.id}/timeline`),
+                ]);
+                this.prontuario = { ...pront, timeline: tl.timeline || [] };
+            } catch (e) {
+                this.mostrarToast('Erro ao carregar prontuario', false);
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        // ── Diagnosticos ───────────────────────────────
+        async carregarDiagnosticos() {
+            this.loading = true;
+            try {
+                const qs = this.filtroDiagStatus ? `?status=${this.filtroDiagStatus}` : '';
+                const resDiag = await this.api('GET', `/portal/api/diagnosticos${qs}`);
+                this.diagnosticos = resDiag.diagnosticos || resDiag;
+            } catch (e) {
+                this.mostrarToast('Erro ao carregar diagnosticos', false);
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        async autoExtrair(pacienteId) {
+            if (!pacienteId) return;
+            this.loading = true;
+            this.mostrarToast('Extraindo dados com IA... aguarde', true);
+            try {
+                const res = await this.api('POST', `/portal/api/diagnosticos/auto-extrair/${pacienteId}`);
+                const draft = res.draft || res;
+                this.editandoDiag = {
+                    paciente_id: pacienteId,
+                    ...draft,
+                    id: null,
+                    status: 'rascunho',
+                };
+                this.editandoDiagDNAStr = (draft.dna_comprometido || []).join(', ');
+                this.editandoDiagSerpStr = (draft.serpentes_ativas || []).join(', ');
+                this.editandoDiagFloraisStr = (draft.florais_prescritos || []).join(', ');
+                this.modalAberto = 'diagnostico';
+                this.mostrarToast('Rascunho gerado! Revise e salve.', true);
+            } catch (e) {
+                this.mostrarToast(e.message || 'Erro ao extrair dados', false);
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        // ── Acompanhamentos ────────────────────────────
+        async carregarAcompanhamentos() {
+            this.loading = true;
+            try {
+                const qs = this.filtroAcompStatus ? `?status=${this.filtroAcompStatus}` : '';
+                const [lista, agenda] = await Promise.all([
+                    this.api('GET', `/portal/api/acompanhamentos${qs}`),
+                    this.api('GET', '/portal/api/acompanhamentos/agenda'),
+                ]);
+                const acompArray = lista.acompanhamentos || lista;
+                this.acompanhamentos = acompArray;
+                this.agenda7dias = agenda.agenda ? Object.entries(agenda.agenda).map(([data, itens]) => ({data, itens})) : [];
+                const badge = Array.isArray(acompArray) ? acompArray.filter(a => a.status === 'pendente').length : 0;
+                const mi = this.menuItems.find(m => m.id === 'acompanhamentos');
+                if (mi) mi.badge = badge;
+                this.notificationCount = badge;
+            } catch (e) {
+                this.mostrarToast('Erro ao carregar acompanhamentos', false);
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        async marcarRealizado(item) {
+            try {
+                await this.api('PUT', `/portal/api/acompanhamentos/${item.id}`, { status: 'realizado', data_realizado: new Date().toISOString().split('T')[0] });
+                this.mostrarToast('Marcado como realizado!', true);
+                await this.carregarAcompanhamentos();
+            } catch (e) {
+                this.mostrarToast(e.message, false);
+            }
+        },
+
+        async adiarAcompanhamento(item) {
+            try {
+                const dataAtual = item.data_prevista ? new Date(item.data_prevista + 'T12:00:00') : new Date();
+                dataAtual.setDate(dataAtual.getDate() + 1);
+                const novaData = dataAtual.toISOString().split('T')[0];
+                await this.api('PUT', `/portal/api/acompanhamentos/${item.id}`, { data_prevista: novaData });
+                this.mostrarToast('Adiado para ' + dataAtual.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }), true);
+                await this.carregarAcompanhamentos();
+            } catch (e) {
+                this.mostrarToast(e.message, false);
+            }
+        },
+
+        // ── Conversas WhatsApp ─────────────────────────
+        async carregarConversasWhats() {
+            this.loading = true;
+            this.conversaSelecionada = null;
+            this.conversasMensagens = [];
+            try {
+                // Buscar pacientes com conversas — agrupa por paciente
+                const res = await this.api('GET', '/portal/api/conversas');
+                const lista = res.conversas || res || [];
+                // Agrupar por paciente_numero
+                const grupos = {};
+                for (const c of lista) {
+                    const num = c.paciente_numero;
+                    if (!grupos[num]) {
+                        grupos[num] = { numero: num, nome: c.paciente_nome || num, mensagens: [], ultima: c.criado_em };
+                    }
+                    grupos[num].mensagens.push(c);
+                    if (c.criado_em > grupos[num].ultima) grupos[num].ultima = c.criado_em;
+                }
+                this.conversasWhatsGrupos = Object.values(grupos).sort((a, b) => b.ultima.localeCompare(a.ultima));
+                this.conversasWhats = lista;
+            } catch (e) {
+                this.mostrarToast('Erro ao carregar conversas', false);
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        abrirConversa(grupo) {
+            this.conversaSelecionada = grupo;
+            this.conversasMensagens = [...grupo.mensagens].sort((a, b) => a.criado_em.localeCompare(b.criado_em));
+        },
+
+        get conversasWhatsGruposFiltrados() {
+            if (!this.buscaConversas) return this.conversasWhatsGrupos;
+            const q = this.buscaConversas.toLowerCase();
+            return this.conversasWhatsGrupos.filter(g =>
+                g.nome.toLowerCase().includes(q) || g.numero.includes(q)
+            );
+        },
+
+        // ── Mapas ──────────────────────────────────────
+        async carregarMapas() {
+            this.loading = true;
+            try {
+                const resMapas = await this.api('GET', '/portal/api/mapas');
+                this.mapas = resMapas.mapas || resMapas;
+            } catch (e) {
+                this.mostrarToast('Erro ao carregar mapas', false);
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        getMapasAgrupados() {
+            const busca = (this.buscaMapas || '').toLowerCase().trim();
+            const grupos = {};
+            (this.mapas || []).forEach(m => {
+                const tel = m.numero_telefone || 'desconhecido';
+                if (!grupos[tel]) {
+                    grupos[tel] = {
+                        nome: m.nome || m.nome_paciente || m.pacientes?.nome || tel,
+                        tel,
+                        data_nascimento: m.data_nascimento,
+                        cidade_nascimento: m.cidade_nascimento,
+                        mapas: []
+                    };
+                }
+                if (m.mapa_json && typeof m.mapa_json === 'string') {
+                    try { m.mapa_json = JSON.parse(m.mapa_json); } catch(e) {}
+                }
+                grupos[tel].mapas.push(m);
+            });
+            let resultado = Object.values(grupos);
+            if (busca) {
+                resultado = resultado.filter(g => g.nome.toLowerCase().includes(busca));
+            }
+            return resultado;
+        },
+
+        getMapaPorTipo(mapas, tipo) {
+            return mapas.find(m => {
+                const t = (m.mapa_json?.tipo || m.tipo || '').toLowerCase();
+                if (tipo === 'alquimico') return t.includes('alquimico') || t.includes('alqu\u00EDmico');
+                return !t.includes('alquimico') && !t.includes('alqu\u00EDmico');
+            });
+        },
+
+        verMapa(mapa) {
+            // Parse mapa_json se vier como string
+            if (mapa.mapa_json && typeof mapa.mapa_json === 'string') {
+                try { mapa.mapa_json = JSON.parse(mapa.mapa_json); } catch(e) {}
+            }
+            // Buscar TODOS os mapas do mesmo paciente (por telefone)
+            this.mapasDoMesmoPaciente = (this.mapas || []).filter(m => m.numero_telefone === mapa.numero_telefone);
+            this.mapasDoMesmoPaciente.forEach(m => {
+                if (m.mapa_json && typeof m.mapa_json === 'string') {
+                    try { m.mapa_json = JSON.parse(m.mapa_json); } catch(e) {}
+                }
+            });
+            this.mapaVendo = mapa;
+            this.modalAberto = 'mapa';
+        },
+
+        // ── Relatorios ─────────────────────────────────
+        async carregarRelatorioGeral() {
+            this.loading = true;
+            try {
+                this.relatorioGeral = await this.api('GET', '/portal/api/relatorios/visao-geral');
+            } catch (e) {
+                this.mostrarToast('Erro ao carregar relatorio', false);
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        async carregarRelatoriosDiag() {
+            this.loading = true;
+            try {
+                this.relatoriosDiag = await this.api('GET', '/portal/api/relatorios/diagnosticos');
+            } catch (e) {
+                this.mostrarToast('Erro ao carregar relatorio de diagnosticos', false);
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        // ── Assinatura ─────────────────────────────────
+        async carregarAssinatura() {
+            this.assinaturaLoading = true;
+            try {
+                const res = await this.api('GET', '/portal/api/assinatura');
+                this.assinatura = {
+                    status: res.status || 'trial',
+                    valor: res.valor || '297',
+                    dias_restantes: res.dias_restantes ?? 7,
+                    pagamentos: res.pagamentos || [],
+                };
+            } catch (e) {
+                // Use defaults if endpoint not ready
+                this.assinatura = {
+                    status: 'trial',
+                    valor: '297',
+                    dias_restantes: 7,
+                    pagamentos: [],
+                };
+            } finally {
+                this.assinaturaLoading = false;
+            }
+        },
+
+        gerenciarAssinatura() {
+            // Open Asaas payment link or show manage options
+            this.mostrarToast('Redirecionando para o portal de pagamento...', true);
+            // In production this would open the Asaas billing portal
+            // window.open(assinatura.link_pagamento, '_blank');
+        },
+
+        // ── Configuracoes ──────────────────────────────
+        async carregarConfig() {
+            if (this.terapeuta) {
+                this.configForm.nome = this.terapeuta.nome || '';
+                this.configForm.nome_agente = this.terapeuta.nome_agente || '';
+                this.configForm.telefone = this.terapeuta.telefone || this.terapeuta.numero_telefone || '';
+                this.configForm.foto_url = this.terapeuta.foto_url || '';
+                this.configForm.tom_de_voz = this.terapeuta.tom_de_voz || 'acolhedor';
+                this.configForm.horario_inicio = this.terapeuta.horario_inicio || '08:00';
+                this.configForm.horario_fim = this.terapeuta.horario_fim || '18:00';
+                this.configForm.mensagem_boas_vindas = this.terapeuta.mensagem_boas_vindas || '';
+            }
+            try {
+                const resDocs = await this.api('GET', '/portal/api/documentos');
+                this.documentos = resDocs.documentos || resDocs;
+            } catch (e) {
+                this.documentos = [];
+            }
+        },
+
+        async salvarConfig() {
+            this.loading = true;
+            try {
+                await this.api('PUT', '/portal/api/configuracoes', {
+                    nome: this.configForm.nome,
+                    nome_agente: this.configForm.nome_agente,
+                    telefone: this.configForm.telefone,
+                    foto_url: this.configForm.foto_url,
+                });
+                if (this.terapeuta) {
+                    this.terapeuta.nome = this.configForm.nome;
+                    this.terapeuta.nome_agente = this.configForm.nome_agente;
+                    this.terapeuta.telefone = this.configForm.telefone;
+                    this.terapeuta.foto_url = this.configForm.foto_url;
+                }
+                this.mostrarToast('Perfil salvo com sucesso!', true);
+            } catch (e) {
+                this.mostrarToast(e.message, false);
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        async salvarPreferencias() {
+            this.loading = true;
+            try {
+                await this.api('PUT', '/portal/api/configuracoes', {
+                    tom_de_voz: this.configForm.tom_de_voz,
+                    horario_inicio: this.configForm.horario_inicio,
+                    horario_fim: this.configForm.horario_fim,
+                    mensagem_boas_vindas: this.configForm.mensagem_boas_vindas,
+                });
+                if (this.terapeuta) {
+                    this.terapeuta.tom_de_voz = this.configForm.tom_de_voz;
+                    this.terapeuta.horario_inicio = this.configForm.horario_inicio;
+                    this.terapeuta.horario_fim = this.configForm.horario_fim;
+                    this.terapeuta.mensagem_boas_vindas = this.configForm.mensagem_boas_vindas;
+                }
+                this.mostrarToast('Preferencias do agente salvas!', true);
+            } catch (e) {
+                this.mostrarToast(e.message, false);
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        async alterarSenha() {
+            this.senhaMsg = '';
+            if (this.senhaForm.nova !== this.senhaForm.confirmar) {
+                this.senhaMsg = 'As senhas nao coincidem.';
+                this.senhaMsgOk = false;
+                return;
+            }
+            if (this.senhaForm.nova.length < 8) {
+                this.senhaMsg = 'A senha deve ter no minimo 8 caracteres.';
+                this.senhaMsgOk = false;
+                return;
+            }
+            try {
+                await this.api('POST', '/portal/api/auth/alterar-senha', { nova_senha: this.senhaForm.nova });
+                this.senhaMsg = 'Senha alterada com sucesso!';
+                this.senhaMsgOk = true;
+                this.senhaForm = { nova: '', confirmar: '' };
+            } catch (e) {
+                this.senhaMsg = e.message;
+                this.senhaMsgOk = false;
+            }
+        },
+
+        // ── Modais: Abrir/Fechar ───────────────────────
+        fecharModal() { this.modalAberto = null; },
+
+        abrirModalPaciente(p) {
+            this.editandoPaciente = p ? { ...p } : { nome: '', numero_telefone: '', email: '', status: 'ativo', tags: [] };
+            this.editandoPacienteTagsStr = (this.editandoPaciente.tags || []).join(', ');
+            this.modalAberto = 'paciente';
+        },
+
+        abrirModalDiagnostico(d) {
+            this.editandoDiag = d ? { ...d } : {
+                paciente_id: this.pacienteContexto?.id || '',
+                elemento_dominante: '', elemento_carente: '',
+                dna_comprometido: [], serpentes_ativas: [],
+                setenio_atual: null, florais_prescritos: [],
+                protocolo_texto: '', status: 'rascunho',
+                sessao_data: new Date().toISOString().split('T')[0],
+            };
+            this.editandoDiagDNAStr = (this.editandoDiag.dna_comprometido || []).join(', ');
+            this.editandoDiagSerpStr = (this.editandoDiag.serpentes_ativas || []).join(', ');
+            this.editandoDiagFloraisStr = (this.editandoDiag.florais_prescritos || []).join(', ');
+            this.modalAberto = 'diagnostico';
+        },
+
+        abrirModalNota() {
+            this.editandoNota = {
+                paciente_id: this.pacienteContexto?.id || '',
+                tipo: 'sessao', titulo: '', conteudo: '',
+                data_anotacao: new Date().toISOString().split('T')[0],
+                proxima_sessao: '',
+            };
+            this.modalAberto = 'nota';
+        },
+
+        abrirModalAcomp(item) {
+            this.editandoAcomp = item ? { ...item } : {
+                paciente_id: this.pacienteContexto?.id || '',
+                tipo: 'retorno', descricao: '',
+                data_prevista: '', hora_prevista: '', prioridade: 2, status: 'pendente',
+            };
+            this.modalAberto = 'acomp';
+        },
+
+        // ── CRUD: Paciente ─────────────────────────────
+        async salvarPaciente() {
+            this.loading = true;
+            try {
+                const dados = {
+                    ...this.editandoPaciente,
+                    tags: this.editandoPacienteTagsStr.split(',').map(t => t.trim()).filter(Boolean),
+                };
+                if (dados.id) {
+                    await this.api('PUT', `/portal/api/pacientes/${dados.id}`, dados);
+                    this.mostrarToast('Paciente atualizado!', true);
+                } else {
+                    await this.api('POST', '/portal/api/pacientes', dados);
+                    this.mostrarToast('Paciente criado!', true);
+                }
+                this.fecharModal();
+                await this.carregarPacientes();
+            } catch (e) {
+                this.mostrarToast(e.message, false);
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        // ── CRUD: Diagnostico ──────────────────────────
+        async salvarDiagnostico() {
+            this.loading = true;
+            try {
+                const dados = {
+                    ...this.editandoDiag,
+                    dna_comprometido: this.editandoDiagDNAStr.split(',').map(t => t.trim()).filter(Boolean),
+                    serpentes_ativas: this.editandoDiagSerpStr.split(',').map(t => t.trim()).filter(Boolean),
+                    florais_prescritos: this.editandoDiagFloraisStr.split(',').map(t => t.trim()).filter(Boolean),
+                };
+                if (dados.id) {
+                    await this.api('PUT', `/portal/api/diagnosticos/${dados.id}`, dados);
+                    this.mostrarToast('Diagnostico atualizado!', true);
+                } else {
+                    await this.api('POST', '/portal/api/diagnosticos', dados);
+                    this.mostrarToast('Diagnostico criado!', true);
+                }
+                this.fecharModal();
+                if (this.secao === 'pacientes' && this.prontuario && this.pacienteContexto) {
+                    await this.abrirProntuario(this.pacienteContexto);
+                } else {
+                    await this.carregarDiagnosticos();
+                }
+            } catch (e) {
+                this.mostrarToast(e.message, false);
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        // ── CRUD: Anotacao ─────────────────────────────
+        async salvarNota() {
+            this.loading = true;
+            try {
+                const pid = this.pacienteContexto?.id || this.editandoNota.paciente_id;
+                const dados = { ...this.editandoNota, paciente_id: pid };
+                if (dados.id) {
+                    await this.api('PUT', `/portal/api/anotacoes/item/${dados.id}`, dados);
+                } else {
+                    await this.api('POST', '/portal/api/anotacoes', dados);
+                }
+                this.mostrarToast('Anotacao salva!', true);
+                this.fecharModal();
+                if (this.pacienteContexto) await this.abrirProntuario(this.pacienteContexto);
+            } catch (e) {
+                this.mostrarToast(e.message, false);
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        // ── CRUD: Acompanhamento ───────────────────────
+        async salvarAcomp() {
+            this.loading = true;
+            try {
+                const pid = this.pacienteContexto?.id || this.editandoAcomp.paciente_id;
+                const dados = { ...this.editandoAcomp, paciente_id: pid };
+                if (dados.id) {
+                    await this.api('PUT', `/portal/api/acompanhamentos/${dados.id}`, dados);
+                } else {
+                    await this.api('POST', '/portal/api/acompanhamentos', dados);
+                }
+                this.mostrarToast('Follow-up salvo!', true);
+                this.fecharModal();
+                if (this.secao === 'pacientes' && this.prontuario && this.pacienteContexto) {
+                    await this.abrirProntuario(this.pacienteContexto);
+                } else {
+                    await this.carregarAcompanhamentos();
+                }
+            } catch (e) {
+                this.mostrarToast(e.message, false);
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        // ── Resumo do Signo ────────────────────────────
+        _significadoSigno: {
+            'Aries': 'energia de iniciativa e coragem',
+            'Touro': 'estabilidade e prazer sensorial',
+            'Gemeos': 'comunicacao e versatilidade',
+            'Cancer': 'protecao emocional e familia',
+            'Leao': 'autoexpressao e lideranca',
+            'Virgem': 'analise e organizacao',
+            'Libra': 'harmonia e relacionamentos',
+            'Escorpiao': 'transformacao profunda',
+            'Sagitario': 'expansao e busca de sentido',
+            'Capricornio': 'responsabilidade e disciplina',
+            'Aquario': 'inovacao e liberdade',
+            'Peixes': 'espiritualidade e intuicao',
+            // Com acentos
+            '\u00C1ries': 'energia de iniciativa e coragem',
+            'G\u00EAmeos': 'comunica\u00E7\u00E3o e versatilidade',
+            'C\u00E2ncer': 'prote\u00E7\u00E3o emocional e fam\u00EDlia',
+            'Le\u00E3o': 'autoexpress\u00E3o e lideran\u00E7a',
+            'Escorpi\u00E3o': 'transforma\u00E7\u00E3o profunda',
+            'Sagit\u00E1rio': 'expans\u00E3o e busca de sentido',
+            'Capric\u00F3rnio': 'responsabilidade e disciplina',
+            'Aqu\u00E1rio': 'inova\u00E7\u00E3o e liberdade',
+        },
+
+        gerarResumoSigno(mj) {
+            if (!mj) return '';
+            const sig = (s) => this._significadoSigno[s] || '';
+            const isAlquimico = mj.tipo && (mj.tipo.toLowerCase().includes('alquimico') || mj.tipo.toLowerCase().includes('alqu\u00EDmico'));
+
+            if (isAlquimico || mj.elemento_dominante || mj.dna_comprometido || mj.serpentes_ativas || mj.fase_alquimica) {
+                const partes = [];
+                if (mj.elemento_dominante) partes.push('Elemento dominante: ' + mj.elemento_dominante + '.');
+                if (mj.elemento_carente) partes.push('Elemento carente: ' + mj.elemento_carente + '.');
+                if (mj.dna_comprometido) {
+                    const lista = Array.isArray(mj.dna_comprometido) ? mj.dna_comprometido.join(', ') : mj.dna_comprometido;
+                    partes.push('DNA comprometido: ' + lista + '.');
+                }
+                if (mj.serpentes_ativas) {
+                    const lista = Array.isArray(mj.serpentes_ativas) ? mj.serpentes_ativas.join(', ') : mj.serpentes_ativas;
+                    partes.push('Serpentes ativas: ' + lista + '.');
+                }
+                if (mj.fase_alquimica) partes.push('Fase alqu\u00EDmica atual: ' + mj.fase_alquimica + '.');
+                if (mj.setenio) partes.push('Set\u00EAnio: ' + mj.setenio + '.');
+                return partes.join(' ');
+            }
+
+            // Mapa Natal
+            const partes = [];
+            if (mj.sol) {
+                const s = typeof mj.sol === 'object' ? mj.sol : { signo: mj.sol };
+                partes.push('Sol em ' + s.signo + (s.casa ? ' na Casa ' + s.casa : '') + (sig(s.signo) ? ' \u2014 ' + sig(s.signo) : '') + '.');
+            }
+            if (mj.lua) {
+                const l = typeof mj.lua === 'object' ? mj.lua : { signo: mj.lua };
+                partes.push('Lua em ' + l.signo + (l.casa ? ' na Casa ' + l.casa : '') + (sig(l.signo) ? ' \u2014 ' + sig(l.signo) : '') + '.');
+            }
+            if (mj.ascendente) {
+                const a = typeof mj.ascendente === 'object' ? mj.ascendente : { signo: mj.ascendente };
+                partes.push('Ascendente em ' + a.signo + (sig(a.signo) ? ' \u2014 ' + sig(a.signo) : '') + '.');
+            }
+            if (mj.elemento_dominante) {
+                partes.push('Elemento dominante: ' + mj.elemento_dominante + '.');
+            }
+            return partes.join(' ');
+        },
+
+        tipoDoMapa(mj) {
+            if (!mj || !mj.tipo) return 'Mapa Natal';
+            return mj.tipo;
+        },
+
+        isAlquimico(mj) {
+            return mj && mj.tipo && (mj.tipo.toLowerCase().includes('alquimico') || mj.tipo.toLowerCase().includes('alqu\u00EDmico'));
+        },
+
+        // ── Utilitarios ────────────────────────────────
+        mostrarToast(msg, ok) {
+            this.toast = { show: true, msg, ok };
+            setTimeout(() => { this.toast.show = false; }, 3500);
+        },
+
+        formatarDataCurta(dt) {
+            if (!dt) return '—';
+            const d = new Date(dt);
+            if (isNaN(d)) return dt;
+            const hoje = new Date();
+            const diff = Math.floor((hoje - d) / 86400000);
+            if (diff === 0) return 'hoje';
+            if (diff === 1) return 'ontem';
+            if (diff === -1) return 'amanha';
+            if (diff < 0 && diff > -7) return 'em ' + Math.abs(diff) + 'd';
+            if (diff < 7 && diff > 0) return diff + 'd atras';
+            return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+        },
+
+        formatarDataExtenso(dt) {
+            if (!dt) return '';
+            const d = new Date(dt + 'T12:00:00');
+            return d.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
+        },
+
+        formatarDataBR(dt) {
+            if (!dt) return '—';
+            const d = new Date(dt);
+            if (isNaN(d)) return dt;
+            return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        },
+    };
+}
+</script>
+</body>
+</html>
