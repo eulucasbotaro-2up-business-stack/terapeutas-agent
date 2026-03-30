@@ -108,6 +108,11 @@ _DEDUP_MAX_SIZE = 1000
 _MAPA_FALHAS: dict[str, int] = {}
 _MAPA_MAX_TENTATIVAS = 3
 
+# Cache de paciente ativo por número do remetente (terapeuta falando sobre paciente X)
+# Formato: {(terapeuta_id, numero_remetente): {"paciente_id": str, "paciente_nome": str, "timestamp": float}}
+_PACIENTE_ATIVO_CACHE: dict[tuple[str, str], dict] = {}
+_PACIENTE_ATIVO_TTL = 1800  # 30 minutos sem mencionar = limpa vínculo
+
 
 def _ja_processado(message_id: str) -> bool:
     """Retorna True se o message_id já foi processado recentemente."""
@@ -220,10 +225,11 @@ def _salvar_conversa_sync(
     mensagem_paciente: str,
     resposta_agente: str,
     intencao: str,
+    paciente_vinculado_id: str | None = None,
 ) -> None:
     """Versão síncrona pura — não chamar diretamente em contexto async."""
     supabase = get_supabase()
-    supabase.table("conversas").insert({
+    row = {
         "id": str(uuid4()),
         "terapeuta_id": terapeuta_id,
         "paciente_numero": paciente_numero,
@@ -231,7 +237,10 @@ def _salvar_conversa_sync(
         "resposta_agente": resposta_agente,
         "intencao": intencao,
         "criado_em": datetime.now(timezone.utc).isoformat(),
-    }).execute()
+    }
+    if paciente_vinculado_id:
+        row["paciente_vinculado_id"] = paciente_vinculado_id
+    supabase.table("conversas").insert(row).execute()
 
 
 async def _salvar_conversa(
@@ -240,6 +249,7 @@ async def _salvar_conversa(
     mensagem_paciente: str,
     resposta_agente: str,
     intencao: str,
+    paciente_vinculado_id: str | None = None,
 ) -> None:
     """
     Salva o registro da conversa na tabela 'conversas' para historico.
@@ -249,13 +259,139 @@ async def _salvar_conversa(
         await asyncio.to_thread(
             _salvar_conversa_sync,
             terapeuta_id, paciente_numero, mensagem_paciente, resposta_agente, intencao,
+            paciente_vinculado_id,
         )
         logger.info(
             f"Conversa salva — terapeuta={terapeuta_id}, paciente={paciente_numero}"
+            + (f", vinculado={paciente_vinculado_id}" if paciente_vinculado_id else "")
         )
     except Exception as e:
         # Nao queremos que falha ao salvar conversa impeca a resposta
         logger.error(f"Erro ao salvar conversa: {e}")
+
+
+def _detectar_paciente_vinculado_sync(
+    terapeuta_id: str,
+    numero_remetente: str,
+    mensagem: str,
+    resposta: str,
+    modo: str,
+) -> str | None:
+    """
+    Detecta se a conversa se refere a um paciente específico e retorna o paciente_id.
+    Usa Haiku para classificar menções a pacientes na mensagem e resposta.
+    Mantém cache do paciente ativo por sessão de conversa.
+
+    Retorna None se:
+    - A mensagem não é sobre um paciente específico (ex: conteúdo para rede social)
+    - O terapeuta mudou de assunto para algo genérico
+    """
+    import anthropic as _anthropic
+
+    agora = time.monotonic()
+    cache_key = (terapeuta_id, numero_remetente)
+
+    # Limpar cache expirado
+    if cache_key in _PACIENTE_ATIVO_CACHE:
+        if agora - _PACIENTE_ATIVO_CACHE[cache_key]["timestamp"] > _PACIENTE_ATIVO_TTL:
+            del _PACIENTE_ATIVO_CACHE[cache_key]
+
+    # Buscar lista de pacientes do terapeuta para dar contexto ao LLM
+    supabase = get_supabase()
+    pac_res = supabase.table("pacientes").select("id, nome, numero_telefone").eq(
+        "terapeuta_id", terapeuta_id
+    ).eq("status", "ativo").execute()
+    pacientes = pac_res.data or []
+
+    if not pacientes:
+        return None
+
+    # Montar lista de pacientes para o prompt
+    lista_pac = "\n".join(
+        f"- ID: {p['id']} | Nome: {p['nome']} | Tel: {p['numero_telefone']}"
+        for p in pacientes
+    )
+
+    # Contexto do paciente ativo no cache
+    pac_ativo_info = ""
+    if cache_key in _PACIENTE_ATIVO_CACHE:
+        pac_ativo_info = (
+            f"\nPACIENTE ATIVO NA CONVERSA ATUAL: {_PACIENTE_ATIVO_CACHE[cache_key]['paciente_nome']} "
+            f"(ID: {_PACIENTE_ATIVO_CACHE[cache_key]['paciente_id']})"
+        )
+
+    prompt = f"""Analise esta troca de mensagens entre um terapeuta e sua IA assistente.
+Determine se a conversa se refere a um paciente específico da lista abaixo.
+
+PACIENTES CADASTRADOS:
+{lista_pac}
+{pac_ativo_info}
+
+MENSAGEM DO TERAPEUTA: {mensagem[:500]}
+RESPOSTA DA IA: {resposta[:500]}
+MODO DA CONVERSA: {modo}
+
+REGRAS:
+1. Se o terapeuta menciona um paciente pelo nome ou está claramente discutindo o caso de um paciente, responda com o ID do paciente.
+2. Se já havia um paciente ativo e a conversa CONTINUA sobre o mesmo tema clínico (sem mudança de assunto), mantenha o mesmo paciente.
+3. Se o terapeuta mudou de assunto (pediu conteúdo para rede social, fez pergunta genérica sobre método, pediu algo não relacionado a um paciente específico), responda NENHUM.
+4. Se não é possível identificar qual paciente está sendo discutido, responda NENHUM.
+
+Responda APENAS com o ID do paciente (UUID) ou a palavra NENHUM. Nada mais."""
+
+    try:
+        settings = get_settings()
+        client = _anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+        response = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=60,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        resultado = response.content[0].text.strip()
+
+        if resultado == "NENHUM" or len(resultado) < 10:
+            # Sem paciente vinculado — limpar cache se existir
+            if cache_key in _PACIENTE_ATIVO_CACHE:
+                del _PACIENTE_ATIVO_CACHE[cache_key]
+            return None
+
+        # Validar que o ID retornado é de um paciente real
+        pac_ids = {p["id"] for p in pacientes}
+        if resultado in pac_ids:
+            # Atualizar cache
+            nome_pac = next((p["nome"] for p in pacientes if p["id"] == resultado), "")
+            _PACIENTE_ATIVO_CACHE[cache_key] = {
+                "paciente_id": resultado,
+                "paciente_nome": nome_pac,
+                "timestamp": agora,
+            }
+            logger.info(f"Paciente vinculado detectado: {nome_pac} ({resultado})")
+            return resultado
+
+        logger.warning(f"Haiku retornou ID inválido: {resultado}")
+        return None
+
+    except Exception as e:
+        logger.warning(f"Falha na detecção de paciente vinculado: {e}")
+        return None
+
+
+async def _detectar_paciente_vinculado(
+    terapeuta_id: str,
+    numero_remetente: str,
+    mensagem: str,
+    resposta: str,
+    modo: str,
+) -> str | None:
+    """Wrapper async para detecção de paciente vinculado."""
+    try:
+        return await asyncio.to_thread(
+            _detectar_paciente_vinculado_sync,
+            terapeuta_id, numero_remetente, mensagem, resposta, modo,
+        )
+    except Exception as e:
+        logger.warning(f"Erro async na detecção de paciente: {e}")
+        return None
 
 
 # =============================================
@@ -1483,17 +1619,29 @@ async def _processar_mensagem(payload: dict) -> None:
                 )
             logger.info(f"Resposta enviada para {numero_paciente}")
 
-        # 11. Salvar conversa
+        # 11. Salvar conversa com detecção de paciente vinculado
         resposta_salvar = " | ".join(resposta_texto) if isinstance(resposta_texto, list) else resposta_texto
         _intencao_str = (
             f"{modo.value}|{intencao.value if hasattr(intencao, 'value') else str(intencao)}"
             if intencao is not None
             else modo.value
         )
+
+        # Detectar paciente vinculado em background (não bloqueia envio)
+        paciente_vinculado_id = None
+        if modo in (ModoOperacao.CONSULTA, ModoOperacao.CRIACAO_CONTEUDO, ModoOperacao.PESQUISA):
+            try:
+                paciente_vinculado_id = await _detectar_paciente_vinculado(
+                    terapeuta_id, numero_paciente, texto_mensagem, resposta_salvar or "", modo.value,
+                )
+            except Exception as e:
+                logger.warning(f"Detecção de paciente vinculado falhou (Evolution): {e}")
+
         await _salvar_conversa(
             terapeuta_id=terapeuta_id, paciente_numero=numero_paciente,
             mensagem_paciente=texto_mensagem, resposta_agente=resposta_salvar,
             intencao=_intencao_str,
+            paciente_vinculado_id=paciente_vinculado_id,
         )
 
         # 12. Background: timestamp + perfil + aprendizado + guardião
@@ -2813,17 +2961,29 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                 )
             logger.info(f"Resposta enviada para {numero_paciente} via Meta")
 
-        # 12. Salvar conversa
+        # 12. Salvar conversa com detecção de paciente vinculado
         resposta_salvar = " | ".join(resposta_texto) if isinstance(resposta_texto, list) else resposta_texto
         _intencao_str_meta = (
             f"{modo.value}|{intencao.value if hasattr(intencao, 'value') else str(intencao)}"
             if intencao is not None
             else modo.value
         )
+
+        # Detectar paciente vinculado
+        paciente_vinculado_id_meta = None
+        if modo in (ModoOperacao.CONSULTA, ModoOperacao.CRIACAO_CONTEUDO, ModoOperacao.PESQUISA):
+            try:
+                paciente_vinculado_id_meta = await _detectar_paciente_vinculado(
+                    terapeuta_id, numero_paciente, texto_mensagem, resposta_salvar or "", modo.value,
+                )
+            except Exception as e:
+                logger.warning(f"Detecção de paciente vinculado falhou (Meta): {e}")
+
         await _salvar_conversa(
             terapeuta_id=terapeuta_id, paciente_numero=numero_paciente,
             mensagem_paciente=texto_mensagem, resposta_agente=resposta_salvar,
             intencao=_intencao_str_meta,
+            paciente_vinculado_id=paciente_vinculado_id_meta,
         )
 
         # 13. Background: timestamp + perfil + aprendizado + guardião

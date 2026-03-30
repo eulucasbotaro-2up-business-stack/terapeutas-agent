@@ -519,10 +519,20 @@ async def get_timeline(paciente_id: str, authorization: str = Header(...)):
 
     eventos = []
 
-    # Conversas
+    # Conversas (diretas por número + vinculadas por segmentação)
     conv = sb.table("conversas").select("id, mensagem_paciente, criado_em").eq("terapeuta_id", terapeuta_id).eq("paciente_numero", numero).order("criado_em", desc=True).limit(50).execute()
+    conv_ids = set()
     for c in (conv.data or []):
+        conv_ids.add(c["id"])
         eventos.append({"tipo": "conversa", "data": c["criado_em"], "resumo": (c.get("mensagem_paciente") or "")[:100], "id": c["id"]})
+    # Conversas vinculadas pelo sistema de segmentação
+    try:
+        conv2 = sb.table("conversas").select("id, mensagem_paciente, criado_em").eq("terapeuta_id", terapeuta_id).eq("paciente_vinculado_id", paciente_id).order("criado_em", desc=True).limit(50).execute()
+        for c in (conv2.data or []):
+            if c["id"] not in conv_ids:
+                eventos.append({"tipo": "conversa", "data": c["criado_em"], "resumo": (c.get("mensagem_paciente") or "")[:100], "id": c["id"]})
+    except Exception:
+        pass
 
     # Diagnósticos
     diag = sb.table("diagnosticos_alquimicos").select("id, sessao_data, elemento_dominante, status").eq("paciente_id", paciente_id).execute()
@@ -575,13 +585,30 @@ async def get_conversas_paciente(
         raise HTTPException(status_code=404, detail="Paciente não encontrado.")
     numero = pac_res.data[0]["numero_telefone"]
 
-    q = sb.table("conversas").select("*").eq("terapeuta_id", terapeuta_id).eq("paciente_numero", numero)
+    # Buscar conversas por número do paciente (diretas) E por paciente_vinculado_id (segmentadas)
+    q1 = sb.table("conversas").select("*").eq("terapeuta_id", terapeuta_id).eq("paciente_numero", numero)
     if busca:
-        q = q.ilike("mensagem_paciente", f"%{busca}%")
+        q1 = q1.ilike("mensagem_paciente", f"%{busca}%")
 
     offset = (pagina - 1) * por_pagina
-    res = q.order("criado_em", desc=True).range(offset, offset + por_pagina - 1).execute()
-    return {"conversas": res.data or [], "pagina": pagina, "por_pagina": por_pagina}
+    res1 = q1.order("criado_em", desc=True).range(offset, offset + por_pagina - 1).execute()
+
+    # Buscar conversas vinculadas pelo sistema de segmentação (terapeuta falando SOBRE este paciente)
+    try:
+        q2 = sb.table("conversas").select("*").eq("terapeuta_id", terapeuta_id).eq("paciente_vinculado_id", paciente_id)
+        if busca:
+            q2 = q2.ilike("mensagem_paciente", f"%{busca}%")
+        res2 = q2.order("criado_em", desc=True).range(offset, offset + por_pagina - 1).execute()
+    except Exception:
+        res2 = type("R", (), {"data": []})()
+
+    # Mesclar e deduplicar por ID, ordenar por data
+    todas = {c["id"]: c for c in (res1.data or [])}
+    for c in (res2.data or []):
+        todas[c["id"]] = c
+    conversas = sorted(todas.values(), key=lambda x: x.get("criado_em", ""), reverse=True)
+
+    return {"conversas": conversas[:por_pagina], "pagina": pagina, "por_pagina": por_pagina}
 
 
 # ─── DIAGNÓSTICOS ────────────────────────────────────────────────────────────
