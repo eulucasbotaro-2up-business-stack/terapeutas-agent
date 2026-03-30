@@ -1352,12 +1352,14 @@ async def _processar_mensagem(payload: dict) -> None:
                         )
                         chunks_texto = mapa_prefixo + chunks_texto
                         # Salvar mapa no banco para cache futuro (background — não bloqueia resposta)
+                        # Inclui imagens para upload ao Supabase Storage
                         asyncio.create_task(asyncio.to_thread(
                             _salvar_mapa,
                             terapeuta_id, numero_paciente,
                             dados_nasc.get("nome", ""), dados_nasc["data"],
                             dados_nasc["hora"], dados_nasc["cidade"],
                             mapa_resultado,
+                            mapa_png_joel, mapa_png_trad,
                         ))
                         logger.info(
                             f"Mapa natal calculado para '{dados_nasc.get('nome')}' "
@@ -1622,24 +1624,49 @@ def _salvar_mapa(
     hora: str,
     cidade: str,
     mapa_json: str,
+    imagem_joel_bytes: bytes | None = None,
+    imagem_trad_bytes: bytes | None = None,
 ) -> None:
     """
     Salva ou atualiza o mapa natal no banco (upsert por terapeuta+número+data+hora).
+    Se imagens forem fornecidas, faz upload para Supabase Storage e salva a URL.
     Chamado em background após geração bem-sucedida com Kerykeion.
     """
     try:
         sb = get_supabase()
+        settings = get_settings()
+
+        registro = {
+            "terapeuta_id": terapeuta_id,
+            "numero_telefone": paciente_numero,
+            "nome": nome or "Paciente",
+            "data_nascimento": data,
+            "hora_nascimento": hora,
+            "cidade_nascimento": cidade,
+            "mapa_json": mapa_json,
+            "atualizado_em": datetime.now(timezone.utc).isoformat(),
+        }
+
+        # Upload das imagens para Supabase Storage (bucket "mapas")
+        # Usa o mapa Joel (alquímico) como imagem principal do registro
+        imagem_para_url = imagem_joel_bytes or imagem_trad_bytes
+        if imagem_para_url:
+            try:
+                mapa_id = str(uuid4())
+                storage_path = f"{terapeuta_id}/{mapa_id}.png"
+                sb.storage.from_("mapas").upload(
+                    storage_path,
+                    imagem_para_url,
+                    {"content-type": "image/png"},
+                )
+                public_url = f"{settings.SUPABASE_URL}/storage/v1/object/public/mapas/{storage_path}"
+                registro["imagem_url"] = public_url
+                logger.info(f"Imagem do mapa enviada para Storage: {storage_path}")
+            except Exception as storage_err:
+                logger.warning(f"Erro ao enviar imagem para Storage (continuando sem imagem_url): {storage_err}")
+
         sb.table("mapas_astrais").upsert(
-            {
-                "terapeuta_id": terapeuta_id,
-                "numero_telefone": paciente_numero,
-                "nome": nome or "Paciente",
-                "data_nascimento": data,
-                "hora_nascimento": hora,
-                "cidade_nascimento": cidade,
-                "mapa_json": mapa_json,
-                "atualizado_em": datetime.now(timezone.utc).isoformat(),
-            },
+            registro,
             on_conflict="terapeuta_id,numero_telefone,data_nascimento,hora_nascimento",
         ).execute()
         logger.info(f"Mapa salvo/atualizado no banco para {paciente_numero} ({data} {hora})")
@@ -2583,12 +2610,14 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                         )
                         chunks_texto = mapa_prefixo + chunks_texto
                         # Salvar mapa no banco para cache futuro (background — não bloqueia resposta)
+                        # Inclui imagens para upload ao Supabase Storage
                         asyncio.create_task(asyncio.to_thread(
                             _salvar_mapa,
                             terapeuta_id, numero_paciente,
                             dados_nasc.get("nome", ""), dados_nasc["data"],
                             dados_nasc["hora"], dados_nasc["cidade"],
                             mapa_resultado,
+                            mapa_png_joel, mapa_png_trad,
                         ))
                         logger.info(
                             f"Mapa natal calculado para '{dados_nasc.get('nome')}' "
