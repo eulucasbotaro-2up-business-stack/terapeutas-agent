@@ -18,13 +18,18 @@ CREATE TABLE IF NOT EXISTS mapas_astrais (
   hora_nascimento   TEXT        NOT NULL,   -- HH:MM
   cidade_nascimento TEXT,
   mapa_json         TEXT        NOT NULL,   -- saída completa do Swiss Ephemeris / Kerykeion
-  imagem_url        TEXT,                   -- futuro: URL Supabase Storage (imagem do mapa)
+  imagem_url        TEXT,                   -- URL Supabase Storage (imagem do mapa)
+  tipo_mapa         TEXT        DEFAULT 'Mapa Natal',  -- 'Mapa Natal' ou 'Mapa Alquimico' (max 2 por paciente)
   criado_em         TIMESTAMPTZ DEFAULT now(),
   atualizado_em     TIMESTAMPTZ DEFAULT now()
 );
 
--- Unicidade: mesmo mapa para mesma data+hora do mesmo paciente não é gerado duas vezes
-CREATE UNIQUE INDEX IF NOT EXISTS idx_mapas_unico
+-- Unicidade: máximo 1 mapa de cada tipo por paciente (max 2 mapas total: 1 Natal + 1 Alquimico)
+CREATE UNIQUE INDEX IF NOT EXISTS idx_mapas_tipo_unico
+  ON mapas_astrais (terapeuta_id, numero_telefone, tipo_mapa);
+
+-- Legado: mantém índice antigo para compatibilidade (não é mais UNIQUE)
+CREATE INDEX IF NOT EXISTS idx_mapas_unico
   ON mapas_astrais (terapeuta_id, numero_telefone, data_nascimento, hora_nascimento);
 
 -- Busca por paciente (portal + webhook)

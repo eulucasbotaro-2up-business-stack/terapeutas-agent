@@ -1594,11 +1594,25 @@ def _eh_pedido_refazer_mapa(texto: str) -> bool:
 def _buscar_mapa_salvo(terapeuta_id: str, paciente_numero: str, data: str, hora: str) -> str | None:
     """
     Busca mapa_json salvo no banco para evitar recalcular com Kerykeion.
-    Chave: (terapeuta_id, numero_telefone, data_nascimento, hora_nascimento).
+    Primeiro tenta buscar por (terapeuta_id, numero_telefone, tipo_mapa).
+    Fallback para chave antiga (data+hora) para registros legados sem tipo_mapa.
     Retorna o mapa_json (texto) ou None se não existe.
     """
     try:
         sb = get_supabase()
+        # Busca por tipo_mapa (regra nova — max 1 de cada tipo por paciente)
+        res = (
+            sb.table("mapas_astrais")
+            .select("mapa_json, nome, tipo_mapa")
+            .eq("terapeuta_id", terapeuta_id)
+            .eq("numero_telefone", paciente_numero)
+            .eq("tipo_mapa", "Mapa Natal")
+            .limit(1)
+            .execute()
+        )
+        if res.data:
+            return res.data[0]["mapa_json"]
+        # Fallback para registros legados sem tipo_mapa
         res = (
             sb.table("mapas_astrais")
             .select("mapa_json, nome")
@@ -1616,6 +1630,32 @@ def _buscar_mapa_salvo(terapeuta_id: str, paciente_numero: str, data: str, hora:
     return None
 
 
+def _paciente_ja_tem_mapas(terapeuta_id: str, paciente_numero: str) -> dict[str, bool]:
+    """
+    Verifica quais tipos de mapa o paciente já tem.
+    Regra de negócio: máximo 2 mapas por paciente (1 Alquimico + 1 Natal).
+    Retorna dict com {"Mapa Natal": bool, "Mapa Alquimico": bool}.
+    """
+    resultado = {"Mapa Natal": False, "Mapa Alquimico": False}
+    try:
+        sb = get_supabase()
+        res = (
+            sb.table("mapas_astrais")
+            .select("tipo_mapa")
+            .eq("terapeuta_id", terapeuta_id)
+            .eq("numero_telefone", paciente_numero)
+            .in_("tipo_mapa", ["Mapa Natal", "Mapa Alquimico"])
+            .execute()
+        )
+        for row in (res.data or []):
+            tipo = row.get("tipo_mapa")
+            if tipo in resultado:
+                resultado[tipo] = True
+    except Exception as e:
+        logger.warning(f"Erro ao verificar mapas existentes: {e}")
+    return resultado
+
+
 def _salvar_mapa(
     terapeuta_id: str,
     paciente_numero: str,
@@ -1628,15 +1668,19 @@ def _salvar_mapa(
     imagem_trad_bytes: bytes | None = None,
 ) -> None:
     """
-    Salva ou atualiza o mapa natal no banco (upsert por terapeuta+número+data+hora).
-    Se imagens forem fornecidas, faz upload para Supabase Storage e salva a URL.
-    Chamado em background após geração bem-sucedida com Kerykeion.
+    Salva ou atualiza mapas no banco.
+    Regra de negócio: cada paciente pode ter no máximo 2 mapas (1 Alquímico + 1 Natal).
+    Usa upsert por (terapeuta_id, numero_telefone, tipo_mapa) — se já existe mapa do
+    mesmo tipo para o paciente, atualiza (imagem_url e mapa_json) em vez de criar duplicata.
+    Nunca gera mais de 1 vez o mesmo tipo para o mesmo paciente.
     """
     try:
         sb = get_supabase()
         settings = get_settings()
+        agora = datetime.now(timezone.utc).isoformat()
 
-        registro = {
+        # Registro base compartilhado entre os dois tipos
+        registro_base = {
             "terapeuta_id": terapeuta_id,
             "numero_telefone": paciente_numero,
             "nome": nome or "Paciente",
@@ -1644,32 +1688,59 @@ def _salvar_mapa(
             "hora_nascimento": hora,
             "cidade_nascimento": cidade,
             "mapa_json": mapa_json,
-            "atualizado_em": datetime.now(timezone.utc).isoformat(),
+            "atualizado_em": agora,
         }
 
-        # Upload das imagens para Supabase Storage (bucket "mapas")
-        # Usa o mapa Joel (alquímico) como imagem principal do registro
-        imagem_para_url = imagem_joel_bytes or imagem_trad_bytes
-        if imagem_para_url:
-            try:
-                mapa_id = str(uuid4())
-                storage_path = f"{terapeuta_id}/{mapa_id}.png"
-                sb.storage.from_("mapas").upload(
-                    storage_path,
-                    imagem_para_url,
-                    {"content-type": "image/png"},
-                )
-                public_url = f"{settings.SUPABASE_URL}/storage/v1/object/public/mapas/{storage_path}"
-                registro["imagem_url"] = public_url
-                logger.info(f"Imagem do mapa enviada para Storage: {storage_path}")
-            except Exception as storage_err:
-                logger.warning(f"Erro ao enviar imagem para Storage (continuando sem imagem_url): {storage_err}")
+        # Lista de mapas a salvar: (tipo_mapa, imagem_bytes)
+        mapas_para_salvar = []
+        if imagem_joel_bytes:
+            mapas_para_salvar.append(("Mapa Alquimico", imagem_joel_bytes))
+        if imagem_trad_bytes:
+            mapas_para_salvar.append(("Mapa Natal", imagem_trad_bytes))
 
-        sb.table("mapas_astrais").upsert(
-            registro,
-            on_conflict="terapeuta_id,numero_telefone,data_nascimento,hora_nascimento",
-        ).execute()
-        logger.info(f"Mapa salvo/atualizado no banco para {paciente_numero} ({data} {hora})")
+        # Se nenhuma imagem, salva apenas o Mapa Natal (compatibilidade)
+        if not mapas_para_salvar:
+            mapas_para_salvar.append(("Mapa Natal", None))
+
+        for tipo_mapa, imagem_bytes in mapas_para_salvar:
+            registro = {**registro_base, "tipo_mapa": tipo_mapa}
+
+            # Upload da imagem para Supabase Storage (bucket "mapas")
+            if imagem_bytes:
+                try:
+                    mapa_id = str(uuid4())
+                    storage_path = f"{terapeuta_id}/{mapa_id}.png"
+                    sb.storage.from_("mapas").upload(
+                        storage_path,
+                        imagem_bytes,
+                        {"content-type": "image/png"},
+                    )
+                    public_url = f"{settings.SUPABASE_URL}/storage/v1/object/public/mapas/{storage_path}"
+                    registro["imagem_url"] = public_url
+                    logger.info(f"Imagem do {tipo_mapa} enviada para Storage: {storage_path}")
+                except Exception as storage_err:
+                    logger.warning(f"Erro ao enviar imagem do {tipo_mapa} para Storage: {storage_err}")
+
+            # Upsert por (terapeuta_id, numero_telefone, tipo_mapa)
+            # Se já existe mapa desse tipo para esse paciente, atualiza em vez de criar novo
+            try:
+                sb.table("mapas_astrais").upsert(
+                    registro,
+                    on_conflict="terapeuta_id,numero_telefone,tipo_mapa",
+                ).execute()
+                logger.info(f"{tipo_mapa} salvo/atualizado no banco para {paciente_numero}")
+            except Exception as upsert_err:
+                # Fallback: tenta com chave antiga para compatibilidade com registros legados
+                logger.warning(f"Upsert por tipo_mapa falhou ({upsert_err}), tentando chave legada")
+                try:
+                    sb.table("mapas_astrais").upsert(
+                        registro,
+                        on_conflict="terapeuta_id,numero_telefone,data_nascimento,hora_nascimento",
+                    ).execute()
+                    logger.info(f"{tipo_mapa} salvo (chave legada) para {paciente_numero}")
+                except Exception as fallback_err:
+                    logger.warning(f"Fallback também falhou para {tipo_mapa}: {fallback_err}")
+
     except Exception as e:
         logger.warning(f"Erro ao salvar mapa no banco: {e}")
 

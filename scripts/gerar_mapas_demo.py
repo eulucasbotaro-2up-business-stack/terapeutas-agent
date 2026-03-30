@@ -1,10 +1,15 @@
 """
 Script STANDALONE para gerar imagens reais dos mapas astrais demo.
 
-Busca registros em mapas_astrais que ainda usam placeholder (placehold.co),
+Busca TODOS os registros em mapas_astrais do terapeuta demo,
 calcula o mapa via Kerykeion (com fallback se indisponivel),
-renderiza PNG via matplotlib (logica copiada inline — zero imports de src/),
+renderiza PNG via matplotlib com SIMBOLOS UNICODE astrologicos (♈♉♊ etc)
+usando fonte NotoSansSymbols bundada em src/fonts/,
 faz upload ao Supabase Storage e atualiza imagem_url.
+
+Gera 2 tipos de mapa por paciente:
+  - Mapa Alquimico: roda zodiacal + figura humana central (estilo Joel Aleixo)
+  - Mapa Natal: roda zodiacal + linhas de aspectos proeminentes (estilo software)
 
 Uso:
     python scripts/gerar_mapas_demo.py
@@ -14,6 +19,7 @@ Requisitos:
     - requests instalado (pip install requests)
     - Opcional: kerykeion (pip install kerykeion) — se falhar, usa posicoes estimadas
     - Bucket "mapas" criado no Supabase Storage (publico)
+    - Fonte NotoSansSymbols em src/fonts/ (bundada no repo)
 
 Compativel com Python 3.12+ incluindo 3.14 (sem dependencia de pyswisseph C ext).
 """
@@ -21,6 +27,7 @@ Compativel com Python 3.12+ incluindo 3.14 (sem dependencia de pyswisseph C ext)
 import io
 import math
 import os
+import pathlib
 import re
 import uuid
 from typing import Any, Optional
@@ -32,6 +39,43 @@ os.environ.setdefault("MPLCONFIGDIR", os.path.join(os.environ.get("TEMP", "/tmp"
 
 import matplotlib
 matplotlib.use("Agg")
+
+# ---------------------------------------------------------------------------
+# Fonte com simbolos astrologicos Unicode (bundada em src/fonts/)
+# ---------------------------------------------------------------------------
+_SCRIPT_DIR = pathlib.Path(__file__).resolve().parent
+_FONTS_DIR = _SCRIPT_DIR.parent / "src" / "fonts"
+_GLYPH_FONT_PATH = _FONTS_DIR / "NotoSansSymbols-Regular.ttf"
+_glyph_font_prop = None
+
+
+def _get_glyph_font():
+    """Retorna FontProperties para simbolos astrologicos, com fallback gracioso."""
+    global _glyph_font_prop
+    if _glyph_font_prop is not None:
+        return _glyph_font_prop
+    try:
+        from matplotlib import font_manager
+        if _GLYPH_FONT_PATH.exists():
+            font_manager.fontManager.addfont(str(_GLYPH_FONT_PATH))
+            _glyph_font_prop = font_manager.FontProperties(fname=str(_GLYPH_FONT_PATH))
+            print(f"[OK] Fonte de simbolos carregada: {_GLYPH_FONT_PATH.name}")
+        else:
+            print(f"[AVISO] Fonte nao encontrada: {_GLYPH_FONT_PATH} — usando abreviacoes")
+    except Exception as e:
+        print(f"[AVISO] Falha ao carregar fonte de simbolos: {e} — usando abreviacoes")
+    return _glyph_font_prop
+
+
+def _draw_sun_symbol(ax, x, y, color, size=0.055, zorder=15):
+    """Desenha o simbolo do Sol como patches matplotlib (circulo + ponto central)."""
+    import matplotlib.patches as patches
+    outer = patches.Circle((x, y), size, fill=False,
+                            edgecolor=color, linewidth=1.3, zorder=zorder)
+    inner = patches.Circle((x, y), size * 0.22, fill=True,
+                            facecolor=color, linewidth=0, zorder=zorder)
+    ax.add_patch(outer)
+    ax.add_patch(inner)
 
 # ---------------------------------------------------------------------------
 # Configuracao Supabase (mesmos valores do seed)
@@ -160,6 +204,23 @@ def _geocodificar_cidade(cidade_nascimento: str) -> tuple[float, float, str]:
 SIGNOS_ABREV = ["Ari", "Tau", "Gem", "Can", "Leo", "Vir",
                 "Lib", "Sco", "Sag", "Cap", "Aqu", "Pis"]
 
+# Simbolos Unicode — renderizados com NotoSansSymbols bundada
+SIGNO_LABEL = {
+    "Ari": "\u2648",  # ♈
+    "Tau": "\u2649",  # ♉
+    "Gem": "\u264A",  # ♊
+    "Can": "\u264B",  # ♋
+    "Leo": "\u264C",  # ♌
+    "Vir": "\u264D",  # ♍
+    "Lib": "\u264E",  # ♎
+    "Sco": "\u264F",  # ♏
+    "Sag": "\u2650",  # ♐
+    "Cap": "\u2651",  # ♑
+    "Aqu": "\u2652",  # ♒
+    "Pis": "\u2653",  # ♓
+}
+
+# Fallback texto caso a fonte nao carregue
 SIGNO_LABEL_TEXTO = {
     "Ari": "AR", "Tau": "TA", "Gem": "GE", "Can": "CA",
     "Leo": "LE", "Vir": "VI", "Lib": "LI", "Sco": "ES",
@@ -178,6 +239,23 @@ ORDEM_PLANETAS = [
     "Ascendant", "Medium_Coeli",
 ]
 
+# Simbolos Unicode de planetas
+PLANETA_ABREV = {
+    "Sun":          "\u2609",  # ☉
+    "Moon":         "\u263D",  # ☽
+    "Mercury":      "\u263F",  # ☿
+    "Venus":        "\u2640",  # ♀
+    "Mars":         "\u2642",  # ♂
+    "Jupiter":      "\u2643",  # ♃
+    "Saturn":       "\u2644",  # ♄
+    "Uranus":       "\u2645",  # ♅
+    "Neptune":      "\u2646",  # ♆
+    "Pluto":        "\u2647",  # ♇
+    "Ascendant":    "AC",
+    "Medium_Coeli": "MC",
+}
+
+# Fallback texto
 PLANETA_ABREV_TEXTO = {
     "Sun": "Sol", "Moon": "Lua", "Mercury": "Mer", "Venus": "Ven",
     "Mars": "Mar", "Jupiter": "Jup", "Saturn": "Sat", "Uranus": "Ura",
@@ -578,34 +656,21 @@ def _desenhar_homem_alquimico(ax: Any, dados: DadosMapa) -> None:
 # ---------------------------------------------------------------------------
 # Renderizacao PNG
 # ---------------------------------------------------------------------------
-def gerar_imagem_mapa(dados: DadosMapa) -> bytes:
-    """Gera PNG do Mapa Alquimico — roda zodiacal com homem no centro."""
-    from matplotlib.figure import Figure
-    from matplotlib.backends.backend_agg import FigureCanvasAgg
+def _render_zodiac_wheel(ax, dados, glyph_fp, R_EXT, R_ZOD, R_PLN, R_CSA, R_INT, SEG_RAD):
+    """Renderiza o anel zodiacal, casas e planetas (compartilhado entre os 2 tipos de mapa)."""
     import matplotlib.patches as patches
     import numpy as np
 
-    fig = Figure(figsize=(12, 9), facecolor=BG, dpi=110)
-    FigureCanvasAgg(fig)
-
-    ax  = fig.add_axes([0.01, 0.05, 0.60, 0.90])
-    axp = fig.add_axes([0.63, 0.04, 0.35, 0.92])
-
-    ax.set_aspect("equal")
-    ax.set_facecolor(BG)
-    ax.set_xlim(-1.32, 1.32)
-    ax.set_ylim(-1.32, 1.32)
-    ax.axis("off")
-
     asc = dados.ascendente_grau
 
-    R_EXT = 1.18
-    R_ZOD = 0.94
-    R_PLN = 0.81
-    R_CSA = 0.68
-    R_INT = 0.63
-    R_ASP = 0.59
-    SEG_RAD = math.pi / 6
+    def _text_glyph(ax_, x, y, s, fontsize, color, zorder, bold=False, **kw):
+        kwargs = dict(ha="center", va="center", fontsize=fontsize,
+                      color=color, zorder=zorder, **kw)
+        if glyph_fp is not None:
+            kwargs["fontproperties"] = glyph_fp
+        else:
+            kwargs["fontweight"] = "bold" if bold else "normal"
+        ax_.text(x, y, s, **kwargs)
 
     # Anel zodiacal
     for i, abrev in enumerate(SIGNOS_ABREV):
@@ -624,9 +689,9 @@ def gerar_imagem_mapa(dados: DadosMapa) -> bytes:
 
         ang_m = ang0 - SEG_RAD / 2
         sx, sy = _xy((R_ZOD + R_EXT) / 2, ang_m)
-        label = SIGNO_LABEL_TEXTO.get(abrev, abrev[:2])
-        ax.text(sx, sy, label, ha="center", va="center",
-                fontsize=11, color=cor, fontweight="bold", zorder=4)
+        # Simbolo Unicode via fonte bundada; fallback texto se fonte indisponivel
+        label = SIGNO_LABEL.get(abrev) if glyph_fp else SIGNO_LABEL_TEXTO.get(abrev, abrev[:2])
+        _text_glyph(ax, sx, sy, label, fontsize=11, color=cor, zorder=4, bold=True)
 
     # Circulos dos aneis
     for r, lw_c in [(R_EXT, 1.2), (R_ZOD, 0.9), (R_CSA, 0.7), (R_INT, 1.0)]:
@@ -647,7 +712,77 @@ def gerar_imagem_mapa(dados: DadosMapa) -> bytes:
                 ha="center", va="center", fontsize=7,
                 color=TEXTO_CINZA, zorder=7)
 
-    # Linhas de aspectos
+    # Planetas no anel
+    posicoes_ajust = _ajustar_posicoes(
+        {k: v for k, v in dados.planetas.items() if k in ORDEM_PLANETAS}, asc
+    )
+
+    for nome, grau_ajust in posicoes_ajust.items():
+        if nome not in dados.planetas:
+            continue
+        grau_real = dados.planetas[nome]
+        ang_real = _grau_para_rad(grau_real, asc)
+        ang_ajust = _grau_para_rad(grau_ajust, asc)
+        cor_p = COR_PLANETA.get(nome, TEXTO_ESCURO)
+        # Simbolo Unicode se fonte disponivel, senao abreviacao texto
+        abrev = (PLANETA_ABREV.get(nome) if glyph_fp
+                 else PLANETA_ABREV_TEXTO.get(nome, nome[:3]))
+
+        px, py = _xy(R_PLN - 0.06, ang_real)
+        ax.plot(px, py, "o", color=cor_p, markersize=3.5, zorder=14)
+
+        lx, ly = _xy(R_PLN + 0.06, ang_ajust)
+        if abs(ang_real - ang_ajust) > 0.05:
+            ax.plot([px, lx], [py, ly], color=cor_p, lw=0.5, alpha=0.35, zorder=13)
+
+        # Sol usa patches; AC/MC ficam em texto
+        if nome == "Sun" and glyph_fp is not None:
+            _draw_sun_symbol(ax, lx, ly, cor_p, size=0.050, zorder=15)
+        else:
+            fs_p = 7.5 if nome in ("Ascendant", "Medium_Coeli") else 10
+            _text_glyph(ax, lx, ly, abrev, fontsize=fs_p, color=cor_p, zorder=15, bold=True)
+
+        grau_sig = grau_real % 30.0
+        ax.text(lx, ly - 0.095, f"{grau_sig:.0f}",
+                ha="center", va="center", fontsize=5.5,
+                color=cor_p, alpha=0.75, zorder=15)
+
+    return _text_glyph
+
+
+def gerar_imagem_mapa(dados: DadosMapa) -> bytes:
+    """Gera PNG do Mapa Alquimico — roda zodiacal com homem no centro + simbolos Unicode."""
+    from matplotlib.figure import Figure
+    from matplotlib.backends.backend_agg import FigureCanvasAgg
+    import matplotlib.patches as patches
+
+    glyph_fp = _get_glyph_font()
+
+    fig = Figure(figsize=(12, 9), facecolor=BG, dpi=110)
+    FigureCanvasAgg(fig)
+
+    ax  = fig.add_axes([0.01, 0.05, 0.60, 0.90])
+    axp = fig.add_axes([0.63, 0.04, 0.35, 0.92])
+
+    ax.set_aspect("equal")
+    ax.set_facecolor(BG)
+    ax.set_xlim(-1.32, 1.32)
+    ax.set_ylim(-1.32, 1.32)
+    ax.axis("off")
+
+    asc = dados.ascendente_grau
+    R_EXT = 1.18
+    R_ZOD = 0.94
+    R_PLN = 0.81
+    R_CSA = 0.68
+    R_INT = 0.63
+    R_ASP = 0.59
+    SEG_RAD = math.pi / 6
+
+    # Renderiza roda zodiacal + planetas
+    _render_zodiac_wheel(ax, dados, glyph_fp, R_EXT, R_ZOD, R_PLN, R_CSA, R_INT, SEG_RAD)
+
+    # Linhas de aspectos (sutis no Mapa Alquimico)
     COR_ASP = {
         "conjunction": "#8B4513", "trine": "#1565C0",
         "sextile": "#2E7D32", "square": "#C62828", "opposition": "#7B1FA2",
@@ -673,36 +808,6 @@ def gerar_imagem_mapa(dados: DadosMapa) -> bytes:
 
     # Figura humana alquimica
     _desenhar_homem_alquimico(ax, dados)
-
-    # Planetas no anel
-    posicoes_ajust = _ajustar_posicoes(
-        {k: v for k, v in dados.planetas.items() if k in ORDEM_PLANETAS}, asc
-    )
-
-    for nome, grau_ajust in posicoes_ajust.items():
-        if nome not in dados.planetas:
-            continue
-        grau_real = dados.planetas[nome]
-        ang_real = _grau_para_rad(grau_real, asc)
-        ang_ajust = _grau_para_rad(grau_ajust, asc)
-        cor_p = COR_PLANETA.get(nome, TEXTO_ESCURO)
-        abrev = PLANETA_ABREV_TEXTO.get(nome, nome[:3])
-
-        px, py = _xy(R_PLN - 0.06, ang_real)
-        ax.plot(px, py, "o", color=cor_p, markersize=3.5, zorder=14)
-
-        lx, ly = _xy(R_PLN + 0.06, ang_ajust)
-        if abs(ang_real - ang_ajust) > 0.05:
-            ax.plot([px, lx], [py, ly], color=cor_p, lw=0.5, alpha=0.35, zorder=13)
-
-        fs_p = 7.5 if nome in ("Ascendant", "Medium_Coeli") else 10
-        ax.text(lx, ly, abrev, ha="center", va="center",
-                fontsize=fs_p, color=cor_p, fontweight="bold", zorder=15)
-
-        grau_sig = grau_real % 30.0
-        ax.text(lx, ly - 0.095, f"{grau_sig:.0f}",
-                ha="center", va="center", fontsize=5.5,
-                color=cor_p, alpha=0.75, zorder=15)
 
     # Rodape
     ax.text(0, -1.30,
@@ -748,7 +853,7 @@ def gerar_imagem_mapa(dados: DadosMapa) -> bytes:
         casa = dados.casas.get(nome_p)
         casa_txt = f" C{casa}" if casa else ""
         cor_p = COR_PLANETA.get(nome_p, TEXTO_ESCURO)
-        abrev_p = PLANETA_ABREV_TEXTO.get(nome_p, nome_p[:3])
+        abrev_p = PLANETA_ABREV.get(nome_p, nome_p[:3]) if glyph_fp else PLANETA_ABREV_TEXTO.get(nome_p, nome_p[:3])
         axp.text(0.06, y, abrev_p,
                  ha="left", va="top", fontsize=7.5,
                  color=cor_p, fontweight="bold")
@@ -797,15 +902,171 @@ def gerar_imagem_mapa(dados: DadosMapa) -> bytes:
     return buf.read()
 
 
+def gerar_imagem_mapa_natal_trad(dados: DadosMapa) -> bytes:
+    """
+    Gera PNG do Mapa Natal Tradicional — roda zodiacal pura com linhas de aspectos
+    proeminentes no centro, sem figura humana. Estilo software astrologico.
+    """
+    from matplotlib.figure import Figure
+    from matplotlib.backends.backend_agg import FigureCanvasAgg
+    import matplotlib.patches as patches
+
+    glyph_fp = _get_glyph_font()
+
+    fig = Figure(figsize=(12, 9), facecolor=BG, dpi=110)
+    FigureCanvasAgg(fig)
+
+    ax  = fig.add_axes([0.01, 0.05, 0.60, 0.90])
+    axp = fig.add_axes([0.63, 0.04, 0.35, 0.92])
+
+    ax.set_aspect("equal")
+    ax.set_facecolor(BG)
+    ax.set_xlim(-1.32, 1.32)
+    ax.set_ylim(-1.32, 1.32)
+    ax.axis("off")
+
+    asc = dados.ascendente_grau
+    R_EXT    = 1.18
+    R_ZOD    = 0.94
+    R_PLN    = 0.81
+    R_CSA    = 0.68
+    R_INT    = 0.63
+    R_CENTRO = 0.09
+    SEG_RAD  = math.pi / 6
+
+    # Renderiza roda zodiacal + planetas
+    _render_zodiac_wheel(ax, dados, glyph_fp, R_EXT, R_ZOD, R_PLN, R_CSA, R_INT, SEG_RAD)
+
+    # Linhas de aspectos PROEMINENTES (atravessam o centro — estilo software)
+    COR_ASP_TRAD = {
+        "conjunction": "#795548", "trine": "#1565C0",
+        "sextile": "#2E7D32", "square": "#C62828", "opposition": "#7B1FA2",
+    }
+    for asp in dados.aspectos:
+        p1, p2, tipo = asp["p1"], asp["p2"], asp["tipo"]
+        if p1 not in dados.planetas or p2 not in dados.planetas:
+            continue
+        cor_a   = COR_ASP_TRAD.get(tipo, "#888888")
+        lw_a    = 1.4 if tipo in ("square", "opposition") else 1.0
+        alpha_a = 0.72 if tipo in ("square", "opposition") else 0.52
+        a1 = _grau_para_rad(dados.planetas[p1], asc)
+        a2 = _grau_para_rad(dados.planetas[p2], asc)
+        x1_a, y1_a = _xy(R_INT, a1)
+        x2_a, y2_a = _xy(R_INT, a2)
+        ax.plot([x1_a, x2_a], [y1_a, y2_a],
+                color=cor_a, lw=lw_a, alpha=alpha_a,
+                solid_capstyle="round", zorder=8)
+
+    # Circulo central decorativo (sem boneco)
+    ax.add_patch(patches.Circle((0, 0), R_CENTRO, color=BG, fill=True, zorder=9))
+    ax.add_patch(patches.Circle((0, 0), R_CENTRO, color=BORDA, fill=False, lw=0.8, zorder=10))
+    ax.plot(0, 0, "o", color=OURO, markersize=3.5, zorder=11)
+
+    # Rodape
+    ax.text(0, -1.30,
+            f"Mapa Natal  |  {dados.data_nascimento}  {dados.hora_nascimento}  |  {dados.cidade_nascimento}",
+            ha="center", va="center", fontsize=6.5,
+            color=TEXTO_CINZA, zorder=16)
+
+    # --- PAINEL DIREITO ---
+    axp.set_facecolor(BG_PAINEL)
+    axp.axis("off")
+    axp.set_xlim(0, 1)
+    axp.set_ylim(0, 1)
+    axp.add_patch(patches.FancyBboxPatch(
+        (0.02, 0.01), 0.96, 0.97,
+        boxstyle="round,pad=0.01",
+        linewidth=1.0, edgecolor=BORDA, facecolor=BG_PAINEL,
+    ))
+
+    def txt(t, x, y, color=TEXTO_ESCURO, fs=8.5, bold=False):
+        axp.text(x, y, t, ha="left", va="top", fontsize=fs,
+                 color=color, fontweight="bold" if bold else "normal")
+
+    y = 0.97
+    txt(dados.nome_paciente[:22].upper(), 0.06, y, color=OURO, fs=10, bold=True)
+    y -= 0.048
+    txt(f"{dados.data_nascimento}  {dados.hora_nascimento}", 0.06, y, color=TEXTO_CINZA, fs=7.5)
+    y -= 0.033
+    txt(dados.cidade_nascimento[:28], 0.06, y, color=TEXTO_CINZA, fs=7.5)
+    y -= 0.040
+    axp.axhline(y=y, xmin=0.04, xmax=0.96, color=BORDA, lw=0.8)
+    y -= 0.030
+
+    txt("POSICOES", 0.06, y, color=OURO, fs=7.5, bold=True)
+    y -= 0.030
+
+    for nome_p in ORDEM_PLANETAS:
+        if nome_p not in dados.planetas or y < 0.44:
+            continue
+        grau_abs = dados.planetas[nome_p]
+        sig_abrev = dados.signos.get(nome_p, "")
+        sig_nome = SIGNO_NOME_PT.get(sig_abrev, sig_abrev)
+        grau_sig = grau_abs % 30.0
+        casa = dados.casas.get(nome_p)
+        casa_txt = f" C{casa}" if casa else ""
+        cor_p = COR_PLANETA.get(nome_p, TEXTO_ESCURO)
+        abrev_p = PLANETA_ABREV.get(nome_p, nome_p[:3]) if glyph_fp else PLANETA_ABREV_TEXTO.get(nome_p, nome_p[:3])
+        axp.text(0.06, y, abrev_p,
+                 ha="left", va="top", fontsize=7.5,
+                 color=cor_p, fontweight="bold")
+        axp.text(0.32, y, f"{grau_sig:.1f}  {sig_nome}{casa_txt}",
+                 ha="left", va="top", fontsize=7.5, color=TEXTO_ESCURO)
+        y -= 0.034
+
+    axp.axhline(y=y, xmin=0.04, xmax=0.96, color=BORDA, lw=0.8)
+    y -= 0.025
+
+    # Tabela de aspectos (especifico do Mapa Natal)
+    txt("ASPECTOS", 0.06, y, color=OURO, fs=7.5, bold=True)
+    y -= 0.028
+
+    _SIMB_ASP = {
+        "conjunction": "Con", "opposition": "Opo",
+        "square": "Cua", "trine": "Tri", "sextile": "Sex",
+    }
+    for asp in dados.aspectos:
+        if y < 0.04:
+            break
+        p1, p2, tipo = asp["p1"], asp["p2"], asp["tipo"]
+        abrev_p1 = PLANETA_ABREV.get(p1, p1[:3]) if glyph_fp else PLANETA_ABREV_TEXTO.get(p1, p1[:3])
+        abrev_p2 = PLANETA_ABREV.get(p2, p2[:3]) if glyph_fp else PLANETA_ABREV_TEXTO.get(p2, p2[:3])
+        simb = _SIMB_ASP.get(tipo, tipo[:3])
+        cor_asp = COR_ASP_TRAD.get(tipo, TEXTO_ESCURO)
+        orbe = abs(asp.get("orbe", 0.0))
+        axp.text(0.06, y, abrev_p1,
+                 ha="left", va="top", fontsize=6.8, color=TEXTO_ESCURO)
+        axp.text(0.26, y, simb,
+                 ha="left", va="top", fontsize=6.8, color=cor_asp, fontweight="bold")
+        axp.text(0.46, y, abrev_p2,
+                 ha="left", va="top", fontsize=6.8, color=TEXTO_ESCURO)
+        axp.text(0.66, y, f"{orbe:.1f}\u00b0",
+                 ha="left", va="top", fontsize=6.0, color=TEXTO_CINZA)
+        y -= 0.028
+
+    if y > 0.04:
+        axp.axhline(y=y, xmin=0.04, xmax=0.96, color=BORDA, lw=0.8)
+        y -= 0.022
+        txt("Mapa Natal", 0.06, y, color=TEXTO_CINZA, fs=6.5)
+        y -= 0.022
+        txt("Escola Joel Aleixo", 0.06, y, color=TEXTO_CINZA, fs=6.5)
+
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", dpi=110, facecolor=BG, bbox_inches="tight")
+    buf.seek(0)
+    return buf.read()
+
+
 # ---------------------------------------------------------------------------
 # Supabase REST API helpers
 # ---------------------------------------------------------------------------
-def buscar_mapas_placeholder() -> list[dict]:
-    """Busca mapas com imagem_url de placeholder (placehold.co)."""
+def buscar_todos_mapas() -> list[dict]:
+    """Busca TODOS os mapas do terapeuta demo para regenerar com simbolos Unicode."""
     url = (
         f"{SUPABASE_URL}/rest/v1/mapas_astrais"
-        f"?imagem_url=like.*placehold.co*"
-        f"&select=id,terapeuta_id,nome,data_nascimento,hora_nascimento,cidade_nascimento,imagem_url"
+        f"?terapeuta_id=eq.{TERAPEUTA_ID}"
+        f"&select=id,terapeuta_id,nome,data_nascimento,hora_nascimento,cidade_nascimento,imagem_url,mapa_json"
+        f"&order=nome.asc,id.asc"
     )
     r = requests.get(url, headers={
         "apikey": SUPABASE_KEY,
@@ -853,35 +1114,59 @@ def converter_data_para_ddmmaaaa(data_iso: str) -> str:
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
-def main():
-    print("=== Gerador de Mapas Demo — Imagens Reais (STANDALONE) ===\n")
+def _detectar_tipo_mapa(mapa: dict) -> str:
+    """Detecta se o mapa e Alquimico ou Natal baseado no mapa_json."""
+    import json
+    mapa_json_raw = mapa.get("mapa_json", "")
+    if not mapa_json_raw:
+        return "Mapa Alquimico"
+    try:
+        if isinstance(mapa_json_raw, str):
+            mapa_json = json.loads(mapa_json_raw)
+        else:
+            mapa_json = mapa_json_raw
+        return mapa_json.get("tipo", "Mapa Alquimico")
+    except Exception:
+        return "Mapa Alquimico"
 
-    mapas = buscar_mapas_placeholder()
+
+def main():
+    print("=== Gerador de Mapas Demo — Simbolos Unicode Astrologicos ===\n")
+
+    mapas = buscar_todos_mapas()
     if not mapas:
-        print("Nenhum mapa com placeholder encontrado.")
+        print("Nenhum mapa encontrado.")
         return
 
-    print(f"Encontrados {len(mapas)} mapas com placeholder.\n")
+    print(f"Encontrados {len(mapas)} mapas para regenerar com simbolos.\n")
 
     sucesso = 0
     falha = 0
 
-    for mapa in mapas:
+    for idx, mapa in enumerate(mapas):
         nome = mapa["nome"] or "Paciente"
         data_iso = mapa["data_nascimento"]
         hora = mapa["hora_nascimento"]
         cidade = mapa["cidade_nascimento"]
         terapeuta_id = mapa["terapeuta_id"]
         mapa_id = mapa["id"]
+        tipo_mapa = _detectar_tipo_mapa(mapa)
 
         data_ddmm = converter_data_para_ddmmaaaa(data_iso)
 
-        print(f"[{sucesso + falha + 1}/{len(mapas)}] {nome} — {data_ddmm} {hora} ({cidade})")
+        print(f"[{idx + 1}/{len(mapas)}] {nome} — {tipo_mapa} — {data_ddmm} {hora} ({cidade})")
 
         try:
-            # Parsing
-            partes_data = data_iso.split("-")
-            ano, mes_n, dia_n = int(partes_data[0]), int(partes_data[1]), int(partes_data[2])
+            # Parsing — suporta YYYY-MM-DD e DD/MM/YYYY
+            if "-" in data_iso and len(data_iso.split("-")[0]) == 4:
+                partes_data = data_iso.split("-")
+                ano, mes_n, dia_n = int(partes_data[0]), int(partes_data[1]), int(partes_data[2])
+            elif "/" in data_iso:
+                partes_data = data_iso.split("/")
+                dia_n, mes_n, ano = int(partes_data[0]), int(partes_data[1]), int(partes_data[2])
+            else:
+                partes_data = data_iso.split("-")
+                ano, mes_n, dia_n = int(partes_data[0]), int(partes_data[1]), int(partes_data[2])
             partes_hora = hora.split(":")
             hora_n, minuto_n = int(partes_hora[0]), int(partes_hora[1])
 
@@ -894,17 +1179,22 @@ def main():
                 print("  Usando calculo estimado (fallback)")
                 dados = _calcular_fallback(nome, ano, mes_n, dia_n, hora_n, minuto_n)
 
-            # Preencher cidade (pode nao ter sido setada)
+            # Preencher cidade
             dados.cidade_nascimento = cidade
             dados.data_nascimento = data_ddmm
             dados.hora_nascimento = hora
 
-            # Gerar imagem
-            imagem = gerar_imagem_mapa(dados)
-            print(f"  Imagem gerada: {len(imagem) // 1024} KB")
+            # Gerar imagem conforme o tipo
+            if "Natal" in tipo_mapa:
+                imagem = gerar_imagem_mapa_natal_trad(dados)
+            else:
+                imagem = gerar_imagem_mapa(dados)
+            print(f"  Imagem gerada: {len(imagem) // 1024} KB ({tipo_mapa})")
 
         except Exception as e:
             print(f"  ERRO ao gerar imagem: {e}")
+            import traceback
+            traceback.print_exc()
             falha += 1
             continue
 
@@ -915,7 +1205,7 @@ def main():
             falha += 1
             continue
 
-        print(f"  Upload OK: {public_url}")
+        print(f"  Upload OK")
 
         # Atualizar no banco
         if atualizar_imagem_url(mapa_id, public_url):

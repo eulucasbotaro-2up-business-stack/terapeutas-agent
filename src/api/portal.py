@@ -483,7 +483,7 @@ async def get_prontuario(paciente_id: str, authorization: str = Header(...)):
     acomp_res = sb.table("acompanhamentos").select("*").eq("paciente_id", paciente_id).eq("status", "pendente").order("data_prevista").execute()
 
     # Mapas natais
-    mapas_res = sb.table("mapas_astrais").select("id, data_nascimento, imagem_url, criado_em").eq("numero_telefone", numero).order("criado_em", desc=True).execute()
+    mapas_res = sb.table("mapas_astrais").select("id, data_nascimento, imagem_url, tipo_mapa, criado_em").eq("numero_telefone", numero).order("criado_em", desc=True).execute()
 
     # Resumos de sessão (memória de longo prazo)
     resumos_res = sb.table("resumos_sessao").select("*").eq("terapeuta_id", terapeuta_id).eq("numero_telefone", numero).order("sessao_inicio", desc=True).limit(20).execute()
@@ -531,9 +531,10 @@ async def get_timeline(paciente_id: str, authorization: str = Header(...)):
         eventos.append({"tipo": f"anotacao_{a['tipo']}", "data": a["data_anotacao"], "resumo": a.get("titulo") or (a.get("conteudo") or "")[:80], "id": a["id"]})
 
     # Mapas
-    mapas = sb.table("mapas_astrais").select("id, criado_em, data_nascimento").eq("numero_telefone", numero).execute()
+    mapas = sb.table("mapas_astrais").select("id, criado_em, data_nascimento, tipo_mapa").eq("numero_telefone", numero).execute()
     for m in (mapas.data or []):
-        eventos.append({"tipo": "mapa_natal", "data": m["criado_em"], "resumo": f"Mapa natal — {m.get('data_nascimento') or ''}", "id": m["id"]})
+        tipo_label = m.get("tipo_mapa") or "Mapa Natal"
+        eventos.append({"tipo": "mapa_natal", "data": m["criado_em"], "resumo": f"{tipo_label} — {m.get('data_nascimento') or ''}", "id": m["id"]})
 
     # Resumos de sessão (memória IA)
     resumos = sb.table("resumos_sessao").select("id, sessao_inicio, resumo, total_mensagens").eq("terapeuta_id", terapeuta_id).eq("numero_telefone", numero).execute()
@@ -845,7 +846,7 @@ async def listar_mapas(
         return {"mapas": [], "total": 0}
 
     offset = (pagina - 1) * por_pagina
-    res = sb.table("mapas_astrais").select("id, numero_telefone, nome, data_nascimento, hora_nascimento, cidade_nascimento, mapa_json, imagem_url, criado_em").in_("numero_telefone", numeros).order("criado_em", desc=True).range(offset, offset + por_pagina - 1).execute()
+    res = sb.table("mapas_astrais").select("id, numero_telefone, nome, data_nascimento, hora_nascimento, cidade_nascimento, mapa_json, imagem_url, tipo_mapa, criado_em").in_("numero_telefone", numeros).order("criado_em", desc=True).range(offset, offset + por_pagina - 1).execute()
 
     # Enriquecer com nome do paciente
     mapas = res.data or []
@@ -913,7 +914,7 @@ async def relatorio_paciente(paciente_id: str, authorization: str = Header(...))
 
     diag = sb.table("diagnosticos_alquimicos").select("*").eq("paciente_id", paciente_id).eq("status", "finalizado").order("sessao_data").execute()
     anot = sb.table("anotacoes_prontuario").select("*").eq("paciente_id", paciente_id).order("data_anotacao").execute()
-    mapas = sb.table("mapas_astrais").select("data_nascimento, imagem_url, criado_em").eq("numero_telefone", numero).execute()
+    mapas = sb.table("mapas_astrais").select("data_nascimento, imagem_url, tipo_mapa, criado_em").eq("numero_telefone", numero).execute()
     conv_count = sb.table("conversas").select("id", count="exact").eq("terapeuta_id", terapeuta_id).eq("paciente_numero", numero).execute()
 
     # Resumo de florais usados
