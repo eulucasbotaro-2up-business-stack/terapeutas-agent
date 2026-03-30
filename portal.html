@@ -121,7 +121,7 @@
                     <span class="text-white text-3xl">&#9883;</span>
                 </div>
                 <h1 class="text-2xl font-bold text-gray-900">Portal do Terapeuta</h1>
-                <p class="text-gray-500 mt-1 text-sm">Acesse sua pratica clinica</p>
+                <p class="text-gray-500 mt-1 text-sm">Acesse sua prática clínica</p>
             </div>
             <form @submit.prevent="login()">
                 <div class="mb-4">
@@ -153,7 +153,7 @@
                     <span class="text-2xl">&#128274;</span>
                 </div>
                 <h2 class="text-xl font-bold text-gray-900">Recuperar Senha</h2>
-                <p class="text-gray-500 text-sm mt-1">Informe seu e-mail para receber um codigo de verificacao via WhatsApp</p>
+                <p class="text-gray-500 text-sm mt-1">Informe seu e-mail para receber um código de verificação via WhatsApp</p>
             </div>
             <!-- Progress Steps -->
             <div class="flex items-center justify-center gap-2 mb-6">
@@ -170,7 +170,7 @@
                 </div>
                 <p x-show="recuperarErro" x-text="recuperarErro" class="text-red-500 text-sm mb-3"></p>
                 <button type="submit" class="btn-primary w-full py-2.5" :disabled="recuperarLoading">
-                    <span x-show="!recuperarLoading">Enviar codigo</span>
+                    <span x-show="!recuperarLoading">Enviar código</span>
                     <span x-show="recuperarLoading" class="inline-flex items-center gap-2"><span class="spinner" style="width:18px;height:18px;border-width:2px;border-top-color:white;"></span> Enviando...</span>
                 </button>
             </form>
@@ -185,8 +185,8 @@
                 <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-3 bg-green-100">
                     <span class="text-2xl">&#128241;</span>
                 </div>
-                <h2 class="text-xl font-bold text-gray-900">Verificar Codigo</h2>
-                <p class="text-gray-500 text-sm mt-1">Digite o codigo de 6 digitos enviado para seu WhatsApp</p>
+                <h2 class="text-xl font-bold text-gray-900">Verificar Código</h2>
+                <p class="text-gray-500 text-sm mt-1">Digite o código de 6 dígitos enviado para seu WhatsApp</p>
             </div>
             <!-- Progress Steps -->
             <div class="flex items-center justify-center gap-2 mb-6">
@@ -214,7 +214,7 @@
                 </button>
             </form>
             <div class="text-center mt-4">
-                <button @click="enviarCodigoRecuperacao()" class="text-sm text-purple-600 hover:underline min-h-[44px] px-4 py-2" :disabled="recuperarLoading">Reenviar codigo</button>
+                <button @click="enviarCodigoRecuperacao()" class="text-sm text-purple-600 hover:underline min-h-[44px] px-4 py-2" :disabled="recuperarLoading">Reenviar código</button>
             </div>
             <button @click="recuperarSenhaStep = 1" class="w-full text-center text-sm text-gray-500 hover:text-gray-700 mt-2 transition min-h-[44px] py-2">
                 &#8592; Alterar e-mail
@@ -241,7 +241,7 @@
             <form @submit.prevent="redefinirSenhaRecuperacao()">
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Nova senha</label>
-                    <input type="password" x-model="recuperarForm.novaSenha" class="input" placeholder="Minimo 8 caracteres" required>
+                    <input type="password" x-model="recuperarForm.novaSenha" class="input" placeholder="Mínimo 8 caracteres" required>
                 </div>
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Confirmar nova senha</label>
@@ -292,7 +292,7 @@
 
         <div class="p-3 border-t border-indigo-800">
             <button @click="logout()" class="sidebar-link w-full flex items-center gap-3 px-3 py-3 text-sm text-indigo-300 hover:text-white min-h-[44px]">
-                <span class="text-lg w-6 text-center">&#x2197;</span>
+                <span class="text-lg w-6 text-center">&#x23FB;</span>
                 <span>Sair</span>
             </button>
         </div>
@@ -343,19 +343,19 @@
                     <p class="text-[10px] sm:text-xs text-gray-400 mt-1">total cadastrados</p>
                 </div>
                 <div class="card-static">
-                    <p class="text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wide">Sessoes Hoje</p>
+                    <p class="text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wide">Sessões Hoje</p>
                     <p class="text-2xl sm:text-3xl font-bold mt-1" style="color:#7B2FBE" x-text="stats.sessoes_hoje ?? '—'"></p>
                     <p class="text-[10px] sm:text-xs text-gray-400 mt-1">acompanhamentos</p>
                 </div>
                 <div class="card-static">
-                    <p class="text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wide">Pendencias</p>
+                    <p class="text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wide">Pendências</p>
                     <p class="text-2xl sm:text-3xl font-bold text-amber-500 mt-1" x-text="stats.pendencias ?? '—'"></p>
                     <p class="text-[10px] sm:text-xs text-gray-400 mt-1">follow-ups abertos</p>
                 </div>
                 <div class="card-static">
-                    <p class="text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wide">Diagnosticos</p>
+                    <p class="text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wide">Diagnósticos</p>
                     <p class="text-2xl sm:text-3xl font-bold mt-1" style="color:#D4AF37" x-text="stats.diagnosticos ?? '—'"></p>
-                    <p class="text-[10px] sm:text-xs text-gray-400 mt-1">registros clinicos</p>
+                    <p class="text-[10px] sm:text-xs text-gray-400 mt-1">registros clínicos</p>
                 </div>
             </div>
 
@@ -387,10 +387,10 @@
                     </div>
                 </div>
 
-                <!-- Proximos retornos -->
+                <!-- Próximos retornos -->
                 <div class="card-static">
                     <h3 class="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                        <span>&#128172;</span> Proximos Retornos
+                        <span>&#128172;</span> Próximos Retornos
                     </h3>
                     <div x-show="!dashboardLoaded" class="text-center py-6">
                         <span class="spinner"></span>
@@ -398,7 +398,7 @@
                     <div x-show="dashboardLoaded && ultimasMsgs.length === 0" class="text-center py-8">
                         <p class="text-3xl mb-2">&#128172;</p>
                         <p class="text-gray-500 font-medium text-sm">Sem retornos pendentes</p>
-                        <p class="text-gray-400 text-xs mt-1">Seus pacientes estao em dia</p>
+                        <p class="text-gray-400 text-xs mt-1">Seus pacientes estão em dia</p>
                     </div>
                     <div class="space-y-3">
                         <template x-for="msg in ultimasMsgs" :key="msg.id">
@@ -407,7 +407,7 @@
                                     style="background:#7B2FBE" x-text="(msg.pacientes?.nome||'?').charAt(0)"></div>
                                 <div class="flex-1 min-w-0">
                                     <p class="text-sm font-medium text-gray-800" x-text="msg.pacientes?.nome || 'Paciente'"></p>
-                                    <p class="text-xs text-gray-500 truncate" x-text="msg.descricao || 'Sem descricao'"></p>
+                                    <p class="text-xs text-gray-500 truncate" x-text="msg.descricao || 'Sem descrição'"></p>
                                 </div>
                                 <span class="text-xs text-gray-400 flex-shrink-0" x-text="formatarDataCurta(msg.data_prevista)"></span>
                             </div>
@@ -466,7 +466,7 @@
                         <tr>
                             <th class="text-left text-xs font-semibold text-gray-500 uppercase px-4 py-3">Paciente</th>
                             <th class="text-left text-xs font-semibold text-gray-500 uppercase px-4 py-3 hidden md:table-cell">Telefone</th>
-                            <th class="text-left text-xs font-semibold text-gray-500 uppercase px-4 py-3 hidden lg:table-cell">Ultima Sessao</th>
+                            <th class="text-left text-xs font-semibold text-gray-500 uppercase px-4 py-3 hidden lg:table-cell">Última Sessão</th>
                             <th class="text-left text-xs font-semibold text-gray-500 uppercase px-4 py-3">Status</th>
                             <th class="px-4 py-3"></th>
                         </tr>
@@ -499,11 +499,11 @@
                 </table>
                 </div>
             </div>
-            </div><!-- /lista pacientes (hidden when prontuario open) -->
+            </div><!-- /lista pacientes (hidden when prontuário open) -->
 
-            <!-- ── PRONTUARIO INLINE (dentro de Pacientes) ── -->
+            <!-- ── PRONTUÁRIO INLINE (dentro de Pacientes) ── -->
             <div x-show="prontuario && pacienteContexto" class="mt-5 fade-in">
-                <!-- Botao voltar + nome paciente -->
+                <!-- Botão voltar + nome paciente -->
                 <div class="flex items-center gap-3 mb-4">
                     <button @click="prontuario = null; pacienteContexto = null;" class="btn-ghost text-xs flex items-center gap-1 min-h-[44px]">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
@@ -513,12 +513,12 @@
                         <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0"
                             style="background: linear-gradient(135deg, #7B2FBE, #D4AF37);"
                             x-text="pacienteContexto?.nome?.charAt(0) || '?'"></div>
-                        <h2 class="text-lg font-bold text-gray-800" x-text="'Prontuario de ' + (pacienteContexto?.nome || '')"></h2>
+                        <h2 class="text-lg font-bold text-gray-800" x-text="'Prontuário de ' + (pacienteContexto?.nome || '')"></h2>
                     </div>
                 </div>
 
             <div x-show="prontuario">
-                <!-- Cabecalho do paciente -->
+                <!-- Cabeçalho do paciente -->
                 <div class="card-static mb-5">
                     <div class="flex flex-col sm:flex-row items-start justify-between gap-4">
                         <div class="flex items-start gap-4">
@@ -538,12 +538,12 @@
                         <div class="flex gap-2 flex-wrap w-full sm:w-auto">
                             <button @click="abrirModalNota()" class="btn-ghost text-xs flex-1 sm:flex-initial min-h-[44px]">+ Nota</button>
                             <button @click="abrirModalAcomp()" class="btn-ghost text-xs flex-1 sm:flex-initial min-h-[44px]">+ Follow-up</button>
-                            <button @click="abrirModalDiagnostico()" class="btn-primary text-xs flex-1 sm:flex-initial min-h-[44px]">+ Diagnostico</button>
+                            <button @click="abrirModalDiagnostico()" class="btn-primary text-xs flex-1 sm:flex-initial min-h-[44px]">+ Diagnóstico</button>
                         </div>
                     </div>
                 </div>
 
-                <!-- Stats rapidas (clicaveis — navegam para aba correspondente) -->
+                <!-- Stats rápidas (clicáveis — navegam para aba correspondente) -->
                 <div class="grid grid-cols-3 gap-2 sm:gap-3 mb-5">
                     <button @click="abaProntuario = 'conversas'" class="card-static text-center py-3 px-2 cursor-pointer transition hover:shadow-md hover:border-purple-200 border-2" :class="abaProntuario === 'conversas' ? 'border-purple-500 bg-purple-50' : 'border-transparent'">
                         <p class="text-xl sm:text-2xl font-bold" style="color:#7B2FBE" x-text="(prontuario?.conversas || []).length"></p>
@@ -551,7 +551,7 @@
                     </button>
                     <button @click="abaProntuario = 'diagnosticos'" class="card-static text-center py-3 px-2 cursor-pointer transition hover:shadow-md hover:border-amber-200 border-2" :class="abaProntuario === 'diagnosticos' ? 'border-amber-500 bg-amber-50' : 'border-transparent'">
                         <p class="text-xl sm:text-2xl font-bold" style="color:#D4AF37" x-text="(prontuario?.diagnosticos || []).length"></p>
-                        <p class="text-[10px] sm:text-xs text-gray-500 mt-0.5">Diagnosticos</p>
+                        <p class="text-[10px] sm:text-xs text-gray-500 mt-0.5">Diagnósticos</p>
                     </button>
                     <button @click="abaProntuario = 'mapas'" class="card-static text-center py-3 px-2 cursor-pointer transition hover:shadow-md hover:border-green-200 border-2" :class="abaProntuario === 'mapas' ? 'border-green-500 bg-green-50' : 'border-transparent'">
                         <p class="text-xl sm:text-2xl font-bold text-green-600" x-text="(prontuario?.mapas_natais || []).length"></p>
@@ -559,7 +559,7 @@
                     </button>
                 </div>
 
-                <!-- Abas prontuario -->
+                <!-- Abas prontuário -->
                 <div class="flex gap-1 mb-4 bg-gray-50 rounded-xl p-1 border border-gray-200 overflow-x-auto -mx-1 px-1 shadow-sm">
                     <template x-for="aba in abasProntuario" :key="aba.id">
                         <button @click="abaProntuario = aba.id"
@@ -590,9 +590,9 @@
                     </template>
                 </div>
 
-                <!-- Diagnosticos do paciente -->
+                <!-- Diagnósticos do paciente -->
                 <div x-show="abaProntuario === 'diagnosticos'" class="space-y-3">
-                    <div x-show="(prontuario?.diagnosticos || []).length === 0" class="text-center py-8 text-gray-400 text-sm">Nenhum diagnostico registrado</div>
+                    <div x-show="(prontuario?.diagnosticos || []).length === 0" class="text-center py-8 text-gray-400 text-sm">Nenhum diagnóstico registrado</div>
                     <template x-for="d in (prontuario?.diagnosticos || [])" :key="d.id">
                         <div class="card">
                             <div class="flex items-center justify-between mb-2">
@@ -604,7 +604,7 @@
                             </div>
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                                 <div x-show="d.elemento_dominante"><span class="text-gray-500">Elemento:</span> <span class="font-medium" x-text="d.elemento_dominante"></span></div>
-                                <div x-show="d.setenio_atual"><span class="text-gray-500">Setenio:</span> <span class="font-medium" x-text="'#' + d.setenio_atual"></span></div>
+                                <div x-show="d.setenio_atual"><span class="text-gray-500">Setênio:</span> <span class="font-medium" x-text="'#' + d.setenio_atual"></span></div>
                                 <div x-show="d.dna_comprometido?.length"><span class="text-gray-500">DNA:</span> <span class="font-medium" x-text="(d.dna_comprometido||[]).join(', ')"></span></div>
                                 <div x-show="d.serpentes_ativas?.length"><span class="text-gray-500">Serpentes:</span> <span class="font-medium" x-text="(d.serpentes_ativas||[]).join(', ')"></span></div>
                             </div>
@@ -613,9 +613,9 @@
                     </template>
                 </div>
 
-                <!-- Anotacoes -->
+                <!-- Anotações -->
                 <div x-show="abaProntuario === 'anotacoes'" class="space-y-0">
-                    <div x-show="(prontuario?.anotacoes || []).length === 0" class="text-center py-8 text-gray-400 text-sm">Nenhuma anotacao registrada</div>
+                    <div x-show="(prontuario?.anotacoes || []).length === 0" class="text-center py-8 text-gray-400 text-sm">Nenhuma anotação registrada</div>
                     <template x-for="(nota, idx) in (prontuario?.anotacoes || [])" :key="nota.id">
                         <div class="flex gap-2 sm:gap-4 relative">
                             <!-- Data e linha do tempo -->
@@ -626,7 +626,7 @@
                                 <div class="w-0.5 flex-1 bg-purple-200 my-1" x-show="idx < (prontuario?.anotacoes || []).length - 1"></div>
                                 <div class="w-3 h-3 rounded-full bg-purple-500 border-2 border-white shadow absolute" style="left: 40px; top: 18px;"></div>
                             </div>
-                            <!-- Conteudo da nota -->
+                            <!-- Conteúdo da nota -->
                             <div class="card flex-1 mb-3">
                                 <div class="flex items-center gap-2 mb-1.5 flex-wrap">
                                     <span class="badge bg-gray-100 text-gray-600" x-text="nota.tipo"></span>
@@ -689,7 +689,7 @@
                     </template>
                 </div>
             </div>
-            </div><!-- /prontuario inline -->
+            </div><!-- /prontuário inline -->
         </div><!-- /secao pacientes -->
 
         <!-- ── CONVERSAS WHATSAPP ──────────────────────── -->
@@ -749,23 +749,30 @@
                         </div>
                     </div>
                     <!-- Mensagens -->
-                    <div x-show="conversaSelecionada" class="flex-1 overflow-y-auto p-4 space-y-2" style="background: #f0f0f0; max-height: 55vh;">
-                        <template x-for="msg in conversasMensagens" :key="msg.id">
+                    <div x-show="conversaSelecionada" x-ref="chatContainer" class="flex-1 overflow-y-auto p-4 space-y-2" style="background: #e5ddd5; background-image: url('data:image/svg+xml,%3Csvg width=&quot;200&quot; height=&quot;200&quot; xmlns=&quot;http://www.w3.org/2000/svg&quot;%3E%3Cdefs%3E%3Cpattern id=&quot;p&quot; width=&quot;40&quot; height=&quot;40&quot; patternUnits=&quot;userSpaceOnUse&quot;%3E%3Ccircle cx=&quot;20&quot; cy=&quot;20&quot; r=&quot;1&quot; fill=&quot;rgba(0,0,0,0.03)&quot;/%3E%3C/pattern%3E%3C/defs%3E%3Crect width=&quot;200&quot; height=&quot;200&quot; fill=&quot;url(%23p)&quot;/%3E%3C/svg%3E'); max-height: 55vh;">
+                        <template x-for="(msg, idx) in conversasMensagens" :key="msg.id">
                             <div class="space-y-1.5 mb-2">
-                                <!-- Msg paciente (esquerda) -->
+                                <!-- Separador de data -->
+                                <div x-show="idx === 0 || new Date(msg.criado_em).toLocaleDateString('pt-BR') !== new Date(conversasMensagens[idx-1]?.criado_em).toLocaleDateString('pt-BR')"
+                                    class="flex justify-center my-3">
+                                    <span class="bg-white/80 backdrop-blur text-[11px] text-gray-500 px-3 py-1 rounded-lg shadow-sm font-medium"
+                                        x-text="new Date(msg.criado_em).toLocaleDateString('pt-BR', {day:'2-digit', month:'long', year:'numeric'})"></span>
+                                </div>
+                                <!-- Msg paciente (esquerda — bolha branca) -->
                                 <div x-show="msg.mensagem_paciente" class="flex justify-start">
-                                    <div class="bg-white rounded-xl rounded-tl-sm px-3 py-2 max-w-[80%] shadow-sm border border-gray-100">
-                                        <p class="text-sm text-gray-800 leading-relaxed" x-text="msg.mensagem_paciente"></p>
-                                        <p class="text-[10px] text-gray-400 text-right mt-1" x-text="new Date(msg.criado_em).toLocaleString('pt-BR', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})"></p>
+                                    <div class="bg-white rounded-xl rounded-tl-sm px-3 py-2 max-w-[80%] shadow-sm" style="border-left: 3px solid #25D366;">
+                                        <p class="text-sm text-gray-800 leading-relaxed whitespace-pre-line" x-text="msg.mensagem_paciente"></p>
+                                        <p class="text-[10px] text-gray-400 text-right mt-1" x-text="new Date(msg.criado_em).toLocaleString('pt-BR', {hour:'2-digit',minute:'2-digit'})"></p>
                                     </div>
                                 </div>
-                                <!-- Resposta agente (direita) -->
+                                <!-- Resposta agente (direita — bolha roxa) -->
                                 <div x-show="msg.resposta_agente" class="flex justify-end">
-                                    <div class="rounded-xl rounded-tr-sm px-3 py-2 max-w-[80%] shadow-sm" style="background: #ede9fe;">
-                                        <p class="text-sm text-gray-800 leading-relaxed" x-text="msg.resposta_agente"></p>
+                                    <div class="rounded-xl rounded-tr-sm px-3 py-2 max-w-[80%] shadow-sm" style="background: #dcf8c6; border-right: 3px solid #7B2FBE;">
+                                        <p class="text-sm text-gray-800 leading-relaxed whitespace-pre-line" x-text="msg.resposta_agente"></p>
                                         <div class="flex items-center justify-end gap-2 mt-1">
-                                            <span x-show="msg.intencao" class="text-[9px] text-purple-500 font-medium" x-text="msg.intencao"></span>
-                                            <p class="text-[10px] text-purple-400" x-text="new Date(msg.criado_em).toLocaleString('pt-BR', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})"></p>
+                                            <span x-show="msg.intencao" class="text-[9px] text-green-600 font-medium uppercase" x-text="msg.intencao?.split('|')[0]"></span>
+                                            <p class="text-[10px] text-gray-500" x-text="new Date(msg.criado_em).toLocaleString('pt-BR', {hour:'2-digit',minute:'2-digit'})"></p>
+                                            <span class="text-[10px] text-green-500">&#10003;&#10003;</span>
                                         </div>
                                     </div>
                                 </div>
@@ -777,14 +784,14 @@
                         <div>
                             <p class="text-4xl mb-3">\u{1F4AC}</p>
                             <p class="text-gray-500 font-medium">Selecione uma conversa</p>
-                            <p class="text-gray-400 text-sm mt-1">Escolha um paciente para ver o historico completo</p>
+                            <p class="text-gray-400 text-sm mt-1">Escolha um paciente para ver o histórico completo</p>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- ── DIAGNOSTICOS ────────────────────────────── -->
+        <!-- ── DIAGNÓSTICOS ────────────────────────────── -->
         <div x-show="secao === 'diagnosticos'" class="fade-in">
             <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
                 <div class="flex gap-2 w-full sm:w-auto">
@@ -797,7 +804,7 @@
                 </div>
                 <div class="flex gap-2 w-full sm:w-auto">
                     <button @click="abrirModalDiagnostico()" class="btn-primary flex items-center gap-1 w-full sm:w-auto justify-center">
-                        <span>+</span> Novo Diagnostico
+                        <span>+</span> Novo Diagnóstico
                     </button>
                 </div>
             </div>
@@ -806,14 +813,14 @@
                 <!-- Loading -->
                 <div x-show="loading && diagnosticos.length === 0" class="text-center py-12">
                     <span class="spinner"></span>
-                    <p class="text-gray-400 text-sm mt-3">Carregando diagnosticos...</p>
+                    <p class="text-gray-400 text-sm mt-3">Carregando diagnósticos...</p>
                 </div>
                 <!-- Empty -->
                 <div x-show="!loading && diagnosticos.length === 0" class="text-center py-12">
                     <p class="text-4xl mb-3">&#129514;</p>
-                    <p class="font-medium text-gray-600">Nenhum diagnostico encontrado</p>
-                    <p class="text-sm text-gray-400 mt-1">Crie um diagnostico para comecar</p>
-                    <button @click="abrirModalDiagnostico()" class="btn-primary mt-4 text-sm min-h-[44px] px-4">+ Novo Diagnostico</button>
+                    <p class="font-medium text-gray-600">Nenhum diagnóstico encontrado</p>
+                    <p class="text-sm text-gray-400 mt-1">Crie um diagnóstico para começar</p>
+                    <button @click="abrirModalDiagnostico()" class="btn-primary mt-4 text-sm min-h-[44px] px-4">+ Novo Diagnóstico</button>
                 </div>
                 <template x-for="d in diagnosticos" :key="d.id">
                     <div class="card hover:shadow-md transition">
@@ -830,7 +837,7 @@
                                         <p class="font-semibold text-orange-700" x-text="d.elemento_dominante"></p>
                                     </div>
                                     <div x-show="d.setenio_atual" class="bg-purple-50 rounded px-2 py-1">
-                                        <span class="text-gray-400">Setenio</span>
+                                        <span class="text-gray-400">Setênio</span>
                                         <p class="font-semibold text-purple-700" x-text="'#' + d.setenio_atual"></p>
                                     </div>
                                     <div x-show="d.dna_comprometido?.length" class="bg-red-50 rounded px-2 py-1">
@@ -887,7 +894,7 @@
                 </button>
             </div>
 
-            <!-- Agenda 7 dias — separado por Atrasados / Hoje / Proximos -->
+            <!-- Agenda 7 dias — separado por Atrasados / Hoje / Próximos -->
             <div x-show="agenda7dias.length > 0" class="mb-6 space-y-5">
 
                 <!-- ATRASADOS (data < hoje) -->
@@ -920,7 +927,7 @@
                                                 <button @click="marcarRealizado(item)" class="w-11 h-11 sm:w-8 sm:h-8 rounded-full bg-green-100 hover:bg-green-200 text-green-600 flex items-center justify-center transition" title="Marcar como feito">
                                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
                                                 </button>
-                                                <button @click="adiarAcompanhamento(item)" class="w-11 h-11 sm:w-8 sm:h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center transition" title="Adiar para amanha">
+                                                <button @click="adiarAcompanhamento(item)" class="w-11 h-11 sm:w-8 sm:h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center transition" title="Adiar para amanhã">
                                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                                 </button>
                                             </div>
@@ -959,7 +966,7 @@
                                             <button @click="marcarRealizado(item)" class="w-11 h-11 sm:w-8 sm:h-8 rounded-full bg-green-100 hover:bg-green-200 text-green-600 flex items-center justify-center transition" title="Marcar como feito">
                                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
                                             </button>
-                                            <button @click="adiarAcompanhamento(item)" class="w-11 h-11 sm:w-8 sm:h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center transition" title="Adiar para amanha">
+                                            <button @click="adiarAcompanhamento(item)" class="w-11 h-11 sm:w-8 sm:h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center transition" title="Adiar para amanhã">
                                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                             </button>
                                         </div>
@@ -974,10 +981,10 @@
                     </template>
                 </div>
 
-                <!-- PROXIMOS DIAS (data > hoje) -->
+                <!-- PRÓXIMOS DIAS (data > hoje) -->
                 <div x-show="agenda7dias.filter(g => g.data > new Date().toISOString().split('T')[0]).length > 0">
                     <h3 class="text-sm font-bold text-gray-600 uppercase tracking-wide mb-3 flex items-center gap-2">
-                        <span class="w-2 h-2 bg-gray-400 rounded-full"></span> Proximos Dias
+                        <span class="w-2 h-2 bg-gray-400 rounded-full"></span> Próximos Dias
                     </h3>
                     <template x-for="grupo in agenda7dias.filter(g => g.data > new Date().toISOString().split('T')[0])" :key="grupo.data">
                         <div class="mb-3">
@@ -1002,7 +1009,7 @@
                                                 <button @click="marcarRealizado(item)" class="w-11 h-11 sm:w-8 sm:h-8 rounded-full bg-green-100 hover:bg-green-200 text-green-600 flex items-center justify-center transition" title="Marcar como feito">
                                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
                                                 </button>
-                                                <button @click="adiarAcompanhamento(item)" class="w-11 h-11 sm:w-8 sm:h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center transition" title="Adiar para amanha">
+                                                <button @click="adiarAcompanhamento(item)" class="w-11 h-11 sm:w-8 sm:h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center transition" title="Adiar para amanhã">
                                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                                 </button>
                                             </div>
@@ -1051,7 +1058,7 @@
                             <button x-show="item.status === 'pendente'" @click="marcarRealizado(item)" class="w-11 h-11 sm:w-8 sm:h-8 rounded-full bg-green-100 hover:bg-green-200 text-green-600 flex items-center justify-center transition" title="Marcar como feito">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
                             </button>
-                            <button x-show="item.status === 'pendente'" @click="adiarAcompanhamento(item)" class="w-11 h-11 sm:w-8 sm:h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center transition" title="Adiar para amanha">
+                            <button x-show="item.status === 'pendente'" @click="adiarAcompanhamento(item)" class="w-11 h-11 sm:w-8 sm:h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center transition" title="Adiar para amanhã">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                             </button>
                             <button @click="abrirModalAcomp(item)" class="w-11 h-11 sm:w-8 sm:h-8 rounded-full bg-gray-50 hover:bg-gray-200 text-gray-500 flex items-center justify-center transition text-xs">&#9998;</button>
@@ -1089,7 +1096,7 @@
             <div x-show="!loading && mapas.length === 0" class="text-center py-16">
                 <p class="text-5xl mb-3">&#127760;</p>
                 <p class="font-medium text-gray-600">Nenhum mapa natal gerado</p>
-                <p class="text-sm text-gray-400 mt-1">Os mapas sao gerados automaticamente pelo agente WhatsApp</p>
+                <p class="text-sm text-gray-400 mt-1">Os mapas são gerados automaticamente pelo agente WhatsApp</p>
             </div>
             <!-- No search results -->
             <div x-show="!loading && mapas.length > 0 && getMapasAgrupados().length === 0" class="text-center py-16">
@@ -1112,7 +1119,7 @@
                         </div>
                         <!-- Maps side by side — compact thumbnails -->
                         <div class="grid grid-cols-2 gap-2.5">
-                            <!-- Mapa Alquimico -->
+                            <!-- Mapa Alquímico -->
                             <div class="cursor-pointer group/thumb" @click="let m = getMapaPorTipo(grupo.mapas, 'alquimico'); if(m) verMapa(m);">
                                 <template x-if="getMapaPorTipo(grupo.mapas, 'alquimico')">
                                     <div>
@@ -1121,7 +1128,7 @@
                                                 class="w-full h-full object-contain" loading="lazy">
                                             <div class="absolute inset-0 bg-black/0 group-hover/thumb:bg-black/10 transition"></div>
                                         </div>
-                                        <p class="text-[11px] font-semibold text-amber-700 mt-1 text-center">&#128302; Alquimico</p>
+                                        <p class="text-[11px] font-semibold text-amber-700 mt-1 text-center">&#128302; Alquímico</p>
                                     </div>
                                 </template>
                                 <template x-if="!getMapaPorTipo(grupo.mapas, 'alquimico')">
@@ -1165,14 +1172,14 @@
             </div>
         </div>
 
-        <!-- ── RELATORIOS ──────────────────────────────── -->
+        <!-- ── RELATÓRIOS ──────────────────────────────── -->
         <div x-show="secao === 'relatorios'" class="fade-in">
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 mb-6">
-                <!-- Visao geral -->
+                <!-- Visão geral -->
                 <div class="lg:col-span-2 card-static">
-                    <h3 class="font-semibold text-gray-800 mb-4">Visao Geral da Pratica</h3>
+                    <h3 class="font-semibold text-gray-800 mb-4">Visão Geral da Prática</h3>
                     <div x-show="!relatorioGeral" class="text-center py-6">
-                        <button @click="carregarRelatorioGeral()" class="btn-primary min-h-[44px]">Carregar Relatorio</button>
+                        <button @click="carregarRelatorioGeral()" class="btn-primary min-h-[44px]">Carregar Relatório</button>
                     </div>
                     <div x-show="relatorioGeral" class="grid grid-cols-2 gap-3 sm:gap-4">
                         <div class="bg-purple-50 rounded-lg p-3 sm:p-4">
@@ -1180,7 +1187,7 @@
                             <p class="text-2xl sm:text-3xl font-bold text-purple-700 mt-1" x-text="relatorioGeral?.pacientes_ativos ?? 0"></p>
                         </div>
                         <div class="bg-yellow-50 rounded-lg p-3 sm:p-4">
-                            <p class="text-[10px] sm:text-xs text-yellow-600 font-medium">Diagnosticos (este mes)</p>
+                            <p class="text-[10px] sm:text-xs text-yellow-600 font-medium">Diagnósticos (este mês)</p>
                             <p class="text-2xl sm:text-3xl font-bold text-yellow-700 mt-1" x-text="relatorioGeral?.diagnosticos_este_mes ?? 0"></p>
                         </div>
                         <div class="bg-green-50 rounded-lg p-3 sm:p-4">
@@ -1188,16 +1195,16 @@
                             <p class="text-2xl sm:text-3xl font-bold text-green-700 mt-1" x-text="relatorioGeral?.total_conversas ?? 0"></p>
                         </div>
                         <div class="bg-blue-50 rounded-lg p-3 sm:p-4">
-                            <p class="text-[10px] sm:text-xs text-blue-600 font-medium">Mensagens (este mes)</p>
+                            <p class="text-[10px] sm:text-xs text-blue-600 font-medium">Mensagens (este mês)</p>
                             <p class="text-2xl sm:text-3xl font-bold text-blue-700 mt-1" x-text="relatorioGeral?.conversas_este_mes ?? 0"></p>
                         </div>
                     </div>
                 </div>
 
-                <!-- Distribuicao de elementos -->
+                <!-- Distribuição de elementos -->
                 <div class="card-static">
                     <h3 class="font-semibold text-gray-800 mb-4">Top Elementos</h3>
-                    <div x-show="!relatorioGeral" class="text-center py-6 text-gray-400 text-sm">Carregue o relatorio</div>
+                    <div x-show="!relatorioGeral" class="text-center py-6 text-gray-400 text-sm">Carregue o relatório</div>
                     <div x-show="relatorioGeral" class="space-y-3">
                         <template x-for="[elem, count] in Object.entries(relatorioGeral?.elementos_distribuicao || {})" :key="elem">
                             <div class="flex items-center gap-3">
@@ -1216,7 +1223,7 @@
                 </div>
             </div>
 
-            <!-- Rankings de diagnosticos -->
+            <!-- Rankings de diagnósticos -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                 <div class="card-static">
                     <h3 class="font-semibold text-gray-800 mb-3">Top Florais Prescritos</h3>
@@ -1274,7 +1281,7 @@
                                     <span class="text-sm text-gray-500" x-text="assinatura.status === 'trial' ? ('Expira em ' + assinatura.dias_restantes + ' dias') : ''"></span>
                                 </div>
                                 <p class="text-2xl font-bold mt-2" style="color:#7B2FBE">
-                                    R$ <span x-text="assinatura.valor || '297'"></span><span class="text-sm font-normal text-gray-500">/mes</span>
+                                    R$ <span x-text="assinatura.valor || '297'"></span><span class="text-sm font-normal text-gray-500">/mês</span>
                                 </p>
                             </div>
                         </div>
@@ -1286,7 +1293,7 @@
                     <!-- Trial progress bar -->
                     <div x-show="assinatura.status === 'trial'" class="mt-5 pt-4 border-t border-gray-100">
                         <div class="flex items-center justify-between text-sm mb-2">
-                            <span class="text-gray-600">Periodo de teste</span>
+                            <span class="text-gray-600">Período de teste</span>
                             <span class="font-medium" :class="assinatura.dias_restantes <= 2 ? 'text-red-600' : 'text-gray-700'"
                                 x-text="assinatura.dias_restantes + ' de 7 dias restantes'"></span>
                         </div>
@@ -1300,7 +1307,7 @@
 
                 <!-- Detalhes do plano -->
                 <div class="card-static mb-6">
-                    <h3 class="font-semibold text-gray-800 mb-4">O que esta incluso</h3>
+                    <h3 class="font-semibold text-gray-800 mb-4">O que está incluso</h3>
                     <div class="grid sm:grid-cols-2 gap-3">
                         <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                             <span class="text-green-500 text-lg">&#10003;</span>
@@ -1316,26 +1323,26 @@
                         </div>
                         <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                             <span class="text-green-500 text-lg">&#10003;</span>
-                            <span class="text-sm text-gray-700">Relatorios e diagnosticos IA</span>
+                            <span class="text-sm text-gray-700">Relatórios e diagnósticos IA</span>
                         </div>
                         <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                             <span class="text-green-500 text-lg">&#10003;</span>
-                            <span class="text-sm text-gray-700">Gestao de pacientes</span>
+                            <span class="text-sm text-gray-700">Gestão de pacientes</span>
                         </div>
                         <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                             <span class="text-green-500 text-lg">&#10003;</span>
-                            <span class="text-sm text-gray-700">Suporte prioritario</span>
+                            <span class="text-sm text-gray-700">Suporte prioritário</span>
                         </div>
                     </div>
                 </div>
 
-                <!-- Historico de pagamentos -->
+                <!-- Histórico de pagamentos -->
                 <div class="card-static">
-                    <h3 class="font-semibold text-gray-800 mb-4">Historico de Pagamentos</h3>
+                    <h3 class="font-semibold text-gray-800 mb-4">Histórico de Pagamentos</h3>
                     <div x-show="(assinatura.pagamentos || []).length === 0" class="text-center py-8">
                         <p class="text-3xl mb-2">&#128179;</p>
                         <p class="text-gray-500 font-medium text-sm">Nenhum pagamento registrado</p>
-                        <p class="text-gray-400 text-xs mt-1">Os pagamentos apareceriao aqui apos a primeira cobranca</p>
+                        <p class="text-gray-400 text-xs mt-1">Os pagamentos aparecerão aqui após a primeira cobrança</p>
                     </div>
                     <div x-show="(assinatura.pagamentos || []).length > 0" class="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0">
                         <table class="w-full text-sm min-w-[420px]">
@@ -1344,7 +1351,7 @@
                                     <th class="text-left py-2 px-3 text-xs font-semibold text-gray-500 uppercase">Data</th>
                                     <th class="text-left py-2 px-3 text-xs font-semibold text-gray-500 uppercase">Valor</th>
                                     <th class="text-left py-2 px-3 text-xs font-semibold text-gray-500 uppercase">Status</th>
-                                    <th class="text-left py-2 px-3 text-xs font-semibold text-gray-500 uppercase">Metodo</th>
+                                    <th class="text-left py-2 px-3 text-xs font-semibold text-gray-500 uppercase">Método</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-50">
@@ -1365,7 +1372,7 @@
             </div>
         </div>
 
-        <!-- ── CONFIGURACOES ───────────────────────────── -->
+        <!-- ── CONFIGURAÇÕES ───────────────────────────── -->
         <div x-show="secao === 'configuracoes'" class="fade-in max-w-2xl">
 
             <!-- Perfil do Terapeuta -->
@@ -1399,7 +1406,7 @@
                         <input class="input" x-model="configForm.foto_url" placeholder="https://exemplo.com/foto.jpg">
                     </div>
                     <button @click="salvarConfig()" class="btn-primary w-full sm:w-auto" :disabled="loading">
-                        <span x-show="!loading">Salvar Alteracoes</span>
+                        <span x-show="!loading">Salvar Alterações</span>
                         <span x-show="loading">Salvando...</span>
                     </button>
                 </div>
@@ -1413,7 +1420,7 @@
                 <div class="space-y-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Nova Senha</label>
-                        <input type="password" class="input" x-model="senhaForm.nova" placeholder="Minimo 8 caracteres">
+                        <input type="password" class="input" x-model="senhaForm.nova" placeholder="Mínimo 8 caracteres">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Confirmar Senha</label>
@@ -1451,11 +1458,11 @@
                     <input class="input" type="time" x-model="editandoPaciente.hora_nascimento"></div>
             </div>
             <div><label class="block text-sm font-medium text-gray-700 mb-1">Cidade de Nascimento</label>
-                <input class="input" x-model="editandoPaciente.cidade_nascimento" placeholder="Cidade, Estado, Pais"></div>
+                <input class="input" x-model="editandoPaciente.cidade_nascimento" placeholder="Cidade, Estado, País"></div>
             <div><label class="block text-sm font-medium text-gray-700 mb-1">Tags (separadas por virgula)</label>
-                <input class="input" x-model="editandoPacienteTagsStr" placeholder="ansiosa, florais, meditacao"></div>
+                <input class="input" x-model="editandoPacienteTagsStr" placeholder="ansiosa, florais, meditação"></div>
             <div><label class="block text-sm font-medium text-gray-700 mb-1">Notas Gerais</label>
-                <textarea class="input" rows="3" x-model="editandoPaciente.notas_gerais" placeholder="Observacoes sobre o paciente..."></textarea></div>
+                <textarea class="input" rows="3" x-model="editandoPaciente.notas_gerais" placeholder="Observações sobre o paciente..."></textarea></div>
             <div><label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
                 <select class="input" x-model="editandoPaciente.status">
                     <option value="ativo">Ativo</option>
@@ -1473,11 +1480,11 @@
     </div>
 </div>
 
-<!-- Modal Diagnostico -->
+<!-- Modal Diagnóstico -->
 <div x-show="modalAberto === 'diagnostico'" class="modal-backdrop" @click.self="fecharModal()">
     <div class="modal-box p-6">
         <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-5">
-            <h3 class="text-lg font-bold text-gray-900" x-text="editandoDiag?.id ? 'Editar Diagnostico' : 'Novo Diagnostico'"></h3>
+            <h3 class="text-lg font-bold text-gray-900" x-text="editandoDiag?.id ? 'Editar Diagnóstico' : 'Novo Diagnóstico'"></h3>
             <button x-show="!editandoDiag?.id && pacienteContexto" @click="autoExtrair(pacienteContexto?.id)"
                 class="btn-ouro text-xs flex items-center gap-1 w-full sm:w-auto justify-center">
                 <span>&#129302;</span> Extrair com IA
@@ -1503,13 +1510,13 @@
                 <input class="input" x-model="editandoDiagDNAStr" placeholder="Ex: Yin, Ancestral"></div>
             <div><label class="block text-sm font-medium text-gray-700 mb-1">Serpentes Ativas (virgula)</label>
                 <input class="input" x-model="editandoDiagSerpStr" placeholder="Ex: Lucifer, Lilith"></div>
-            <div><label class="block text-sm font-medium text-gray-700 mb-1">Setenio Atual (1-9)</label>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Setênio Atual (1-9)</label>
                 <input class="input" type="number" min="1" max="9" x-model="editandoDiag.setenio_atual"></div>
             <div><label class="block text-sm font-medium text-gray-700 mb-1">Florais Prescritos (virgula)</label>
                 <input class="input" x-model="editandoDiagFloraisStr" placeholder="Ex: Rescue, Mimulus, Agrimony"></div>
-            <div><label class="block text-sm font-medium text-gray-700 mb-1">Protocolo Terapeutico</label>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Protocolo Terapêutico</label>
                 <textarea class="input" rows="4" x-model="editandoDiag.protocolo_texto" placeholder="Descreva o protocolo recomendado..."></textarea></div>
-            <div><label class="block text-sm font-medium text-gray-700 mb-1">Data da Sessao</label>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Data da Sessão</label>
                 <input class="input" type="date" x-model="editandoDiag.sessao_data"></div>
             <div><label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
                 <select class="input" x-model="editandoDiag.status">
@@ -1528,10 +1535,10 @@
     </div>
 </div>
 
-<!-- Modal Anotacao -->
+<!-- Modal Anotação -->
 <div x-show="modalAberto === 'nota'" class="modal-backdrop" @click.self="fecharModal()">
     <div class="modal-box p-6">
-        <h3 class="text-lg font-bold text-gray-900 mb-5" x-text="editandoNota?.id ? 'Editar Anotacao' : 'Nova Anotacao'"></h3>
+        <h3 class="text-lg font-bold text-gray-900 mb-5" x-text="editandoNota?.id ? 'Editar Anotação' : 'Nova Anotação'"></h3>
         <div class="space-y-3">
             <div x-show="!pacienteContexto">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Paciente *</label>
@@ -1544,20 +1551,20 @@
             </div>
             <div><label class="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
                 <select class="input" x-model="editandoNota.tipo">
-                    <option value="sessao">Sessao</option>
-                    <option value="observacao">Observacao</option>
+                    <option value="sessao">Sessão</option>
+                    <option value="observacao">Observação</option>
                     <option value="tarefa">Tarefa</option>
                     <option value="lembrete">Lembrete</option>
-                    <option value="evolucao">Evolucao</option>
+                    <option value="evolucao">Evolução</option>
                 </select></div>
-            <div><label class="block text-sm font-medium text-gray-700 mb-1">Titulo</label>
-                <input class="input" x-model="editandoNota.titulo" placeholder="Titulo opcional"></div>
-            <div><label class="block text-sm font-medium text-gray-700 mb-1">Conteudo *</label>
-                <textarea class="input" rows="5" x-model="editandoNota.conteudo" placeholder="Escreva a anotacao aqui..."></textarea></div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Título</label>
+                <input class="input" x-model="editandoNota.titulo" placeholder="Título opcional"></div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Conteúdo *</label>
+                <textarea class="input" rows="5" x-model="editandoNota.conteudo" placeholder="Escreva a anotação aqui..."></textarea></div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div><label class="block text-sm font-medium text-gray-700 mb-1">Data da Anotacao</label>
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">Data da Anotação</label>
                     <input class="input" type="date" x-model="editandoNota.data_anotacao"></div>
-                <div><label class="block text-sm font-medium text-gray-700 mb-1">Proxima Sessao</label>
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">Próxima Sessão</label>
                     <input class="input" type="date" x-model="editandoNota.proxima_sessao"></div>
             </div>
         </div>
@@ -1593,17 +1600,17 @@
                     <option value="contato">Contato</option>
                     <option value="marco">Marco</option>
                 </select></div>
-            <div><label class="block text-sm font-medium text-gray-700 mb-1">Descricao *</label>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Descrição *</label>
                 <textarea class="input" rows="3" x-model="editandoAcomp.descricao" placeholder="O que precisa ser feito?"></textarea></div>
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div><label class="block text-sm font-medium text-gray-700 mb-1">Data Prevista</label>
                     <input class="input" type="date" x-model="editandoAcomp.data_prevista"></div>
-                <div><label class="block text-sm font-medium text-gray-700 mb-1">Horario</label>
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">Horário</label>
                     <input class="input" type="time" x-model="editandoAcomp.hora_prevista" placeholder="HH:MM"></div>
                 <div><label class="block text-sm font-medium text-gray-700 mb-1">Prioridade</label>
                     <select class="input" x-model.number="editandoAcomp.prioridade">
                         <option :value="1">Alta (vermelho)</option>
-                        <option :value="2">Media (amarelo)</option>
+                        <option :value="2">Média (amarelo)</option>
                         <option :value="3">Baixa (verde)</option>
                     </select></div>
             </div>
@@ -1640,7 +1647,7 @@
             </div>
             <button @click="fecharModal()" class="text-gray-400 hover:text-gray-600 text-xl transition flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100">&#10005;</button>
         </div>
-        <!-- Conteudo scrollavel -->
+        <!-- Conteúdo scrollável -->
         <div class="p-3 sm:p-5 space-y-4 sm:space-y-6 overflow-y-auto flex-1">
             <!-- Dados de nascimento (uma vez) -->
             <div class="bg-indigo-50 rounded-xl p-4">
@@ -1664,7 +1671,7 @@
             <!-- Loop: cada mapa do paciente -->
             <template x-for="(mp, idx) in mapasDoMesmoPaciente" :key="mp.id">
                 <div class="border rounded-xl overflow-hidden shadow-sm">
-                    <!-- Header do mapa — Natal = roxo, Alquimico = dourado -->
+                    <!-- Header do mapa — Natal = roxo, Alquímico = dourado -->
                     <div class="px-4 py-3 flex items-center gap-3" :class="isAlquimico(mp.mapa_json) ? 'bg-amber-50 border-b border-amber-200' : 'bg-purple-50 border-b border-purple-200'">
                         <div class="w-9 h-9 rounded-full flex items-center justify-center text-lg flex-shrink-0" :class="isAlquimico(mp.mapa_json) ? 'bg-amber-200 text-amber-800' : 'bg-purple-200 text-purple-800'">
                             <span x-text="isAlquimico(mp.mapa_json) ? '\u{1F52E}' : '\u{2B50}'"></span>
@@ -1673,16 +1680,16 @@
                             <h4 class="font-bold text-gray-900" x-text="mp.mapa_json?.tipo || 'Mapa Natal'"></h4>
                             <p class="text-xs text-gray-500" x-text="'Gerado em ' + formatarDataCurta(mp.criado_em)"></p>
                         </div>
-                        <span class="badge text-xs flex-shrink-0" :class="isAlquimico(mp.mapa_json) ? 'bg-amber-100 text-amber-700' : 'bg-purple-100 text-purple-700'" x-text="isAlquimico(mp.mapa_json) ? 'Alquimico' : 'Natal'"></span>
+                        <span class="badge text-xs flex-shrink-0" :class="isAlquimico(mp.mapa_json) ? 'bg-amber-100 text-amber-700' : 'bg-purple-100 text-purple-700'" x-text="isAlquimico(mp.mapa_json) ? 'Alquímico' : 'Natal'"></span>
                     </div>
 
                     <div class="p-4 space-y-4">
                         <!-- Imagem do mapa -->
                         <img x-show="mp.imagem_url" :src="mp.imagem_url" class="w-full rounded-lg shadow-sm">
 
-                        <!-- Dados astrologicos — MAPA NATAL (sol/lua/ascendente como objetos) -->
+                        <!-- Dados astrológicos — MAPA NATAL (sol/lua/ascendente como objetos) -->
                         <div x-show="mp.mapa_json && !isAlquimico(mp.mapa_json)" class="space-y-3">
-                            <h5 class="text-xs font-semibold text-purple-600 uppercase tracking-wider flex items-center gap-1.5">&#9734; Posicoes Planetarias</h5>
+                            <h5 class="text-xs font-semibold text-purple-600 uppercase tracking-wider flex items-center gap-1.5">&#9734; Posições Planetárias</h5>
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                                 <template x-for="[key, val] in Object.entries(mp.mapa_json || {}).filter(([k]) => !['tipo','aspectos'].includes(k))" :key="key">
                                     <div class="bg-purple-50/50 rounded-lg p-3 border border-purple-100">
@@ -1690,7 +1697,7 @@
                                         <p class="font-semibold text-gray-800 text-sm" x-text="typeof val === 'object' && val !== null ? (val.signo ? val.signo + ' Casa ' + (val.casa || '?') + (val.grau ? ' (' + val.grau + '\u00B0)' : '') : (Array.isArray(val) ? val.map(v => typeof v === 'object' ? (v.p1||'') + ' ' + (v.tipo||'') + ' ' + (v.p2||'') : v).join(', ') : JSON.stringify(val))) : val"></p>
                                     </div>
                                 </template>
-                                <!-- Aspectos separados com formatacao propria -->
+                                <!-- Aspectos separados com formatação própria -->
                                 <template x-if="mp.mapa_json?.aspectos && mp.mapa_json.aspectos.length > 0">
                                     <div class="col-span-full bg-purple-50/50 rounded-lg p-3 border border-purple-100">
                                         <p class="text-xs text-purple-500 mb-1.5 font-medium">Aspectos</p>
@@ -1707,7 +1714,7 @@
                             </div>
                         </div>
 
-                        <!-- Dados astrologicos — MAPA ALQUIMICO (com badges coloridos) -->
+                        <!-- Dados astrológicos — MAPA ALQUÍMICO (com badges coloridos) -->
                         <div x-show="mp.mapa_json && isAlquimico(mp.mapa_json)" class="space-y-4">
                             <!-- Elementos -->
                             <div x-show="mp.mapa_json?.elemento_dominante || mp.mapa_json?.elemento_carente">
@@ -1741,18 +1748,18 @@
                                     </template>
                                 </div>
                             </div>
-                            <!-- Fase e Setenio -->
+                            <!-- Fase e Setênio -->
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                                 <div x-show="mp.mapa_json?.fase_alquimica" class="bg-amber-50/50 rounded-lg p-3 border border-amber-100">
-                                    <p class="text-xs text-amber-500 mb-0.5 font-medium">Fase Alquimica</p>
+                                    <p class="text-xs text-amber-500 mb-0.5 font-medium">Fase Alquímica</p>
                                     <p class="font-semibold text-gray-800 text-sm" x-text="mp.mapa_json?.fase_alquimica"></p>
                                 </div>
                                 <div x-show="mp.mapa_json?.setenio" class="bg-amber-50/50 rounded-lg p-3 border border-amber-100">
-                                    <p class="text-xs text-amber-500 mb-0.5 font-medium">Setenio</p>
+                                    <p class="text-xs text-amber-500 mb-0.5 font-medium">Setênio</p>
                                     <p class="font-semibold text-gray-800 text-sm" x-text="mp.mapa_json?.setenio"></p>
                                 </div>
                             </div>
-                            <!-- Outros campos alquimicos nao mapeados -->
+                            <!-- Outros campos alquímicos não mapeados -->
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                                 <template x-for="[key, val] in Object.entries(mp.mapa_json || {}).filter(([k]) => !['tipo','elemento_dominante','elemento_carente','dna_comprometido','serpentes_ativas','fase_alquimica','setenio','aspectos'].includes(k))" :key="key">
                                     <div class="bg-gray-50 rounded-lg p-3 border border-gray-100">
@@ -1780,20 +1787,20 @@
                     <span class="text-2xl flex-shrink-0">&#9888;&#65039;</span>
                     <div>
                         <p class="text-yellow-800 font-medium">Este paciente possui apenas <span x-text="mapasDoMesmoPaciente.length"></span> mapa.</p>
-                        <p class="text-yellow-600 text-sm mt-1">O ideal e ter o Mapa Natal + Mapa Alquimico para uma analise completa.</p>
+                        <p class="text-yellow-600 text-sm mt-1">O ideal é ter o Mapa Natal + Mapa Alquímico para uma análise completa.</p>
                         <p class="text-yellow-700 text-sm mt-2 font-medium">Envie ao paciente via WhatsApp: <span class="bg-yellow-100 px-2 py-0.5 rounded font-mono text-xs">"Gostaria de gerar meu mapa"</span></p>
                     </div>
                 </div>
             </div>
         </div>
-        <!-- Botao Fechar fixo no rodape -->
+        <!-- Botão Fechar fixo no rodapé -->
         <div class="p-4 border-t bg-gray-50 sm:rounded-b-2xl flex-shrink-0 flex justify-end">
             <button @click="fecharModal()" class="btn-ghost w-full sm:w-auto">Fechar</button>
         </div>
     </div>
 </div>
 
-<!-- Toast notificacoes -->
+<!-- Toast notificações -->
 <div x-show="toast.show" x-transition
     class="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:bottom-6 z-50 px-5 py-3 rounded-xl shadow-xl text-sm font-medium text-white sm:max-w-sm"
     :class="toast.ok ? 'bg-green-600' : 'bg-red-600'"
@@ -1834,15 +1841,15 @@ function portalApp() {
 
         // ── Menu ───────────────────────────────────────
         menuItems: [
-            { id: 'dashboard',        label: 'Inicio',          icon: '\u{1F3E0}', badge: 0 },
+            { id: 'dashboard',        label: 'Início',          icon: '\u{1F3E0}', badge: 0 },
             { id: 'pacientes',        label: 'Pacientes',       icon: '\u{1F465}', badge: 0 },
             { id: 'conversas_whats',  label: 'Conversas',       icon: '\u{1F4AC}', badge: 0 },
-            { id: 'diagnosticos',     label: 'Diagnosticos',    icon: '\u{1F9EA}', badge: 0 },
+            { id: 'diagnosticos',     label: 'Diagnósticos',    icon: '\u{1F9EA}', badge: 0 },
             { id: 'acompanhamentos',  label: 'Agenda',          icon: '\u{1F4C5}', badge: 0 },
             { id: 'mapas',            label: 'Mapas Natais',    icon: '\u{1F310}', badge: 0 },
-            { id: 'relatorios',       label: 'Relatorios',      icon: '\u{1F4CA}', badge: 0 },
+            { id: 'relatorios',       label: 'Relatórios',      icon: '\u{1F4CA}', badge: 0 },
             { id: 'assinatura',       label: 'Assinatura',      icon: '\u{1F4B3}', badge: 0 },
-            { id: 'configuracoes',    label: 'Configuracoes',   icon: '\u2699',    badge: 0 },
+            { id: 'configuracoes',    label: 'Configurações',   icon: '\u2699',    badge: 0 },
         ],
 
         // ── Dados ──────────────────────────────────────
@@ -1854,7 +1861,7 @@ function portalApp() {
         abaProntuario: 'timeline',
         abasProntuario: [
             { id: 'timeline',     label: 'Timeline',     icon: '\u{1F4CB}' },
-            { id: 'diagnosticos', label: 'Diagnosticos', icon: '\u{1FA7A}' },
+            { id: 'diagnosticos', label: 'Diagnósticos', icon: '\u{1FA7A}' },
             { id: 'anotacoes',    label: 'Notas',        icon: '\u{270F}\u{FE0F}' },
             { id: 'conversas',    label: 'Conversas',    icon: '\u{1F4AC}' },
             { id: 'mapas',        label: 'Mapas',        icon: '\u{2B50}' },
@@ -1962,7 +1969,7 @@ function portalApp() {
                 });
                 if (!res.ok) {
                     const err = await res.json();
-                    this.loginErro = err.detail || 'Credenciais invalidas';
+                    this.loginErro = err.detail || 'Credenciais inválidas';
                     return;
                 }
                 const data = await res.json();
@@ -1972,7 +1979,7 @@ function portalApp() {
                 this.autenticado = true;
                 await this.carregarDashboard();
             } catch (e) {
-                this.loginErro = 'Erro de conexao. Tente novamente.';
+                this.loginErro = 'Erro de conexão. Tente novamente.';
             } finally {
                 this.loginLoading = false;
             }
@@ -2010,18 +2017,18 @@ function portalApp() {
                 });
                 if (!res.ok) {
                     const err = await res.json().catch(() => ({}));
-                    this.recuperarErro = err.detail || 'Erro ao enviar codigo. Verifique o e-mail.';
+                    this.recuperarErro = err.detail || 'Erro ao enviar código. Verifique o e-mail.';
                     return;
                 }
                 this.recuperarSenhaStep = 2;
-                this.mostrarToast('Codigo enviado para seu WhatsApp!', true);
+                this.mostrarToast('Código enviado para seu WhatsApp!', true);
                 // Focus first code input after render
                 setTimeout(() => {
                     const el = document.getElementById('code-0');
                     if (el) el.focus();
                 }, 100);
             } catch (e) {
-                this.recuperarErro = 'Erro de conexao. Tente novamente.';
+                this.recuperarErro = 'Erro de conexão. Tente novamente.';
             } finally {
                 this.recuperarLoading = false;
             }
@@ -2030,7 +2037,7 @@ function portalApp() {
         async verificarCodigoRecuperacao() {
             const codigo = this.recuperarForm.codigoDigits.join('');
             if (codigo.length !== 6) {
-                this.recuperarErro = 'Digite o codigo de 6 digitos completo.';
+                this.recuperarErro = 'Digite o código de 6 dígitos completo.';
                 return;
             }
             this.recuperarLoading = true;
@@ -2043,12 +2050,12 @@ function portalApp() {
                 });
                 if (!res.ok) {
                     const err = await res.json().catch(() => ({}));
-                    this.recuperarErro = err.detail || 'Codigo invalido ou expirado.';
+                    this.recuperarErro = err.detail || 'Código inválido ou expirado.';
                     return;
                 }
                 this.recuperarSenhaStep = 3;
             } catch (e) {
-                this.recuperarErro = 'Erro de conexao. Tente novamente.';
+                this.recuperarErro = 'Erro de conexão. Tente novamente.';
             } finally {
                 this.recuperarLoading = false;
             }
@@ -2056,11 +2063,11 @@ function portalApp() {
 
         async redefinirSenhaRecuperacao() {
             if (this.recuperarForm.novaSenha.length < 8) {
-                this.recuperarErro = 'A senha deve ter no minimo 8 caracteres.';
+                this.recuperarErro = 'A senha deve ter no mínimo 8 caracteres.';
                 return;
             }
             if (this.recuperarForm.novaSenha !== this.recuperarForm.confirmarSenha) {
-                this.recuperarErro = 'As senhas nao coincidem.';
+                this.recuperarErro = 'As senhas não coincidem.';
                 return;
             }
             this.recuperarLoading = true;
@@ -2096,10 +2103,10 @@ function portalApp() {
                     this.recuperarSenhaStep = 0;
                     this.loginForm.email = this.recuperarForm.email;
                     this.loginForm.senha = '';
-                    this.mostrarToast('Senha redefinida! Faca login com a nova senha.', true);
+                    this.mostrarToast('Senha redefinida! Faça login com a nova senha.', true);
                 }
             } catch (e) {
-                this.recuperarErro = 'Erro de conexao. Tente novamente.';
+                this.recuperarErro = 'Erro de conexão. Tente novamente.';
             } finally {
                 this.recuperarLoading = false;
             }
@@ -2153,7 +2160,7 @@ function portalApp() {
             if (res.status === 401) { this.logout(); throw new Error('401'); }
             if (!res.ok) {
                 const err = await res.json().catch(() => ({}));
-                throw new Error(err.detail || 'Erro na requisicao');
+                throw new Error(err.detail || 'Erro na requisição');
             }
             return res.json();
         },
@@ -2245,7 +2252,7 @@ function portalApp() {
                 ]);
                 this.prontuario = { ...pront, timeline: tl.timeline || [] };
             } catch (e) {
-                this.mostrarToast('Erro ao carregar prontuario', false);
+                this.mostrarToast('Erro ao carregar prontuário', false);
             } finally {
                 this.loading = false;
             }
@@ -2259,7 +2266,7 @@ function portalApp() {
                 const resDiag = await this.api('GET', `/portal/api/diagnosticos${qs}`);
                 this.diagnosticos = resDiag.diagnosticos || resDiag;
             } catch (e) {
-                this.mostrarToast('Erro ao carregar diagnosticos', false);
+                this.mostrarToast('Erro ao carregar diagnósticos', false);
             } finally {
                 this.loading = false;
             }
@@ -2367,6 +2374,11 @@ function portalApp() {
         abrirConversa(grupo) {
             this.conversaSelecionada = grupo;
             this.conversasMensagens = [...grupo.mensagens].sort((a, b) => a.criado_em.localeCompare(b.criado_em));
+            // Auto-scroll para última mensagem
+            this.$nextTick(() => {
+                const container = this.$refs.chatContainer;
+                if (container) container.scrollTop = container.scrollHeight;
+            });
         },
 
         get conversasWhatsGruposFiltrados() {
@@ -2446,7 +2458,7 @@ function portalApp() {
             try {
                 this.relatorioGeral = await this.api('GET', '/portal/api/relatorios/visao-geral');
             } catch (e) {
-                this.mostrarToast('Erro ao carregar relatorio', false);
+                this.mostrarToast('Erro ao carregar relatório', false);
             } finally {
                 this.loading = false;
             }
@@ -2457,7 +2469,7 @@ function portalApp() {
             try {
                 this.relatoriosDiag = await this.api('GET', '/portal/api/relatorios/diagnosticos');
             } catch (e) {
-                this.mostrarToast('Erro ao carregar relatorio de diagnosticos', false);
+                this.mostrarToast('Erro ao carregar relatório de diagnósticos', false);
             } finally {
                 this.loading = false;
             }
@@ -2552,7 +2564,7 @@ function portalApp() {
                     this.terapeuta.horario_fim = this.configForm.horario_fim;
                     this.terapeuta.mensagem_boas_vindas = this.configForm.mensagem_boas_vindas;
                 }
-                this.mostrarToast('Preferencias do agente salvas!', true);
+                this.mostrarToast('Preferências do agente salvas!', true);
             } catch (e) {
                 this.mostrarToast(e.message, false);
             } finally {
@@ -2563,12 +2575,12 @@ function portalApp() {
         async alterarSenha() {
             this.senhaMsg = '';
             if (this.senhaForm.nova !== this.senhaForm.confirmar) {
-                this.senhaMsg = 'As senhas nao coincidem.';
+                this.senhaMsg = 'As senhas não coincidem.';
                 this.senhaMsgOk = false;
                 return;
             }
             if (this.senhaForm.nova.length < 8) {
-                this.senhaMsg = 'A senha deve ter no minimo 8 caracteres.';
+                this.senhaMsg = 'A senha deve ter no mínimo 8 caracteres.';
                 this.senhaMsgOk = false;
                 return;
             }
@@ -2662,10 +2674,10 @@ function portalApp() {
                 };
                 if (dados.id) {
                     await this.api('PUT', `/portal/api/diagnosticos/${dados.id}`, dados);
-                    this.mostrarToast('Diagnostico atualizado!', true);
+                    this.mostrarToast('Diagnóstico atualizado!', true);
                 } else {
                     await this.api('POST', '/portal/api/diagnosticos', dados);
-                    this.mostrarToast('Diagnostico criado!', true);
+                    this.mostrarToast('Diagnóstico criado!', true);
                 }
                 this.fecharModal();
                 if (this.secao === 'pacientes' && this.prontuario && this.pacienteContexto) {
@@ -2691,7 +2703,7 @@ function portalApp() {
                 } else {
                     await this.api('POST', '/portal/api/anotacoes', dados);
                 }
-                this.mostrarToast('Anotacao salva!', true);
+                this.mostrarToast('Anotação salva!', true);
                 this.fecharModal();
                 if (this.pacienteContexto) await this.abrirProntuario(this.pacienteContexto);
             } catch (e) {
@@ -2730,16 +2742,16 @@ function portalApp() {
         _significadoSigno: {
             'Aries': 'energia de iniciativa e coragem',
             'Touro': 'estabilidade e prazer sensorial',
-            'Gemeos': 'comunicacao e versatilidade',
-            'Cancer': 'protecao emocional e familia',
-            'Leao': 'autoexpressao e lideranca',
-            'Virgem': 'analise e organizacao',
+            'Gemeos': 'comunicação e versatilidade',
+            'Cancer': 'proteção emocional e família',
+            'Leao': 'autoexpressão e liderança',
+            'Virgem': 'análise e organização',
             'Libra': 'harmonia e relacionamentos',
-            'Escorpiao': 'transformacao profunda',
-            'Sagitario': 'expansao e busca de sentido',
+            'Escorpiao': 'transformação profunda',
+            'Sagitario': 'expansão e busca de sentido',
             'Capricornio': 'responsabilidade e disciplina',
-            'Aquario': 'inovacao e liberdade',
-            'Peixes': 'espiritualidade e intuicao',
+            'Aquario': 'inovação e liberdade',
+            'Peixes': 'espiritualidade e intuição',
             // Com acentos
             '\u00C1ries': 'energia de iniciativa e coragem',
             'G\u00EAmeos': 'comunica\u00E7\u00E3o e versatilidade',
@@ -2816,9 +2828,9 @@ function portalApp() {
             const diff = Math.floor((hoje - d) / 86400000);
             if (diff === 0) return 'hoje';
             if (diff === 1) return 'ontem';
-            if (diff === -1) return 'amanha';
+            if (diff === -1) return 'amanhã';
             if (diff < 0 && diff > -7) return 'em ' + Math.abs(diff) + 'd';
-            if (diff < 7 && diff > 0) return diff + 'd atras';
+            if (diff < 7 && diff > 0) return diff + 'd atrás';
             return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
         },
 
