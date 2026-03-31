@@ -1324,7 +1324,7 @@ async def _processar_mensagem(payload: dict) -> None:
                             for m in (historico or [])
                         )
                     )
-                    if dados_hist and not dados_hist.get("falta_ano"):
+                    if dados_hist and not dados_hist.get("falta_ano") and not dados_hist.get("falta_cidade"):
                         # Tem dados no histórico — injeta como se fossem novos para o path normal processar
                         # Se extrair_dados_nascimento não encontrou o nome, usa o nome do estado (onboarding)
                         if not dados_hist.get("nome") or dados_hist.get("nome") == "Paciente":
@@ -1351,6 +1351,25 @@ async def _processar_mensagem(payload: dict) -> None:
                         intencao="MAPA_NATAL_PEDE_DADOS",
                     )
                     logger.info(f"[Evolution] Interceptado pedido de mapa sem dados — solicitando dados — {numero_paciente}")
+                    return
+
+                if dados_nasc and dados_nasc.get("falta_cidade"):
+                    # Dados de nascimento detectados mas sem cidade — pedir ao terapeuta
+                    nome_nasc = dados_nasc.get("nome", "Paciente")
+                    msg_pede_cidade = (
+                        f"Captei os dados: {dados_nasc.get('data', '')} às {dados_nasc.get('hora', '')}.\n\n"
+                        f"Só falta a *cidade de nascimento*{' de ' + nome_nasc if nome_nasc != 'Paciente' else ''}. "
+                        f"Qual a cidade?"
+                    )
+                    await evolution.enviar_mensagem(
+                        instance=instance_name, numero=numero_paciente, texto=msg_pede_cidade,
+                    )
+                    await _salvar_conversa(
+                        terapeuta_id=terapeuta_id, paciente_numero=numero_paciente,
+                        mensagem_paciente=texto_mensagem, resposta_agente=msg_pede_cidade,
+                        intencao="MAPA_NATAL_PEDE_CIDADE",
+                    )
+                    logger.info(f"[Evolution] Pedindo cidade de nascimento para mapa natal — {numero_paciente}")
                     return
 
                 if dados_nasc and dados_nasc.get("falta_ano"):
@@ -1381,7 +1400,7 @@ async def _processar_mensagem(payload: dict) -> None:
                 _mapa_json_cache = None
                 # Inicializa variável de nota de imagem para system prompt (usada mais abaixo)
                 _nota_imagem_sp = ""
-                if dados_nasc and not dados_nasc.get("falta_ano") and not _eh_refazer:
+                if dados_nasc and not dados_nasc.get("falta_ano") and not dados_nasc.get("falta_cidade") and not _eh_refazer:
                     _mapa_json_cache = await asyncio.to_thread(
                         _buscar_mapa_salvo, terapeuta_id, numero_paciente,
                         dados_nasc["data"], dados_nasc["hora"],
@@ -1397,7 +1416,7 @@ async def _processar_mensagem(payload: dict) -> None:
                         )
                         chunks_texto = mapa_prefixo + chunks_texto
 
-                if not _mapa_json_cache and dados_nasc and not dados_nasc.get("falta_ano"):
+                if not _mapa_json_cache and dados_nasc and not dados_nasc.get("falta_ano") and not dados_nasc.get("falta_cidade"):
                     # Pré-mensagem: avisa que está gerando (melhora UX)
                     nome_nasc_pre = dados_nasc.get("nome", "")
                     msg_gerando = (
@@ -2668,7 +2687,7 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                             for m in (historico or [])
                         )
                     )
-                    if dados_hist and not dados_hist.get("falta_ano"):
+                    if dados_hist and not dados_hist.get("falta_ano") and not dados_hist.get("falta_cidade"):
                         dados_nasc = dados_hist
                         logger.info(f"[Meta] Refazer mapa: dados recuperados do histórico para {numero_paciente}")
                     else:
@@ -2689,6 +2708,25 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                         intencao="MAPA_NATAL_PEDE_DADOS",
                     )
                     logger.info(f"[Meta] Interceptado pedido de mapa sem dados — solicitando dados — {numero_paciente}")
+                    return
+
+                if dados_nasc and dados_nasc.get("falta_cidade"):
+                    # Dados de nascimento detectados mas sem cidade — pedir ao paciente
+                    nome_nasc = dados_nasc.get("nome", "Paciente")
+                    msg_pede_cidade = (
+                        f"Captei os dados: {dados_nasc.get('data', '')} às {dados_nasc.get('hora', '')}.\n\n"
+                        f"Só falta a *cidade de nascimento*{' de ' + nome_nasc if nome_nasc != 'Paciente' else ''}. "
+                        f"Qual a cidade?"
+                    )
+                    await meta_client.send_text_message(
+                        phone_number=numero_paciente, message=msg_pede_cidade,
+                    )
+                    await _salvar_conversa(
+                        terapeuta_id=terapeuta_id, paciente_numero=numero_paciente,
+                        mensagem_paciente=texto_mensagem, resposta_agente=msg_pede_cidade,
+                        intencao="MAPA_NATAL_PEDE_CIDADE",
+                    )
+                    logger.info(f"[Meta] Pedindo cidade de nascimento para mapa natal — {numero_paciente}")
                     return
 
                 if dados_nasc and dados_nasc.get("falta_ano"):
@@ -2719,7 +2757,7 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                 _mapa_json_cache = None
                 # Inicializa variável de nota de imagem para system prompt (usada mais abaixo)
                 _nota_imagem_sp = ""
-                if dados_nasc and not dados_nasc.get("falta_ano") and not _eh_refazer:
+                if dados_nasc and not dados_nasc.get("falta_ano") and not dados_nasc.get("falta_cidade") and not _eh_refazer:
                     _mapa_json_cache = await asyncio.to_thread(
                         _buscar_mapa_salvo, terapeuta_id, numero_paciente,
                         dados_nasc["data"], dados_nasc["hora"],
@@ -2735,7 +2773,7 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                         )
                         chunks_texto = mapa_prefixo + chunks_texto
 
-                if not _mapa_json_cache and dados_nasc and not dados_nasc.get("falta_ano"):
+                if not _mapa_json_cache and dados_nasc and not dados_nasc.get("falta_ano") and not dados_nasc.get("falta_cidade"):
                     # Pré-mensagem: avisa que está gerando (melhora UX)
                     nome_nasc_pre = dados_nasc.get("nome", "")
                     msg_gerando = (

@@ -695,7 +695,15 @@ async def extrair_dados_nascimento_llm(texto: str) -> Optional[dict]:
             logger.info(f"LLM extraiu dados de nascimento: {resultado}")
             return resultado
 
-        # Sem dados completos → None (não ativa cálculo de mapa)
+        # Dados parciais: tem data e hora mas falta cidade → sinalizar
+        if data and hora and not cidade:
+            resultado = {"data": data, "hora": hora, "falta_cidade": True}
+            resultado["nome"] = nome if nome else "Paciente"
+            print(f"[NASC-LLM] Parcial (falta cidade): {resultado}", flush=True)
+            logger.info(f"LLM extraiu dados parciais (falta cidade): {resultado}")
+            return resultado
+
+        # Sem dados suficientes → None (não ativa cálculo de mapa)
         return None
 
     except Exception as llm_err:
