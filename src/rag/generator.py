@@ -7,6 +7,7 @@ Temperature 0 para eliminar alucinacoes.
 Suporta historico de conversa para consultas multi-turno.
 """
 
+import asyncio
 import logging
 from enum import Enum
 from typing import Optional
@@ -240,13 +241,33 @@ async def gerar_resposta(
         # O system prompt contem instrucoes, contexto RAG e regras anti-delirio.
         messages = _montar_mensagens_historico(historico_mensagens, pergunta)
 
-        response = await client.messages.create(
-            model=settings.CLAUDE_MODEL,
-            max_tokens=max_tokens,
-            temperature=0,  # ZERO criatividade = ZERO delirio
-            system=system_prompt,
-            messages=messages,
-        )
+        # Retry com backoff para erros 529 (Overloaded) e 500/502/503
+        max_tentativas = 3
+        response = None
+        for tentativa in range(1, max_tentativas + 1):
+            try:
+                response = await client.messages.create(
+                    model=settings.CLAUDE_MODEL,
+                    max_tokens=max_tokens,
+                    temperature=0,  # ZERO criatividade = ZERO delirio
+                    system=system_prompt,
+                    messages=messages,
+                )
+                break  # Sucesso — sai do loop
+            except anthropic.APIStatusError as api_err:
+                status = getattr(api_err, "status_code", 0)
+                if status in (429, 500, 502, 503, 529) and tentativa < max_tentativas:
+                    espera = tentativa * 2  # 2s, 4s
+                    logger.warning(
+                        f"[GENERATOR] Claude API erro {status} (tentativa {tentativa}/{max_tentativas}). "
+                        f"Retry em {espera}s..."
+                    )
+                    await asyncio.sleep(espera)
+                else:
+                    raise  # Erro nao-retryavel ou ultima tentativa
+
+        if response is None:
+            raise RuntimeError("Falha ao obter resposta do Claude apos retries")
 
         # Extrai o texto da resposta
         resposta = response.content[0].text
