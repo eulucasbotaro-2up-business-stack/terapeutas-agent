@@ -31,7 +31,7 @@ _openai_client: Optional[AsyncOpenAI] = None
 # Reduzido de 0.15 para 0.05 para aceitar mais chunks relevantes sobre
 # florais específicos (Trapoeraba, Manjericão, Rosa, etc.) e termos
 # alquímicos específicos que tinham similaridade baixa e estavam sendo filtrados
-SIMILARIDADE_MINIMA = 0.05
+SIMILARIDADE_MINIMA = 0.25  # Threshold minimo para considerar chunk relevante (evita alucinacao)
 
 # Mínimo de chunks filtrados para considerar a busca com tags válida.
 # Se retornar menos que isso, faz fallback para busca sem filtro.

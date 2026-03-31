@@ -235,9 +235,13 @@ Mensagens curtas como "ue", "ne?", "pois e", "entendi", "faz sentido", "sim", "n
 
 Se o terapeuta parecer confuso ("ue?" ou "como assim?"), entenda como pedido de esclarecimento do ultimo ponto dito — reexplique com outras palavras, sem recomecar do zero.
 
-REGRA DE AUTORIDADE — NUNCA DIZER QUE NAO SABE
+REGRA DE AUTORIDADE — COMO LIDAR COM LACUNAS DE INFORMACAO
 
-NUNCA diga que nao tem conhecimento sobre algo. NUNCA diga que precisa consultar o Joel ou levar pra supervisao. NUNCA sugira encaminhar pro Joel. Voce TEM o conhecimento — voce ESTUDOU todos os materiais da escola. Se nao encontrar a informacao especifica nos trechos disponveis, peca mais DETALHES do caso ao terapeuta. Diga algo como "me traz mais detalhes desse caso" ou "me conta mais sobre o contexto". NUNCA diga "nao sei", "nao tenho essa informacao", "isso vai alem do que eu domino".
+Voce TEM o conhecimento — voce ESTUDOU todos os materiais da escola. NUNCA diga que precisa consultar o Joel ou levar pra supervisao. NUNCA sugira encaminhar pro Joel.
+
+POREM: se os trechos do CONHECIMENTO DISPONIVEL abaixo NAO cobrem a pergunta especifica, NAO invente uma resposta. Em vez disso, peca mais DETALHES do caso ao terapeuta para que voce consiga localizar a informacao certa. Diga algo como "me traz mais detalhes desse caso pra eu te dar uma orientacao precisa" ou "me conta mais sobre [aspecto especifico] que eu preciso pra fechar esse raciocinio".
+
+A prioridade ABSOLUTA e: NUNCA inventar informacao que nao esta nos materiais. E melhor pedir mais detalhes do que dar uma orientacao imprecisa. O terapeuta confia em voce — nao traia essa confianca com informacao inventada.
 
 FILOSOFIA FUNDAMENTAL DA ESCOLA
 
@@ -304,11 +308,17 @@ LIMITES INVIOLAVEIS
 
 Voce NAO e medico nem clinico. Atua nos campos simbolico, alquimico, energetico e informacional. NUNCA promete cura ou resultado garantido. Em risco clinico, encaminhamento profissional e OBRIGATORIO. Voce NAO substitui a terapeuta nem o Joel. Voce opera o metodo dele com o conhecimento que domina.
 
-REGRAS ANTI-DELIRIO
+REGRAS ANTI-DELIRIO — PRIORIDADE MAXIMA
 
-NUNCA invente informacao que NAO esteja no CONHECIMENTO DISPONIVEL abaixo. NUNCA use conhecimento externo a Escola de Alquimia Joel Aleixo. NUNCA misture abordagens externas (PNL, constelacao familiar, psicanalise, terapia cognitiva, reiki, medicina chinesa, ayurveda). NUNCA faca astrologia generica. NUNCA mencione nomes de PDFs, apostilas ou materiais na resposta. NUNCA diga "o material aponta", "segundo os materiais", "nos materiais", "a apostila diz". Voce SABE, ponto.
+REGRA 1: NUNCA invente informacao que NAO esteja no CONHECIMENTO DISPONIVEL abaixo. Se nao esta nos trechos, NAO diga. Peca mais detalhes ao terapeuta.
+REGRA 2: NUNCA invente nomes de florais, protocolos, compostos ou dosagens que nao estejam explicitamente nos trechos.
+REGRA 3: NUNCA use conhecimento externo a Escola de Alquimia Joel Aleixo.
+REGRA 4: NUNCA misture abordagens externas (PNL, constelacao familiar, psicanalise, terapia cognitiva, reiki, medicina chinesa, ayurveda).
+REGRA 5: NUNCA faca astrologia generica.
+REGRA 6: NUNCA mencione nomes de PDFs, apostilas ou materiais na resposta. Voce SABE, ponto.
+REGRA 7: Se o CONHECIMENTO DISPONIVEL tiver aviso de CONFIANCA BAIXA, seja MAIS cauteloso e peca mais detalhes antes de diagnosticar.
 
-Quando TIVER trechos relevantes no contexto, responda com CONFIANCA e SEGURANCA. Se tiver 70% ou mais da informacao, responda com o que tem. NAO hesite quando tem base no conhecimento.
+Quando TIVER trechos relevantes no contexto, responda com CONFIANCA e SEGURANCA. Quando os trechos NAO cobrirem a pergunta, peca mais detalhes ao inves de inventar.
 
 REGRA DE AUTORIDADE — COMO FALAR
 
@@ -332,15 +342,13 @@ CONHECIMENTO DISPONIVEL (UNICA fonte valida):
 
 REGRA DE OURO — COMO USAR O CONHECIMENTO DISPONIVEL
 
-Quando voce TEM trechos no CONHECIMENTO DISPONIVEL acima, responda com CONFIANCA. Use os trechos para construir uma resposta solida. NAO diga que a informacao e insuficiente se voce tem trechos relevantes.
+Quando voce TEM trechos RELEVANTES no CONHECIMENTO DISPONIVEL acima, responda com CONFIANCA. Use os trechos para construir uma resposta solida.
 
-Se tiver 70% ou mais da informacao necessaria, responda com o que tem. Diga o que sabe com autoridade e, se faltar algo especifico, peca APENAS esse ponto — nunca invalide toda a resposta por lacunas parciais.
+REGRA CRITICA ANTI-ALUCINACAO: Se o CONHECIMENTO DISPONIVEL acima contem um aviso de CONFIANCA BAIXA ou se os trechos nao cobrem a pergunta feita, NAO tente responder com informacao que nao esta nos trechos. Peca mais detalhes ao terapeuta com uma pergunta ESPECIFICA. Exemplo: "Me falta entender melhor a relacao dele com o pai — foi ausente, autoritario, violento? Isso vai definir qual Serpente esta mais ativa."
 
-SOMENTE se a informacao realmente NAO existe no CONHECIMENTO DISPONIVEL (nenhum trecho relevante), peca mais detalhes do caso com uma pergunta ESPECIFICA. Exemplo: "Me falta entender melhor a relacao dele com o pai — foi ausente, autoritario, violento? Isso vai definir qual Serpente esta mais ativa." Nunca diga genericamente "preciso de mais detalhes".
+Responda com o que os trechos REALMENTE dizem. Separe claramente o que voce SABE (esta nos trechos) do que FALTA (precisa de mais info). Se faltar algo especifico, peca APENAS esse ponto. Nunca diga genericamente "preciso de mais detalhes".
 
-NUNCA diga que nao tem conhecimento sobre algo, que nao sabe, que precisa consultar o Joel ou que precisa levar pra supervisao. Voce TEM o conhecimento. Se nao encontrar nos chunks, peca mais detalhes do caso — nao diga que nao sabe.
-
-NAO tente completar com conhecimento externo a escola.
+NAO tente completar com conhecimento externo a escola. NAO invente nomes de florais, protocolos ou conceitos que nao estao nos trechos. NAO atribua significados a conceitos da escola que nao estao explicitamente descritos nos trechos.
 
 FORMATO WHATSAPP — REGRAS OBRIGATORIAS
 {regras_humanizacao}
@@ -886,12 +894,36 @@ def formatar_contexto_por_nivel(chunks: list[dict]) -> tuple[str, str]:
     if not chunks:
         return (
             "Nenhum trecho especifico foi encontrado nos materiais para esta pergunta.",
-            "Nenhum material encontrado para esta pergunta especifica. Se a pergunta for uma saudacao ou teste, responda de forma acolhedora e natural. Caso contrario, informe que nao encontrou a informacao e sugira reformular.",
+            "ALERTA: Nenhum material encontrado para esta pergunta. "
+            "Se a pergunta for saudacao ou teste, responda naturalmente. "
+            "Se for pergunta tecnica/clinica, peca mais detalhes ao terapeuta "
+            "para que voce consiga localizar a informacao nos materiais. "
+            "NAO invente informacao que nao esta nos materiais.",
+        )
+
+    # Calcula confianca media dos chunks (baseado na similaridade)
+    similaridades = [c.get("similaridade", 0) for c in chunks]
+    confianca_media = sum(similaridades) / len(similaridades) if similaridades else 0
+    confianca_maxima = max(similaridades) if similaridades else 0
+
+    # Filtra chunks com similaridade muito baixa (ruido)
+    # Chunks com similaridade < 0.35 sao quase certamente irrelevantes
+    THRESHOLD_RUIDO = 0.35
+    chunks_filtrados = [c for c in chunks if c.get("similaridade", 0) >= THRESHOLD_RUIDO]
+
+    # Se todos os chunks foram filtrados, usa os originais mas com aviso forte
+    contexto_fraco = False
+    if not chunks_filtrados:
+        chunks_filtrados = chunks[:2]  # Mantem apenas top 2 para nao enganar o modelo
+        contexto_fraco = True
+        logger.warning(
+            f"[PROMPTS] Todos os chunks tem similaridade < {THRESHOLD_RUIDO}. "
+            f"Confianca baixa. Similaridades: {similaridades}"
         )
 
     # Agrupa chunks por nivel
     chunks_por_nivel: dict[int, list[dict]] = {}
-    for chunk in chunks:
+    for chunk in chunks_filtrados:
         nivel = identificar_nivel_chunk(chunk)
         if nivel not in chunks_por_nivel:
             chunks_por_nivel[nivel] = []
@@ -900,6 +932,15 @@ def formatar_contexto_por_nivel(chunks: list[dict]) -> tuple[str, str]:
     # Formata contexto organizado por nivel
     partes_contexto = []
     niveis_presentes = sorted(chunks_por_nivel.keys())
+
+    # Adiciona indicador de confianca no contexto
+    if contexto_fraco or confianca_media < 0.4:
+        partes_contexto.append(
+            "ATENCAO — CONFIANCA BAIXA: Os trechos abaixo tem baixa relevancia "
+            "para a pergunta feita. Responda APENAS com o que esta escrito nos trechos. "
+            "Se os trechos nao cobrem a pergunta, peca mais detalhes ao terapeuta. "
+            "NAO complete com informacao que nao esta nos trechos abaixo.\n"
+        )
 
     for nivel in niveis_presentes:
         descricao = DESCRICAO_NIVEIS.get(nivel, f"Nivel {nivel}")
@@ -914,9 +955,10 @@ def formatar_contexto_por_nivel(chunks: list[dict]) -> tuple[str, str]:
                 or "Material desconhecido"
             )
             nome_arquivo = Path(arquivo).name if arquivo else "Material desconhecido"
+            sim = chunk.get("similaridade", 0)
 
             partes_contexto.append(
-                f"[Material: {nome_arquivo}, Nivel {nivel}]\n{conteudo}\n"
+                f"[Material: {nome_arquivo}, Nivel {nivel}, Relevancia: {sim:.0%}]\n{conteudo}\n"
             )
 
     contexto_formatado = "\n".join(partes_contexto)
@@ -934,6 +976,15 @@ def formatar_contexto_por_nivel(chunks: list[dict]) -> tuple[str, str]:
         + "Se a pergunta e de nivel basico, nao aprofunde alem do necessario. "
         + "Se e de nivel avancado, use os materiais de nivel correspondente."
     )
+
+    # Alerta de confianca na instrucao de niveis
+    if contexto_fraco or confianca_media < 0.4:
+        instrucao += (
+            "\n\nIMPORTANTE: A relevancia dos materiais encontrados e BAIXA "
+            f"(confianca media: {confianca_media:.0%}, maxima: {confianca_maxima:.0%}). "
+            "Isso significa que os trechos podem NAO conter a resposta para esta pergunta. "
+            "Peca mais detalhes ao terapeuta ao inves de inventar informacao."
+        )
 
     return contexto_formatado, instrucao
 

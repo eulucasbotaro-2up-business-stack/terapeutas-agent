@@ -25,6 +25,7 @@ from src.core.prompts import (
     detectar_modo,
 )
 from src.core.retry import retry_async
+from src.core.ux_rules import verificar_grounding
 
 logger = logging.getLogger(__name__)
 
@@ -270,6 +271,10 @@ async def gerar_resposta(
 
         # Extrai o texto da resposta
         resposta = response.content[0].text
+
+        # Verificacao de grounding — detecta possiveis alucinacoes
+        # Loga warnings quando a resposta cita informacoes nao presentes nos chunks
+        resposta = verificar_grounding(resposta, contexto_chunks)
 
         # Fontes ficam apenas no log, NAO na resposta (quebra humanizacao)
         fontes = extrair_fontes_resposta(contexto_chunks)

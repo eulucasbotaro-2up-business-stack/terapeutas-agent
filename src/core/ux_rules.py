@@ -120,6 +120,65 @@ _ABERTURAS_ALTERNATIVAS = [
 # FUNCAO PRINCIPAL: HUMANIZAR RESPOSTA
 # =============================================================================
 
+def verificar_grounding(resposta: str, chunks: list[dict]) -> str:
+    """
+    Verifica se a resposta esta ancorada nos chunks fornecidos.
+    Detecta sinais de alucinacao e emite warnings.
+
+    Sinais de alucinacao:
+    - Cita conceitos muito especificos que nao aparecem em nenhum chunk
+    - Menciona nomes proprios que nao estao nos chunks
+    - Usa afirmacoes categoricas sobre dosagens/protocolos sem base nos chunks
+
+    Args:
+        resposta: Texto da resposta gerada.
+        chunks: Lista de chunks usados como contexto.
+
+    Returns:
+        Resposta original (nao modifica, apenas loga warnings).
+    """
+    if not chunks or not resposta:
+        return resposta
+
+    # Extrai todo o conteudo dos chunks em um unico texto para comparacao
+    conteudo_chunks = " ".join(
+        c.get("conteudo", c.get("content", "")).lower()
+        for c in chunks
+    )
+    resposta_lower = resposta.lower()
+
+    # Verifica menções a florais especificos — se cita um floral pelo nome,
+    # o nome deveria aparecer em pelo menos um chunk
+    _florais_pattern = re.compile(
+        r'(?:floral|composto|essencia|kit)\s+(?:sutil\s+)?([A-Z][a-zà-ú]+(?:\s+(?:do|da|dos|das|de)\s+[A-Z][a-zà-ú]+)?)',
+        re.IGNORECASE
+    )
+    florais_na_resposta = _florais_pattern.findall(resposta)
+    for floral in florais_na_resposta:
+        floral_lower = floral.lower().strip()
+        if len(floral_lower) > 3 and floral_lower not in conteudo_chunks:
+            # Termos genericos que nao sao florais especificos
+            _genericos = {"elementos", "equilibrio", "sintese", "primus", "torus", "matrix", "dna"}
+            if floral_lower not in _genericos:
+                logger.warning(
+                    f"[GROUNDING] Possivel alucinacao: floral '{floral}' citado na resposta "
+                    f"mas NAO encontrado nos chunks. Pode ser invencao do modelo."
+                )
+
+    # Verifica menções a dosagens especificas (gotas, ml, horarios)
+    _dosagem_pattern = re.compile(r'\d+\s*(?:gotas?|ml|drops?)', re.IGNORECASE)
+    dosagens_na_resposta = _dosagem_pattern.findall(resposta)
+    for dosagem in dosagens_na_resposta:
+        dosagem_lower = dosagem.lower().strip()
+        if dosagem_lower not in conteudo_chunks:
+            logger.warning(
+                f"[GROUNDING] Possivel alucinacao: dosagem '{dosagem}' citada na resposta "
+                f"mas NAO encontrada nos chunks. Pode ser invencao do modelo."
+            )
+
+    return resposta
+
+
 def humanizar_resposta(texto: str) -> str:
     """
     Pos-processa TODA resposta do agente antes de enviar pelo WhatsApp.
