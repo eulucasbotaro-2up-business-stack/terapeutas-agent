@@ -339,9 +339,10 @@ def dados_mapa_de_sujeito(
 
 
 def _grau_para_rad(grau_ecl: float, asc_grau: float) -> float:
-    """Converte grau eclíptico → ângulo cartesiano. Ascendente fica à esquerda (180°)."""
+    """Converte grau eclíptico → ângulo cartesiano. Ascendente fica à esquerda (180°).
+    Sentido anti-horário (padrão astrologia ocidental)."""
     delta = (grau_ecl - asc_grau) % 360.0
-    angulo_graus = 180.0 - delta
+    angulo_graus = 180.0 + delta
     return math.radians(angulo_graus)
 
 
@@ -556,7 +557,7 @@ def _gerar_imagem_locked(dados: "DadosMapa") -> bytes:
         SEG_RAD = math.pi / 6  # 30° em radianos
         for i, abrev in enumerate(SIGNOS_ABREV):
             ang0 = _grau_para_rad(i * 30.0, asc)
-            ang1 = ang0 - SEG_RAD
+            ang1 = ang0 + SEG_RAD
             cor  = ELEMENTO_COR.get(abrev, "#CCCCCC")
             t    = np.linspace(ang0, ang1, 40)
 
@@ -569,7 +570,7 @@ def _gerar_imagem_locked(dados: "DadosMapa") -> bytes:
             x1, y1 = _xy(R_EXT, ang_div)
             ax.plot([x0, x1], [y0, y1], color=cor, lw=0.8, alpha=0.55, zorder=3)
 
-            ang_m = ang0 - SEG_RAD / 2
+            ang_m = ang0 + SEG_RAD / 2
             sx, sy = _xy((R_ZOD + R_EXT) / 2, ang_m)
             # Símbolo Unicode via fonte bundada; fallback texto se fonte indisponível
             label = SIGNO_LABEL.get(abrev) if glyph_fp else SIGNO_LABEL_TEXTO.get(abrev, abrev[:2])
@@ -589,7 +590,7 @@ def _gerar_imagem_locked(dados: "DadosMapa") -> bytes:
                     color=OURO if eixo else LINHA_GRADE,
                     lw=1.4 if eixo else 0.6, zorder=6)
             # Número da casa — posicionado 15° depois da borda (metade do segmento)
-            ang_n = ang - SEG_RAD / 2
+            ang_n = ang + SEG_RAD / 2
             nx, ny = _xy((R_CSA + R_ZOD) / 2 - 0.01, ang_n)
             ax.text(nx, ny, str(i + 1),
                     ha="center", va="center", fontsize=7,
@@ -825,7 +826,7 @@ def _gerar_imagem_tradicional_locked(dados: "DadosMapa") -> bytes:
         # ── Anel zodiacal ──────────────────────────────────────────────────
         for i, abrev in enumerate(SIGNOS_ABREV):
             ang0 = _grau_para_rad(i * 30.0, asc)
-            ang1 = ang0 - SEG_RAD
+            ang1 = ang0 + SEG_RAD
             cor  = ELEMENTO_COR.get(abrev, "#CCCCCC")
             t    = np.linspace(ang0, ang1, 40)
 
@@ -838,7 +839,7 @@ def _gerar_imagem_tradicional_locked(dados: "DadosMapa") -> bytes:
             x1, y1 = _xy(R_EXT, ang_div)
             ax.plot([x0, x1], [y0, y1], color=cor, lw=0.8, alpha=0.60, zorder=3)
 
-            ang_m = ang0 - SEG_RAD / 2
+            ang_m = ang0 + SEG_RAD / 2
             sx, sy = _xy((R_ZOD + R_EXT) / 2, ang_m)
             label = SIGNO_LABEL.get(abrev) if glyph_fp else SIGNO_LABEL_TEXTO.get(abrev, abrev[:2])
             _text_glyph(ax, sx, sy, label, fontsize=11, color=cor, zorder=4, bold=True)
@@ -856,7 +857,7 @@ def _gerar_imagem_tradicional_locked(dados: "DadosMapa") -> bytes:
             ax.plot([x0, x1], [y0, y1],
                     color=OURO if eixo else LINHA_GRADE,
                     lw=1.4 if eixo else 0.6, zorder=6)
-            ang_n = ang - SEG_RAD / 2
+            ang_n = ang + SEG_RAD / 2
             nx, ny = _xy((R_CSA + R_ZOD) / 2 - 0.01, ang_n)
             ax.text(nx, ny, str(i + 1),
                     ha="center", va="center", fontsize=7,
