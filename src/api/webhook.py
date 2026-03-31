@@ -99,6 +99,7 @@ router = APIRouter(prefix="/webhook", tags=["Webhook WhatsApp"])
 _PROCESSED_MESSAGE_IDS: "OrderedDict[str, float]" = OrderedDict()
 _DEDUP_TTL_SECONDS = 300
 _DEDUP_MAX_SIZE = 1000
+_DEDUP_LOCK = asyncio.Lock()  # Protege acesso concorrente ao OrderedDict
 
 # Contador de falhas consecutivas de geração de mapa por número de paciente.
 # Após _MAPA_MAX_TENTATIVAS falhas, envia mensagem de suporte e para de tentar.
@@ -114,24 +115,26 @@ _PACIENTE_ATIVO_CACHE: dict[tuple[str, str], dict] = {}
 _PACIENTE_ATIVO_TTL = 1800  # 30 minutos sem mencionar = limpa vínculo
 
 
-def _ja_processado(message_id: str) -> bool:
-    """Retorna True se o message_id já foi processado recentemente."""
+async def _ja_processado(message_id: str) -> bool:
+    """Retorna True se o message_id já foi processado recentemente.
+    Thread-safe: usa asyncio.Lock para evitar race conditions no OrderedDict."""
     if not message_id:
         return False
     agora = time.monotonic()
-    # Limpar entradas expiradas (FIFO — as mais antigas estão no início)
-    while _PROCESSED_MESSAGE_IDS:
-        oldest_id, oldest_ts = next(iter(_PROCESSED_MESSAGE_IDS.items()))
-        if agora - oldest_ts > _DEDUP_TTL_SECONDS:
+    async with _DEDUP_LOCK:
+        # Limpar entradas expiradas (FIFO — as mais antigas estão no início)
+        while _PROCESSED_MESSAGE_IDS:
+            oldest_id, oldest_ts = next(iter(_PROCESSED_MESSAGE_IDS.items()))
+            if agora - oldest_ts > _DEDUP_TTL_SECONDS:
+                _PROCESSED_MESSAGE_IDS.popitem(last=False)
+            else:
+                break
+        # Limitar tamanho máximo
+        while len(_PROCESSED_MESSAGE_IDS) >= _DEDUP_MAX_SIZE:
             _PROCESSED_MESSAGE_IDS.popitem(last=False)
-        else:
-            break
-    # Limitar tamanho máximo
-    while len(_PROCESSED_MESSAGE_IDS) >= _DEDUP_MAX_SIZE:
-        _PROCESSED_MESSAGE_IDS.popitem(last=False)
-    if message_id in _PROCESSED_MESSAGE_IDS:
-        return True
-    _PROCESSED_MESSAGE_IDS[message_id] = agora
+        if message_id in _PROCESSED_MESSAGE_IDS:
+            return True
+        _PROCESSED_MESSAGE_IDS[message_id] = agora
     return False
 
 
@@ -961,7 +964,7 @@ async def _processar_mensagem(payload: dict) -> None:
 
         # 2. Deduplicação: Evolution API pode enviar webhooks duplicados
         message_id = payload.get("data", {}).get("key", {}).get("id", "")
-        if message_id and _ja_processado(message_id):
+        if message_id and await _ja_processado(message_id):
             logger.info(f"Evolution: mensagem duplicada ignorada (id={message_id})")
             return
 
@@ -1232,6 +1235,8 @@ async def _processar_mensagem(payload: dict) -> None:
         intencao = None
 
         resposta_texto: str | list[str] = ""
+        # Inicializa nota de imagem para system prompt (pode ser preenchida no modo CONSULTA)
+        _nota_imagem_sp = ""
 
         # 9. Saudação quando ATIVO
         if modo == ModoOperacao.SAUDACAO:
@@ -2324,7 +2329,7 @@ async def _processar_mensagem_meta(payload: dict) -> None:
             return
 
         # 2. Deduplicação: descartar mensagens já processadas (Meta envia duplicatas)
-        if _ja_processado(message_id):
+        if await _ja_processado(message_id):
             logger.info(f"Mensagem duplicada ignorada: message_id={message_id}")
             return
 
@@ -2595,6 +2600,8 @@ async def _processar_mensagem_meta(payload: dict) -> None:
         intencao = None
 
         resposta_texto: str | list[str] = ""
+        # Inicializa nota de imagem para system prompt (pode ser preenchida no modo CONSULTA)
+        _nota_imagem_sp = ""
 
         # 10. Saudação quando ATIVO
         if modo == ModoOperacao.SAUDACAO:
@@ -2677,7 +2684,7 @@ async def _processar_mensagem_meta(payload: dict) -> None:
 
                 dados_nasc = await extrair_dados_nascimento_llm(texto_busca_nascimento)
                 if dados_nasc:
-                    print(f"[META-NASC] dados_nasc={dados_nasc} | msg='{texto_para_processar[:80]}'", flush=True)
+                    logger.info(f"[META-NASC] dados_nasc={dados_nasc} | msg='{texto_para_processar[:80]}'")
 
                 # Interceptor: "refazer mapa" — busca dados do histórico e regera
                 if _eh_pedido_refazer_mapa(texto_para_processar):
@@ -2790,7 +2797,7 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                     imagem_enviada = False  # inicializa ANTES do try para o except conseguir verificar
                     _nota_imagem_sp = ""   # será sobrescrito dentro do try se tudo correr bem
                     try:
-                        print(f"[META-MAPA] Calculando mapa para {dados_nasc.get('nome')} {dados_nasc['data']} {dados_nasc['hora']} {dados_nasc['cidade']}", flush=True)
+                        logger.info(f"[META-MAPA] Calculando mapa para {dados_nasc.get('nome')} {dados_nasc['data']} {dados_nasc['hora']} {dados_nasc['cidade']}")
                         mapa_resultado, mapa_png_joel, mapa_png_trad = await asyncio.wait_for(
                             asyncio.to_thread(
                                 gerar_mapa_completo,
@@ -2801,7 +2808,7 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                             ),
                             timeout=90.0,
                         )
-                        print(f"[META-MAPA] gerar_mapa_completo retornou — joel={'OK '+str(len(mapa_png_joel))+' bytes' if mapa_png_joel else 'None'} | trad={'OK '+str(len(mapa_png_trad))+' bytes' if mapa_png_trad else 'None'}", flush=True)
+                        logger.info(f"[META-MAPA] gerar_mapa_completo retornou — joel={'OK '+str(len(mapa_png_joel))+' bytes' if mapa_png_joel else 'None'} | trad={'OK '+str(len(mapa_png_trad))+' bytes' if mapa_png_trad else 'None'}")
                         # Envia as duas imagens antes da resposta textual
                         _caption_base = (
                             f"{dados_nasc.get('nome', 'Paciente')}\n"
@@ -2822,11 +2829,11 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                                     )
                                     imagem_enviada = True
                                     _MAPA_FALHAS[numero_paciente] = 0
-                                    print(f"[META-MAPA] Imagem enviada com sucesso para {numero_paciente} (tentativa {tentativa_img})", flush=True)
+                                    logger.info(f"[META-MAPA] Imagem enviada com sucesso para {numero_paciente} (tentativa {tentativa_img})")
                                     logger.info(f"Imagem enviada para {numero_paciente} — Meta tentativa {tentativa_img} | resp={resp_img}")
                                     break
                                 except Exception as img_send_err:
-                                    print(f"[META-MAPA] ERRO envio imagem tentativa {tentativa_img}/2: {img_send_err}", flush=True)
+                                    logger.info(f"[META-MAPA] ERRO envio imagem tentativa {tentativa_img}/2: {img_send_err}")
                                     logger.warning(
                                         f"Envio da imagem falhou tentativa {tentativa_img}/2 (Meta): {img_send_err}",
                                         exc_info=True,
@@ -2834,7 +2841,7 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                                     if tentativa_img < 2:
                                         await asyncio.sleep(2)
                         if not mapa_png_joel and not mapa_png_trad:
-                            print(f"[META-MAPA] Ambas as imagens são None — não geradas para {numero_paciente}", flush=True)
+                            logger.info(f"[META-MAPA] Ambas as imagens são None — não geradas para {numero_paciente}")
                             logger.warning(f"Ambas as imagens são None para {numero_paciente} — imagens não geradas (Meta)")
 
                         # Se imagem não chegou, avisa o usuário com instrução de retry
@@ -2881,14 +2888,14 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                             f"({dados_nasc['data']} {dados_nasc['hora']} em {dados_nasc['cidade']}) — Meta"
                         )
                     except (asyncio.TimeoutError, asyncio.CancelledError, Exception) as mapa_err:
-                        print(f"[META-MAPA] EXCECAO no calculo/envio do mapa: {type(mapa_err).__name__}: {mapa_err}", flush=True)
+                        logger.info(f"[META-MAPA] EXCECAO no calculo/envio do mapa: {type(mapa_err).__name__}: {mapa_err}")
                         logger.warning(
                             f"Cálculo de mapa natal falhou (Meta) — {mapa_err}",
                             exc_info=True,
                         )
                         if imagem_enviada:
                             # Imagem já enviada — exceção ocorreu depois. Continua para gerar o texto.
-                            print(f"[META-MAPA] Imagem ja enviada — continuando para gerar texto mesmo com excecao", flush=True)
+                            logger.info(f"[META-MAPA] Imagem ja enviada — continuando para gerar texto mesmo com excecao")
                             if not _nota_imagem_sp:
                                 _nota_imagem_sp = (
                                     "\n\nINSTRUCAO INTERNA — nao reproduza este aviso na resposta: "
