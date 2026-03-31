@@ -1,13 +1,18 @@
 """
-Configurações centrais da aplicação.
-Carrega variáveis de ambiente do arquivo .env usando pydantic-settings.
+Configuracoes centrais da aplicacao.
+
+Carrega variaveis de ambiente do arquivo .env usando pydantic-settings.
+Valida campos obrigatorios na inicializacao e emite warnings para
+configuracoes ausentes ou inseguras.
 """
 
 import logging
 from functools import lru_cache
 from pathlib import Path
+from typing import Optional
 
 from dotenv import load_dotenv
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 logger = logging.getLogger(__name__)
@@ -21,8 +26,16 @@ load_dotenv(_ENV_FILE, override=True)
 
 class Settings(BaseSettings):
     """
-    Configurações da aplicação carregadas automaticamente do .env.
-    Todos os campos são obrigatórios em produção.
+    Configuracoes da aplicacao carregadas automaticamente do .env.
+
+    Campos com default vazio ("") sao opcionais para inicializacao,
+    mas obrigatorios em producao — verificados por check_startup_config().
+
+    Validacoes:
+    - SUPABASE_URL deve comecar com https://
+    - RAG_TOP_K deve estar entre 1 e 20
+    - CHUNK_SIZE deve estar entre 100 e 2000
+    - EMBEDDING_DIMENSION deve ser positivo
     """
 
     model_config = SettingsConfigDict(
@@ -45,44 +58,77 @@ class Settings(BaseSettings):
     EVOLUTION_API_URL: str = ""
     EVOLUTION_API_KEY: str = ""
 
-    # --- Meta WhatsApp Cloud API (alternativa à Evolution API) ---
+    # --- Meta WhatsApp Cloud API (alternativa a Evolution API) ---
     META_WHATSAPP_TOKEN: str = ""
     META_PHONE_NUMBER_ID: str = ""
     META_WHATSAPP_BUSINESS_ID: str = ""
     META_VERIFY_TOKEN: str = ""
 
-    # --- Asaas (cobrança e pagamentos) ---
+    # --- Asaas (cobranca e pagamentos) ---
     ASAAS_API_KEY: str = ""
-    # Token de validação dos webhooks do Asaas (configure no painel Asaas → Webhooks)
+    # Token de validacao dos webhooks do Asaas (configure no painel Asaas -> Webhooks)
     ASAAS_WEBHOOK_TOKEN: str = ""
 
     # --- Controle de acesso ---
-    # Contato exibido ao usuário quando o chat é bloqueado
+    # Contato exibido ao usuario quando o chat e bloqueado
     CONTATO_ADMIN: str = "https://wa.me/5511999999999"
 
-    # --- Aplicação ---
+    # --- Aplicacao ---
     SECRET_KEY: str = "trocar-em-producao"
     DATABASE_URL: str = ""
 
     # --- CORS ---
-    # Origens permitidas separadas por vírgula. Use "*" para desenvolvimento.
-    # Em produção, restringir para o(s) domínio(s) do painel/portal.
+    # Origens permitidas separadas por virgula. Use "*" para desenvolvimento.
+    # Em producao, restringir para o(s) dominio(s) do painel/portal.
     # Ex: "https://meusite.com,https://portal.meusite.com"
     ALLOWED_ORIGINS: str = "*"
 
-    # --- Configurações do agente ---
+    # --- Configuracoes do agente ---
     # Modelo Claude usado para respostas
     CLAUDE_MODEL: str = "claude-sonnet-4-6"
     # Modelo de embedding da OpenAI
     EMBEDDING_MODEL: str = "text-embedding-3-small"
-    # Dimensão dos vetores de embedding
+    # Dimensao dos vetores de embedding
     EMBEDDING_DIMENSION: int = 1536
-    # Quantidade de chunks retornados na busca vetorial
+    # Quantidade de chunks retornados na busca vetorial (1-20)
     RAG_TOP_K: int = 5
-    # Tamanho máximo de cada chunk (em tokens aproximados)
+    # Tamanho maximo de cada chunk em tokens aproximados (100-2000)
     CHUNK_SIZE: int = 500
-    # Sobreposição entre chunks
+    # Sobreposicao entre chunks
     CHUNK_OVERLAP: int = 50
+
+    # --- Validacoes ---
+    @field_validator("SUPABASE_URL")
+    @classmethod
+    def validar_supabase_url(cls, v: str) -> str:
+        """Garante que a URL do Supabase usa HTTPS (quando configurada)."""
+        if v and not v.startswith("https://"):
+            raise ValueError(f"SUPABASE_URL deve comecar com https:// (recebido: {v[:30]}...)")
+        return v
+
+    @field_validator("RAG_TOP_K")
+    @classmethod
+    def validar_rag_top_k(cls, v: int) -> int:
+        """RAG_TOP_K deve estar entre 1 e 20 para evitar buscas excessivas."""
+        if not 1 <= v <= 20:
+            raise ValueError(f"RAG_TOP_K deve estar entre 1 e 20 (recebido: {v})")
+        return v
+
+    @field_validator("CHUNK_SIZE")
+    @classmethod
+    def validar_chunk_size(cls, v: int) -> int:
+        """CHUNK_SIZE deve estar entre 100 e 2000 tokens."""
+        if not 100 <= v <= 2000:
+            raise ValueError(f"CHUNK_SIZE deve estar entre 100 e 2000 (recebido: {v})")
+        return v
+
+    @field_validator("EMBEDDING_DIMENSION")
+    @classmethod
+    def validar_embedding_dimension(cls, v: int) -> int:
+        """EMBEDDING_DIMENSION deve ser positivo."""
+        if v <= 0:
+            raise ValueError(f"EMBEDDING_DIMENSION deve ser positivo (recebido: {v})")
+        return v
 
 
 @lru_cache()

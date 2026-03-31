@@ -491,7 +491,10 @@
                                     <span class="badge" :class="'badge-' + p.status" x-text="p.status"></span>
                                 </td>
                                 <td class="px-4 py-3" @click.stop>
-                                    <button @click="abrirModalPaciente(p)" class="text-gray-400 hover:text-purple-600 px-3 py-2 rounded-lg text-xs transition min-h-[44px] min-w-[44px] flex items-center justify-center">Editar</button>
+                                    <div class="flex items-center gap-1">
+                                        <button @click="abrirProntuario(p)" class="text-purple-600 hover:text-purple-800 hover:bg-purple-50 px-3 py-2 rounded-lg text-xs font-semibold transition min-h-[44px] flex items-center justify-center whitespace-nowrap">Ver Prontuário</button>
+                                        <button @click="abrirModalPaciente(p)" class="text-gray-400 hover:text-purple-600 px-2 py-2 rounded-lg text-xs transition min-h-[44px] min-w-[44px] flex items-center justify-center">Editar</button>
+                                    </div>
                                 </td>
                             </tr>
                         </template>
@@ -680,10 +683,10 @@
                             <div class="relative">
                                 <img x-show="mapa.imagem_url" :src="mapa.imagem_url" class="w-full rounded-lg mb-2 object-cover" style="max-height:200px">
                                 <span class="absolute top-2 right-2 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold shadow-sm"
-                                    :class="isAlquimico(mapa.mapa_json) ? 'bg-amber-100 text-amber-800 border border-amber-300' : 'bg-purple-100 text-purple-800 border border-purple-300'"
-                                    x-text="mapa.mapa_json?.tipo || mapa.tipo || 'Natal'"></span>
+                                    :class="isAlquimico(mapa) ? 'bg-amber-100 text-amber-800 border border-amber-300' : 'bg-purple-100 text-purple-800 border border-purple-300'"
+                                    x-text="mapa.tipo_mapa || mapa.mapa_json?.tipo || 'Natal'"></span>
                             </div>
-                            <p class="text-sm font-medium text-gray-800" x-text="mapa.mapa_json?.tipo || mapa.tipo || 'Mapa Natal'"></p>
+                            <p class="text-sm font-medium text-gray-800" x-text="mapa.tipo_mapa || mapa.mapa_json?.tipo || 'Mapa Natal'"></p>
                             <p class="text-xs text-gray-500" x-text="formatarDataCurta(mapa.criado_em)"></p>
                         </div>
                     </template>
@@ -694,99 +697,71 @@
 
         <!-- ── CONVERSAS WHATSAPP ──────────────────────── -->
         <div x-show="secao === 'conversas_whats'" class="fade-in">
+            <!-- Header -->
             <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold text-white flex-shrink-0"
+                        style="background: linear-gradient(135deg, #7B2FBE, #D4AF37);">&#9883;</div>
+                    <div>
+                        <h3 class="text-sm font-bold text-gray-800" x-text="(terapeuta?.nome_agente || 'Agente IA') + ' — Histórico WhatsApp'"></h3>
+                        <p class="text-[10px] text-gray-400" x-text="conversasWhats.length + ' mensagens no total'"></p>
+                    </div>
+                </div>
                 <div class="w-full sm:max-w-xs">
-                    <input type="text" x-model="buscaConversas" @input="$nextTick()" placeholder="Buscar paciente..." class="input">
+                    <input type="text" x-model="buscaConversas" @input="$nextTick()" placeholder="Buscar na conversa..." class="input">
                 </div>
             </div>
 
-            <div class="flex gap-4" style="min-height: 60vh;">
-                <!-- Lista de contatos (esquerda) -->
-                <div class="w-full sm:w-80 flex-shrink-0 bg-white rounded-xl border border-gray-200 overflow-hidden flex flex-col" :class="conversaSelecionada ? 'hidden sm:flex' : 'flex'">
-                    <div class="px-4 py-3 border-b border-gray-100 bg-gray-50">
-                        <h3 class="text-sm font-bold text-gray-700">Pacientes</h3>
-                        <p class="text-[10px] text-gray-400" x-text="conversasWhatsGruposFiltrados.length + ' conversas'"></p>
-                    </div>
-                    <div class="overflow-y-auto flex-1">
-                        <div x-show="loading" class="text-center py-8"><span class="spinner"></span></div>
-                        <div x-show="!loading && conversasWhatsGruposFiltrados.length === 0" class="text-center py-8 text-gray-400 text-sm">Nenhuma conversa encontrada</div>
-                        <template x-for="grupo in conversasWhatsGruposFiltrados" :key="grupo.numero">
-                            <button @click="abrirConversa(grupo)"
-                                class="w-full text-left px-4 py-3 border-b border-gray-50 hover:bg-purple-50 transition flex items-center gap-3 min-h-[60px]"
-                                :class="conversaSelecionada?.numero === grupo.numero ? 'bg-purple-50 border-l-4 border-l-purple-500' : ''">
-                                <div class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0"
-                                    style="background: linear-gradient(135deg, #7B2FBE, #D4AF37);"
-                                    x-text="grupo.nome.charAt(0)"></div>
-                                <div class="flex-1 min-w-0">
-                                    <p class="text-sm font-medium text-gray-800 truncate" x-text="grupo.nome"></p>
-                                    <p class="text-[10px] text-gray-400 truncate" x-text="grupo.mensagens[grupo.mensagens.length - 1]?.mensagem_paciente?.substring(0, 40) + '...'"></p>
-                                </div>
-                                <div class="flex flex-col items-end flex-shrink-0">
-                                    <span class="text-[10px] text-gray-400" x-text="formatarDataCurta(grupo.ultima)"></span>
-                                    <span class="bg-purple-500 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center mt-1" x-text="grupo.mensagens.length"></span>
-                                </div>
-                            </button>
-                        </template>
+            <!-- Chat único IA ↔ Terapeuta -->
+            <div class="bg-white rounded-xl border border-gray-200 overflow-hidden flex flex-col" style="min-height: 65vh;">
+                <!-- Loading -->
+                <div x-show="loading" class="flex-1 flex items-center justify-center py-12">
+                    <span class="spinner"></span>
+                </div>
+                <!-- Vazio -->
+                <div x-show="!loading && conversasMensagensIA.length === 0" class="flex-1 flex items-center justify-center text-center p-8">
+                    <div>
+                        <p class="text-4xl mb-3">&#128172;</p>
+                        <p class="text-gray-500 font-medium">Nenhuma conversa ainda</p>
+                        <p class="text-gray-400 text-sm mt-1">Envie uma mensagem para sua IA pelo WhatsApp</p>
                     </div>
                 </div>
-
-                <!-- Chat (direita) -->
-                <div class="flex-1 bg-white rounded-xl border border-gray-200 overflow-hidden flex flex-col" :class="conversaSelecionada ? 'flex' : 'hidden sm:flex'">
-                    <!-- Header do chat -->
-                    <div x-show="conversaSelecionada" class="px-4 py-3 border-b border-gray-100 bg-gray-50 flex items-center gap-3">
-                        <button @click="conversaSelecionada = null" class="sm:hidden w-11 h-11 rounded-full bg-gray-200 flex items-center justify-center text-gray-600" aria-label="Voltar">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
-                        </button>
-                        <div class="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0"
-                            style="background: linear-gradient(135deg, #7B2FBE, #D4AF37);"
-                            x-text="conversaSelecionada?.nome?.charAt(0) || '?'"></div>
-                        <div>
-                            <p class="text-sm font-bold text-gray-800" x-text="conversaSelecionada?.nome"></p>
-                            <p class="text-[10px] text-gray-400" x-text="conversaSelecionada?.numero"></p>
-                        </div>
-                        <div class="ml-auto">
-                            <span class="badge bg-green-100 text-green-700 text-[10px]" x-text="conversasMensagens.length + ' mensagens'"></span>
-                        </div>
-                    </div>
-                    <!-- Mensagens -->
-                    <div x-show="conversaSelecionada" x-ref="chatContainer" class="flex-1 overflow-y-auto p-4 space-y-2" style="background: #e5ddd5; background-image: url('data:image/svg+xml,%3Csvg width=&quot;200&quot; height=&quot;200&quot; xmlns=&quot;http://www.w3.org/2000/svg&quot;%3E%3Cdefs%3E%3Cpattern id=&quot;p&quot; width=&quot;40&quot; height=&quot;40&quot; patternUnits=&quot;userSpaceOnUse&quot;%3E%3Ccircle cx=&quot;20&quot; cy=&quot;20&quot; r=&quot;1&quot; fill=&quot;rgba(0,0,0,0.03)&quot;/%3E%3C/pattern%3E%3C/defs%3E%3Crect width=&quot;200&quot; height=&quot;200&quot; fill=&quot;url(%23p)&quot;/%3E%3C/svg%3E'); max-height: 55vh;">
-                        <template x-for="(msg, idx) in conversasMensagens" :key="msg.id">
-                            <div class="space-y-1.5 mb-2">
-                                <!-- Separador de data -->
-                                <div x-show="idx === 0 || new Date(msg.criado_em).toLocaleDateString('pt-BR') !== new Date(conversasMensagens[idx-1]?.criado_em).toLocaleDateString('pt-BR')"
-                                    class="flex justify-center my-3">
-                                    <span class="bg-white/80 backdrop-blur text-[11px] text-gray-500 px-3 py-1 rounded-lg shadow-sm font-medium"
-                                        x-text="new Date(msg.criado_em).toLocaleDateString('pt-BR', {day:'2-digit', month:'long', year:'numeric'})"></span>
+                <!-- Mensagens -->
+                <div x-show="!loading && conversasMensagensIA.length > 0" x-ref="chatContainerIA" class="flex-1 overflow-y-auto p-4 space-y-2" style="background: #e5ddd5; background-image: url('data:image/svg+xml,%3Csvg width=&quot;200&quot; height=&quot;200&quot; xmlns=&quot;http://www.w3.org/2000/svg&quot;%3E%3Cdefs%3E%3Cpattern id=&quot;p&quot; width=&quot;40&quot; height=&quot;40&quot; patternUnits=&quot;userSpaceOnUse&quot;%3E%3Ccircle cx=&quot;20&quot; cy=&quot;20&quot; r=&quot;1&quot; fill=&quot;rgba(0,0,0,0.03)&quot;/%3E%3C/pattern%3E%3C/defs%3E%3Crect width=&quot;200&quot; height=&quot;200&quot; fill=&quot;url(%23p)&quot;/%3E%3C/svg%3E'); max-height: 70vh;">
+                    <template x-for="(msg, idx) in conversasMensagensIA" :key="msg.id">
+                        <div class="space-y-1.5 mb-2">
+                            <!-- Separador de data -->
+                            <div x-show="idx === 0 || new Date(msg.criado_em).toLocaleDateString('pt-BR') !== new Date(conversasMensagensIA[idx-1]?.criado_em).toLocaleDateString('pt-BR')"
+                                class="flex justify-center my-3">
+                                <span class="bg-white/80 backdrop-blur text-[11px] text-gray-500 px-3 py-1 rounded-lg shadow-sm font-medium"
+                                    x-text="new Date(msg.criado_em).toLocaleDateString('pt-BR', {day:'2-digit', month:'long', year:'numeric'})"></span>
+                            </div>
+                            <!-- Nome do paciente (quando muda) -->
+                            <div x-show="idx === 0 || msg.paciente_nome !== conversasMensagensIA[idx-1]?.paciente_nome"
+                                class="flex justify-center my-1">
+                                <span class="text-[10px] text-purple-500 font-semibold bg-purple-50 px-2 py-0.5 rounded-full"
+                                    x-text="'Conversa com ' + (msg.paciente_nome || msg.paciente_numero)"></span>
+                            </div>
+                            <!-- Mensagem do terapeuta/paciente (esquerda — bolha branca) -->
+                            <div x-show="msg.mensagem_paciente" class="flex justify-start">
+                                <div class="bg-white rounded-xl rounded-tl-sm px-3 py-2 max-w-[85%] sm:max-w-[70%] shadow-sm" style="border-left: 3px solid #25D366;">
+                                    <p class="text-sm text-gray-800 leading-relaxed whitespace-pre-line" x-text="msg.mensagem_paciente"></p>
+                                    <p class="text-[10px] text-gray-400 text-right mt-1" x-text="new Date(msg.criado_em).toLocaleString('pt-BR', {hour:'2-digit',minute:'2-digit'})"></p>
                                 </div>
-                                <!-- Msg paciente (esquerda — bolha branca) -->
-                                <div x-show="msg.mensagem_paciente" class="flex justify-start">
-                                    <div class="bg-white rounded-xl rounded-tl-sm px-3 py-2 max-w-[80%] shadow-sm" style="border-left: 3px solid #25D366;">
-                                        <p class="text-sm text-gray-800 leading-relaxed whitespace-pre-line" x-text="msg.mensagem_paciente"></p>
-                                        <p class="text-[10px] text-gray-400 text-right mt-1" x-text="new Date(msg.criado_em).toLocaleString('pt-BR', {hour:'2-digit',minute:'2-digit'})"></p>
-                                    </div>
-                                </div>
-                                <!-- Resposta agente (direita — bolha roxa) -->
-                                <div x-show="msg.resposta_agente" class="flex justify-end">
-                                    <div class="rounded-xl rounded-tr-sm px-3 py-2 max-w-[80%] shadow-sm" style="background: #dcf8c6; border-right: 3px solid #7B2FBE;">
-                                        <p class="text-sm text-gray-800 leading-relaxed whitespace-pre-line" x-text="msg.resposta_agente"></p>
-                                        <div class="flex items-center justify-end gap-2 mt-1">
-                                            <span x-show="msg.intencao" class="text-[9px] text-green-600 font-medium uppercase" x-text="msg.intencao?.split('|')[0]"></span>
-                                            <p class="text-[10px] text-gray-500" x-text="new Date(msg.criado_em).toLocaleString('pt-BR', {hour:'2-digit',minute:'2-digit'})"></p>
-                                            <span class="text-[10px] text-green-500">&#10003;&#10003;</span>
-                                        </div>
+                            </div>
+                            <!-- Resposta da IA (direita — bolha verde) -->
+                            <div x-show="msg.resposta_agente" class="flex justify-end">
+                                <div class="rounded-xl rounded-tr-sm px-3 py-2 max-w-[85%] sm:max-w-[70%] shadow-sm" style="background: #dcf8c6; border-right: 3px solid #7B2FBE;">
+                                    <p class="text-sm text-gray-800 leading-relaxed whitespace-pre-line" x-text="msg.resposta_agente"></p>
+                                    <div class="flex items-center justify-end gap-2 mt-1">
+                                        <span x-show="msg.intencao" class="text-[9px] text-green-600 font-medium uppercase" x-text="msg.intencao?.split('|')[0]"></span>
+                                        <p class="text-[10px] text-gray-500" x-text="new Date(msg.criado_em).toLocaleString('pt-BR', {hour:'2-digit',minute:'2-digit'})"></p>
+                                        <span class="text-[10px] text-green-500">&#10003;&#10003;</span>
                                     </div>
                                 </div>
                             </div>
-                        </template>
-                    </div>
-                    <!-- Estado vazio -->
-                    <div x-show="!conversaSelecionada" class="flex-1 flex items-center justify-center text-center p-8">
-                        <div>
-                            <p class="text-4xl mb-3">\u{1F4AC}</p>
-                            <p class="text-gray-500 font-medium">Selecione uma conversa</p>
-                            <p class="text-gray-400 text-sm mt-1">Escolha um paciente para ver o histórico completo</p>
                         </div>
-                    </div>
+                    </template>
                 </div>
             </div>
         </div>
@@ -916,9 +891,10 @@
                                                 </div>
                                                 <p class="text-xs text-gray-500 mt-0.5">
                                                     <span x-text="item.pacientes?.nome || 'Paciente'"></span>
-                                                    <span x-show="item.hora_prevista" class="ml-1 text-red-500 font-medium" x-text="item.hora_prevista ? ' \u{1F552} ' + item.hora_prevista : ''"></span>
                                                 </p>
                                             </div>
+                                            <span x-show="item.hora_prevista" class="text-sm font-bold text-red-600 tabular-nums flex-shrink-0 bg-red-50 border border-red-200 rounded-lg px-2.5 py-1" x-text="item.hora_prevista"></span>
+                                            <span x-show="!item.hora_prevista" class="text-xs text-gray-400 flex-shrink-0 bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1">--:--</span>
                                             <span class="badge hidden sm:inline-flex" :class="'badge-' + item.tipo">
                                                 <span x-text="item.tipo === 'retorno' ? '\u{1F504}' : item.tipo === 'floral' ? '\u{1F338}' : item.tipo === 'tarefa' ? '\u2705' : item.tipo === 'contato' ? '\u{1F4DE}' : '\u2B50'"></span>
                                                 <span class="ml-1" x-text="item.tipo"></span>
@@ -952,12 +928,16 @@
                                     :style="'border-left: 4px solid ' + (item.prioridade == 1 ? '#EF4444' : item.prioridade == 3 ? '#10B981' : '#F59E0B')">
                                     <div class="flex items-start sm:items-center gap-3">
                                         <div class="flex-1 min-w-0">
-                                            <p class="text-sm font-medium text-gray-800" x-text="item.descricao"></p>
+                                            <div class="flex items-center gap-2 flex-wrap">
+                                                <p class="text-sm font-medium text-gray-800" x-text="item.descricao"></p>
+                                                <span x-show="item.hora_prevista && item.hora_prevista < new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit', hour12:false})" class="badge bg-red-100 text-red-700 text-[10px]">ATRASADO</span>
+                                            </div>
                                             <p class="text-xs text-gray-500 mt-0.5">
                                                 <span x-text="item.pacientes?.nome || 'Paciente'"></span>
-                                                <span x-show="item.hora_prevista" class="ml-1 text-purple-600 font-semibold" x-text="item.hora_prevista ? ' \u{1F552} ' + item.hora_prevista : ''"></span>
                                             </p>
                                         </div>
+                                        <span x-show="item.hora_prevista" class="text-sm font-bold tabular-nums flex-shrink-0 rounded-lg px-2.5 py-1" :class="item.hora_prevista < new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit', hour12:false}) ? 'text-red-600 bg-red-50 border border-red-200' : 'text-purple-600 bg-purple-50 border border-purple-200'" x-text="item.hora_prevista"></span>
+                                        <span x-show="!item.hora_prevista" class="text-xs text-gray-400 flex-shrink-0 bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1">--:--</span>
                                         <span class="badge hidden sm:inline-flex" :class="'badge-' + item.tipo">
                                             <span x-text="item.tipo === 'retorno' ? '\u{1F504}' : item.tipo === 'floral' ? '\u{1F338}' : item.tipo === 'tarefa' ? '\u2705' : item.tipo === 'contato' ? '\u{1F4DE}' : '\u2B50'"></span>
                                             <span class="ml-1" x-text="item.tipo"></span>
@@ -998,9 +978,10 @@
                                                 <p class="text-sm font-medium text-gray-800" x-text="item.descricao"></p>
                                                 <p class="text-xs text-gray-500 mt-0.5">
                                                     <span x-text="item.pacientes?.nome || 'Paciente'"></span>
-                                                    <span x-show="item.hora_prevista" class="ml-1 text-gray-500" x-text="item.hora_prevista ? ' \u{1F552} ' + item.hora_prevista : ''"></span>
                                                 </p>
                                             </div>
+                                            <span x-show="item.hora_prevista" class="text-sm font-bold text-gray-600 tabular-nums flex-shrink-0 bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1" x-text="item.hora_prevista"></span>
+                                            <span x-show="!item.hora_prevista" class="text-xs text-gray-400 flex-shrink-0 bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1">--:--</span>
                                             <span class="badge hidden sm:inline-flex" :class="'badge-' + item.tipo">
                                                 <span x-text="item.tipo === 'retorno' ? '\u{1F504}' : item.tipo === 'floral' ? '\u{1F338}' : item.tipo === 'tarefa' ? '\u2705' : item.tipo === 'contato' ? '\u{1F4DE}' : '\u2B50'"></span>
                                                 <span class="ml-1" x-text="item.tipo"></span>
@@ -1049,6 +1030,7 @@
                                 <span x-show="item.data_prevista"> · <span x-text="formatarDataCurta(item.data_prevista)"></span></span>
                             </p>
                         </div>
+                        <span x-show="item.hora_prevista" class="text-xs font-semibold text-gray-600 tabular-nums flex-shrink-0 bg-gray-50 border border-gray-200 rounded-lg px-2 py-0.5" x-text="item.hora_prevista"></span>
                         <span class="badge hidden sm:inline-flex" :class="'badge-' + item.tipo">
                             <span x-text="item.tipo === 'retorno' ? '\u{1F504}' : item.tipo === 'floral' ? '\u{1F338}' : item.tipo === 'tarefa' ? '\u2705' : item.tipo === 'contato' ? '\u{1F4DE}' : item.tipo === 'marco' ? '\u2B50' : ''"></span>
                             <span class="ml-1" x-text="item.tipo"></span>
@@ -1117,55 +1099,30 @@
                                 <span x-show="grupo.cidade_nascimento" x-text="grupo.cidade_nascimento"></span>
                             </p>
                         </div>
-                        <!-- Maps side by side — compact thumbnails -->
-                        <div class="grid grid-cols-2 gap-2.5">
-                            <!-- Mapa Alquímico -->
-                            <div class="cursor-pointer group/thumb" @click="let m = getMapaPorTipo(grupo.mapas, 'alquimico'); if(m) verMapa(m);">
-                                <template x-if="getMapaPorTipo(grupo.mapas, 'alquimico')">
-                                    <div>
-                                        <div class="relative rounded-lg overflow-hidden border border-amber-200 bg-amber-50/30" style="aspect-ratio:4/3">
-                                            <img :src="getMapaPorTipo(grupo.mapas, 'alquimico')?.imagem_url"
-                                                class="w-full h-full object-contain" loading="lazy">
-                                            <div class="absolute inset-0 bg-black/0 group-hover/thumb:bg-black/10 transition"></div>
-                                        </div>
-                                        <p class="text-[11px] font-semibold text-amber-700 mt-1 text-center">&#128302; Alquímico</p>
+                        <!-- All maps for this patient -->
+                        <div class="space-y-3">
+                            <template x-for="mapa in grupo.mapas" :key="mapa.id">
+                                <div class="cursor-pointer group/thumb" @click="verMapa(mapa)">
+                                    <div class="relative rounded-lg overflow-hidden border bg-gray-50/30" :class="isAlquimico(mapa) ? 'border-amber-200' : 'border-purple-200'" style="aspect-ratio:16/9">
+                                        <img x-show="mapa.imagem_url" :src="mapa.imagem_url"
+                                            class="w-full h-full object-contain" loading="lazy">
+                                        <div class="absolute inset-0 bg-black/0 group-hover/thumb:bg-black/10 transition"></div>
+                                        <span class="absolute top-2 left-2 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold shadow-sm"
+                                            :class="isAlquimico(mapa) ? 'bg-amber-100 text-amber-800 border border-amber-300' : 'bg-purple-100 text-purple-800 border border-purple-300'"
+                                            x-text="mapa.tipo_mapa || (typeof mapa.mapa_json === 'string' ? JSON.parse(mapa.mapa_json).tipo : mapa.mapa_json?.tipo) || 'Mapa'"></span>
                                     </div>
-                                </template>
-                                <template x-if="!getMapaPorTipo(grupo.mapas, 'alquimico')">
-                                    <div>
-                                        <div class="rounded-lg border-2 border-dashed border-gray-200 bg-gray-50 flex items-center justify-center" style="aspect-ratio:4/3">
-                                            <span class="text-gray-300 text-2xl">&#128302;</span>
-                                        </div>
-                                        <p class="text-[11px] text-gray-400 mt-1 text-center italic">Pendente</p>
-                                    </div>
-                                </template>
-                            </div>
-                            <!-- Mapa Natal -->
-                            <div class="cursor-pointer group/thumb" @click="let m = getMapaPorTipo(grupo.mapas, 'natal'); if(m) verMapa(m);">
-                                <template x-if="getMapaPorTipo(grupo.mapas, 'natal')">
-                                    <div>
-                                        <div class="relative rounded-lg overflow-hidden border border-purple-200 bg-purple-50/30" style="aspect-ratio:4/3">
-                                            <img :src="getMapaPorTipo(grupo.mapas, 'natal')?.imagem_url"
-                                                class="w-full h-full object-contain" loading="lazy">
-                                            <div class="absolute inset-0 bg-black/0 group-hover/thumb:bg-black/10 transition"></div>
-                                        </div>
-                                        <p class="text-[11px] font-semibold text-purple-700 mt-1 text-center">&#11088; Natal</p>
-                                    </div>
-                                </template>
-                                <template x-if="!getMapaPorTipo(grupo.mapas, 'natal')">
-                                    <div>
-                                        <div class="rounded-lg border-2 border-dashed border-gray-200 bg-gray-50 flex items-center justify-center" style="aspect-ratio:4/3">
-                                            <span class="text-gray-300 text-2xl">&#11088;</span>
-                                        </div>
-                                        <p class="text-[11px] text-gray-400 mt-1 text-center italic">Pendente</p>
-                                    </div>
-                                </template>
-                            </div>
+                                </div>
+                            </template>
                         </div>
-                        <!-- Ver Resumo button -->
+                        <!-- Resumo inline -->
+                        <div x-show="grupo.mapas.length > 0" class="mt-3 bg-gray-50 rounded-lg p-3 border border-gray-100">
+                            <p class="text-xs text-gray-500 font-medium mb-1">&#128220; Resumo</p>
+                            <p class="text-xs text-gray-700 leading-relaxed line-clamp-3" x-text="gerarResumoSigno(typeof grupo.mapas[0].mapa_json === 'string' ? JSON.parse(grupo.mapas[0].mapa_json) : grupo.mapas[0].mapa_json)"></p>
+                        </div>
+                        <!-- Ver detalhes button -->
                         <button class="w-full mt-3 py-3 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 transition bg-gradient-to-r from-amber-500 to-purple-500 text-white hover:from-amber-600 hover:to-purple-600 shadow-sm hover:shadow min-h-[44px]"
                             @click="let m = grupo.mapas[0]; if(m) verMapa(m);">
-                            &#128220; Ver Resumo Completo
+                            &#128220; Ver Leitura Completa
                         </button>
                     </div>
                 </template>
@@ -1605,8 +1562,8 @@
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div><label class="block text-sm font-medium text-gray-700 mb-1">Data Prevista</label>
                     <input class="input" type="date" x-model="editandoAcomp.data_prevista"></div>
-                <div><label class="block text-sm font-medium text-gray-700 mb-1">Horário</label>
-                    <input class="input" type="time" x-model="editandoAcomp.hora_prevista" placeholder="HH:MM"></div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">Horário *</label>
+                    <input class="input" type="time" x-model="editandoAcomp.hora_prevista" required></div>
                 <div><label class="block text-sm font-medium text-gray-700 mb-1">Prioridade</label>
                     <select class="input" x-model.number="editandoAcomp.prioridade">
                         <option :value="1">Alta (vermelho)</option>
@@ -1672,15 +1629,15 @@
             <template x-for="(mp, idx) in mapasDoMesmoPaciente" :key="mp.id">
                 <div class="border rounded-xl overflow-hidden shadow-sm">
                     <!-- Header do mapa — Natal = roxo, Alquímico = dourado -->
-                    <div class="px-4 py-3 flex items-center gap-3" :class="isAlquimico(mp.mapa_json) ? 'bg-amber-50 border-b border-amber-200' : 'bg-purple-50 border-b border-purple-200'">
-                        <div class="w-9 h-9 rounded-full flex items-center justify-center text-lg flex-shrink-0" :class="isAlquimico(mp.mapa_json) ? 'bg-amber-200 text-amber-800' : 'bg-purple-200 text-purple-800'">
-                            <span x-text="isAlquimico(mp.mapa_json) ? '\u{1F52E}' : '\u{2B50}'"></span>
+                    <div class="px-4 py-3 flex items-center gap-3" :class="isAlquimico(mp) ? 'bg-amber-50 border-b border-amber-200' : 'bg-purple-50 border-b border-purple-200'">
+                        <div class="w-9 h-9 rounded-full flex items-center justify-center text-lg flex-shrink-0" :class="isAlquimico(mp) ? 'bg-amber-200 text-amber-800' : 'bg-purple-200 text-purple-800'">
+                            <span x-text="isAlquimico(mp) ? '\u{1F52E}' : '\u{2B50}'"></span>
                         </div>
                         <div class="flex-1 min-w-0">
-                            <h4 class="font-bold text-gray-900" x-text="mp.mapa_json?.tipo || 'Mapa Natal'"></h4>
+                            <h4 class="font-bold text-gray-900" x-text="mp.tipo_mapa || mp.mapa_json?.tipo || 'Mapa Natal'"></h4>
                             <p class="text-xs text-gray-500" x-text="'Gerado em ' + formatarDataCurta(mp.criado_em)"></p>
                         </div>
-                        <span class="badge text-xs flex-shrink-0" :class="isAlquimico(mp.mapa_json) ? 'bg-amber-100 text-amber-700' : 'bg-purple-100 text-purple-700'" x-text="isAlquimico(mp.mapa_json) ? 'Alquímico' : 'Natal'"></span>
+                        <span class="badge text-xs flex-shrink-0" :class="isAlquimico(mp) ? 'bg-amber-100 text-amber-700' : 'bg-purple-100 text-purple-700'" x-text="isAlquimico(mp) ? 'Alquímico' : 'Natal'"></span>
                     </div>
 
                     <div class="p-4 space-y-4">
@@ -1688,13 +1645,13 @@
                         <img x-show="mp.imagem_url" :src="mp.imagem_url" class="w-full rounded-lg shadow-sm">
 
                         <!-- Dados astrológicos — MAPA NATAL (sol/lua/ascendente como objetos) -->
-                        <div x-show="mp.mapa_json && !isAlquimico(mp.mapa_json)" class="space-y-3">
+                        <div x-show="mp.mapa_json && !isAlquimico(mp)" class="space-y-3">
                             <h5 class="text-xs font-semibold text-purple-600 uppercase tracking-wider flex items-center gap-1.5">&#9734; Posições Planetárias</h5>
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                                 <template x-for="[key, val] in Object.entries(mp.mapa_json || {}).filter(([k]) => !['tipo','aspectos'].includes(k))" :key="key">
                                     <div class="bg-purple-50/50 rounded-lg p-3 border border-purple-100">
                                         <p class="text-xs text-purple-500 mb-0.5 capitalize font-medium" x-text="key.replace(/_/g, ' ')"></p>
-                                        <p class="font-semibold text-gray-800 text-sm" x-text="typeof val === 'object' && val !== null ? (val.signo ? val.signo + ' Casa ' + (val.casa || '?') + (val.grau ? ' (' + val.grau + '\u00B0)' : '') : (Array.isArray(val) ? val.map(v => typeof v === 'object' ? (v.p1||'') + ' ' + (v.tipo||'') + ' ' + (v.p2||'') : v).join(', ') : JSON.stringify(val))) : val"></p>
+                                        <p class="font-semibold text-gray-800 text-sm" x-text="typeof val === 'object' && val !== null ? (val.signo ? val.signo + ' Casa ' + (val.casa || '?') + (val.grau ? ' (' + val.grau + '\u00B0)' : '') : (Array.isArray(val) ? val.map(v => typeof v === 'object' ? (v.planeta1||v.p1||v.signo||'') + ' ' + (v.aspecto||v.tipo||'') + ' ' + (v.planeta2||v.p2||'') : v).join(', ') : JSON.stringify(val))) : val"></p>
                                     </div>
                                 </template>
                                 <!-- Aspectos separados com formatação própria -->
@@ -1702,10 +1659,10 @@
                                     <div class="col-span-full bg-purple-50/50 rounded-lg p-3 border border-purple-100">
                                         <p class="text-xs text-purple-500 mb-1.5 font-medium">Aspectos</p>
                                         <div class="flex flex-wrap gap-1.5">
-                                            <template x-for="asp in mp.mapa_json.aspectos.slice(0, 8)" :key="asp.p1+asp.p2+asp.tipo">
+                                            <template x-for="(asp, ai) in mp.mapa_json.aspectos.slice(0, 8)" :key="ai">
                                                 <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
-                                                    :class="asp.tipo === 'square' || asp.tipo === 'opposition' ? 'bg-red-100 text-red-700' : asp.tipo === 'trine' || asp.tipo === 'sextile' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'"
-                                                    x-text="(asp.p1||'').replace('Medium_Coeli','MC').replace('Ascendant','AC').slice(0,3) + ' ' + ({conjunction:'\u260C',opposition:'\u260D',square:'\u25A1',trine:'\u25B3',sextile:'\u2731'}[asp.tipo]||asp.tipo) + ' ' + (asp.p2||'').replace('Medium_Coeli','MC').replace('Ascendant','AC').slice(0,3)">
+                                                    :class="(asp.aspecto||asp.tipo||'').match(/Quadratura|square|Oposi/i) ? 'bg-red-100 text-red-700' : (asp.aspecto||asp.tipo||'').match(/Tr[íi]gono|trine|Sextil|sextile/i) ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'"
+                                                    x-text="(asp.planeta1||asp.p1||'').slice(0,3) + ' ' + (asp.aspecto||asp.tipo||'') + ' ' + (asp.planeta2||asp.p2||'').slice(0,3)">
                                                 </span>
                                             </template>
                                         </div>
@@ -1715,7 +1672,7 @@
                         </div>
 
                         <!-- Dados astrológicos — MAPA ALQUÍMICO (com badges coloridos) -->
-                        <div x-show="mp.mapa_json && isAlquimico(mp.mapa_json)" class="space-y-4">
+                        <div x-show="mp.mapa_json && isAlquimico(mp)" class="space-y-4">
                             <!-- Elementos -->
                             <div x-show="mp.mapa_json?.elemento_dominante || mp.mapa_json?.elemento_carente">
                                 <h5 class="text-xs font-semibold text-amber-600 uppercase tracking-wider flex items-center gap-1.5 mb-2">&#9878; Elementos</h5>
@@ -1771,8 +1728,8 @@
                         </div>
 
                         <!-- Resumo do Signo -->
-                        <div x-show="gerarResumoSigno(mp.mapa_json)" class="rounded-xl border p-4" :class="isAlquimico(mp.mapa_json) ? 'bg-amber-50/30 border-amber-200' : 'bg-purple-50/30 border-purple-200'">
-                            <h5 class="text-sm font-semibold mb-2 flex items-center gap-2" :class="isAlquimico(mp.mapa_json) ? 'text-amber-700' : 'text-purple-700'">
+                        <div x-show="gerarResumoSigno(mp.mapa_json)" class="rounded-xl border p-4" :class="isAlquimico(mp) ? 'bg-amber-50/30 border-amber-200' : 'bg-purple-50/30 border-purple-200'">
+                            <h5 class="text-sm font-semibold mb-2 flex items-center gap-2" :class="isAlquimico(mp) ? 'text-amber-700' : 'text-purple-700'">
                                 <span>&#128220;</span> Resumo
                             </h5>
                             <p class="text-sm text-gray-700 leading-relaxed" x-text="gerarResumoSigno(mp.mapa_json)"></p>
@@ -1843,7 +1800,7 @@ function portalApp() {
         menuItems: [
             { id: 'dashboard',        label: 'Início',          icon: '\u{1F3E0}', badge: 0 },
             { id: 'pacientes',        label: 'Pacientes',       icon: '\u{1F465}', badge: 0 },
-            { id: 'conversas_whats',  label: 'Conversas',       icon: '\u{1F4AC}', badge: 0 },
+            { id: 'conversas_whats',  label: 'Conversa',        icon: '\u{1F4AC}', badge: 0 },
             { id: 'diagnosticos',     label: 'Diagnósticos',    icon: '\u{1F9EA}', badge: 0 },
             { id: 'acompanhamentos',  label: 'Agenda',          icon: '\u{1F4C5}', badge: 0 },
             { id: 'mapas',            label: 'Mapas Natais',    icon: '\u{1F310}', badge: 0 },
@@ -2346,46 +2303,32 @@ function portalApp() {
         // ── Conversas WhatsApp ─────────────────────────
         async carregarConversasWhats() {
             this.loading = true;
-            this.conversaSelecionada = null;
-            this.conversasMensagens = [];
             try {
-                // Buscar pacientes com conversas — agrupa por paciente
                 const res = await this.api('GET', '/portal/api/conversas');
                 const lista = res.conversas || res || [];
-                // Agrupar por paciente_numero
-                const grupos = {};
-                for (const c of lista) {
-                    const num = c.paciente_numero;
-                    if (!grupos[num]) {
-                        grupos[num] = { numero: num, nome: c.paciente_nome || num, mensagens: [], ultima: c.criado_em };
-                    }
-                    grupos[num].mensagens.push(c);
-                    if (c.criado_em > grupos[num].ultima) grupos[num].ultima = c.criado_em;
-                }
-                this.conversasWhatsGrupos = Object.values(grupos).sort((a, b) => b.ultima.localeCompare(a.ultima));
-                this.conversasWhats = lista;
+                // Ordenar cronologicamente (mais antiga primeiro)
+                this.conversasWhats = lista.sort((a, b) => (a.criado_em || '').localeCompare(b.criado_em || ''));
             } catch (e) {
                 this.mostrarToast('Erro ao carregar conversas', false);
             } finally {
                 this.loading = false;
+                // Auto-scroll para última mensagem
+                this.$nextTick(() => {
+                    const container = this.$refs.chatContainerIA;
+                    if (container) container.scrollTop = container.scrollHeight;
+                });
             }
         },
 
-        abrirConversa(grupo) {
-            this.conversaSelecionada = grupo;
-            this.conversasMensagens = [...grupo.mensagens].sort((a, b) => a.criado_em.localeCompare(b.criado_em));
-            // Auto-scroll para última mensagem
-            this.$nextTick(() => {
-                const container = this.$refs.chatContainer;
-                if (container) container.scrollTop = container.scrollHeight;
-            });
-        },
-
-        get conversasWhatsGruposFiltrados() {
-            if (!this.buscaConversas) return this.conversasWhatsGrupos;
+        get conversasMensagensIA() {
+            const msgs = this.conversasWhats || [];
+            if (!this.buscaConversas) return msgs;
             const q = this.buscaConversas.toLowerCase();
-            return this.conversasWhatsGrupos.filter(g =>
-                g.nome.toLowerCase().includes(q) || g.numero.includes(q)
+            return msgs.filter(m =>
+                (m.mensagem_paciente || '').toLowerCase().includes(q) ||
+                (m.resposta_agente || '').toLowerCase().includes(q) ||
+                (m.paciente_nome || '').toLowerCase().includes(q) ||
+                (m.paciente_numero || '').includes(q)
             );
         },
 
@@ -2430,9 +2373,9 @@ function portalApp() {
 
         getMapaPorTipo(mapas, tipo) {
             return mapas.find(m => {
-                const t = (m.mapa_json?.tipo || m.tipo || '').toLowerCase();
+                const t = (m.tipo_mapa || m.mapa_json?.tipo || m.tipo || '').toLowerCase();
                 if (tipo === 'alquimico') return t.includes('alquimico') || t.includes('alqu\u00EDmico');
-                return !t.includes('alquimico') && !t.includes('alqu\u00EDmico');
+                return t.includes('natal') || (!t.includes('alquimico') && !t.includes('alqu\u00EDmico'));
             });
         },
 
@@ -2811,7 +2754,9 @@ function portalApp() {
         },
 
         isAlquimico(mj) {
-            return mj && mj.tipo && (mj.tipo.toLowerCase().includes('alquimico') || mj.tipo.toLowerCase().includes('alqu\u00EDmico'));
+            if (!mj) return false;
+            const t = (mj.tipo_mapa || mj.tipo || '').toLowerCase();
+            return t.includes('alquimico') || t.includes('alqu\u00EDmico');
         },
 
         // ── Utilitarios ────────────────────────────────

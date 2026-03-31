@@ -4,13 +4,17 @@ Busca vetorial para o sistema de RAG.
 Recebe a pergunta do paciente, gera embedding e busca os chunks mais
 relevantes no Supabase pgvector, filtrados por terapeuta_id (multi-tenant).
 
-Suporta busca híbrida: vetorial + filtro por tags para maior precisão.
+Suporta busca hibrida: vetorial + filtro por tags para maior precisao.
 Detecta automaticamente tags relevantes na pergunta e filtra chunks.
 Se a busca filtrada retornar poucos resultados, faz fallback sem filtro.
+
+Inclui logging de performance (tempo de busca, quantidade de resultados)
+e tratamento robusto de erros de conexao com Supabase.
 """
 
 import logging
 import re
+import time
 from typing import Optional
 
 from openai import AsyncOpenAI
@@ -167,24 +171,34 @@ def _get_openai_client() -> AsyncOpenAI:
 
 async def gerar_embedding_pergunta(pergunta: str) -> list[float]:
     """
-    Gera o embedding de uma pergunta do paciente.
+    Gera o embedding de uma pergunta do paciente via OpenAI API.
 
     Args:
         pergunta: Texto da pergunta.
 
     Returns:
-        Vetor de embedding com 1536 dimensões.
+        Vetor de embedding com 1536 dimensoes.
+
+    Raises:
+        openai.APIError: Se a API da OpenAI retornar erro.
+        asyncio.TimeoutError: Se a chamada exceder 30 segundos.
     """
     settings = get_settings()
     client = _get_openai_client()
 
-    response = await client.embeddings.create(
-        model=settings.EMBEDDING_MODEL,
-        input=pergunta,
-    )
+    t0 = time.perf_counter()
+    try:
+        response = await client.embeddings.create(
+            model=settings.EMBEDDING_MODEL,
+            input=pergunta,
+        )
+    except Exception as e:
+        logger.error(f"Erro ao gerar embedding: {type(e).__name__}: {e}")
+        raise
 
     embedding = response.data[0].embedding
-    logger.debug(f"Embedding gerado para pergunta ({len(embedding)} dimensões)")
+    elapsed_ms = (time.perf_counter() - t0) * 1000
+    logger.debug(f"Embedding gerado em {elapsed_ms:.0f}ms ({len(embedding)} dimensoes)")
     return embedding
 
 
@@ -224,14 +238,27 @@ async def buscar_contexto(
         Retorna lista vazia se nenhum chunk relevante for encontrado.
     """
     settings = get_settings()
-    supabase = get_supabase()
 
-    # Usa top_k do parâmetro ou o padrão do settings
+    # Usa top_k do parametro ou o padrao do settings
     quantidade = top_k or settings.RAG_TOP_K
 
+    t0_total = time.perf_counter()
+
     try:
+        # 0. Obtem cliente Supabase com tratamento de erro explicito
+        try:
+            supabase = get_supabase()
+        except Exception as e:
+            logger.error(
+                f"[RETRIEVER] Falha ao conectar ao Supabase para terapeuta {terapeuta_id}: "
+                f"{type(e).__name__}: {e}"
+            )
+            raise ConnectionError(f"Supabase indisponivel: {e}") from e
+
         # 1. Gera embedding da pergunta
+        t0_embed = time.perf_counter()
         embedding_pergunta = await gerar_embedding_pergunta(pergunta)
+        t_embed_ms = (time.perf_counter() - t0_embed) * 1000
 
         # 2. Detecta tags na pergunta para filtro opcional
         tags_detectadas = detectar_tags(pergunta)
@@ -239,6 +266,7 @@ async def buscar_contexto(
         # 3. Tenta busca com tags (se detectadas)
         resultado = None
         usou_tags = False
+        t0_busca = time.perf_counter()
 
         if tags_detectadas:
             try:
@@ -256,14 +284,18 @@ async def buscar_contexto(
                 # Fallback: se poucos resultados com filtro, busca sem filtro
                 if not resultado.data or len(resultado.data) < MINIMO_CHUNKS_COM_TAG:
                     logger.info(
-                        f"Busca com tags retornou {len(resultado.data) if resultado.data else 0} chunks "
-                        f"(mínimo: {MINIMO_CHUNKS_COM_TAG}), fazendo fallback sem tags"
+                        f"[RETRIEVER] Busca com tags retornou "
+                        f"{len(resultado.data) if resultado.data else 0} chunks "
+                        f"(minimo: {MINIMO_CHUNKS_COM_TAG}), fazendo fallback sem tags"
                     )
                     resultado = None
                     usou_tags = False
 
             except Exception as e:
-                logger.warning(f"Erro na busca com tags, fazendo fallback: {e}")
+                logger.warning(
+                    f"[RETRIEVER] Erro na busca com tags ({type(e).__name__}: {e}), "
+                    f"fazendo fallback sem filtro"
+                )
                 resultado = None
                 usou_tags = False
 
@@ -279,9 +311,12 @@ async def buscar_contexto(
                         "p_tags": None,
                     },
                 ).execute()
-            except Exception:
-                # Fallback final: usa a função original buscar_chunks
-                logger.warning("buscar_chunks_v2 falhou, usando buscar_chunks original")
+            except Exception as e:
+                # Fallback final: usa a funcao original buscar_chunks
+                logger.warning(
+                    f"[RETRIEVER] buscar_chunks_v2 falhou ({type(e).__name__}), "
+                    f"usando buscar_chunks original"
+                )
                 resultado = supabase.rpc(
                     "buscar_chunks",
                     {
@@ -291,8 +326,14 @@ async def buscar_contexto(
                     },
                 ).execute()
 
+        t_busca_ms = (time.perf_counter() - t0_busca) * 1000
+
         if not resultado.data:
-            logger.info(f"Nenhum chunk encontrado para terapeuta {terapeuta_id}")
+            t_total_ms = (time.perf_counter() - t0_total) * 1000
+            logger.info(
+                f"[RETRIEVER] Nenhum chunk encontrado para terapeuta {terapeuta_id} "
+                f"(embed={t_embed_ms:.0f}ms, busca={t_busca_ms:.0f}ms, total={t_total_ms:.0f}ms)"
+            )
             return []
 
         # 5. Filtra chunks com similaridade abaixo do threshold
@@ -310,16 +351,29 @@ async def buscar_contexto(
             if chunk.get("similaridade", 0) >= SIMILARIDADE_MINIMA
         ]
 
+        t_total_ms = (time.perf_counter() - t0_total) * 1000
+
+        # Log de performance completo — essencial para detectar gargalos
+        sims = [round(c["similaridade"], 3) for c in chunks_relevantes[:5]]
         logger.info(
-            f"Busca vetorial: {len(resultado.data)} chunks encontrados, "
-            f"{len(chunks_relevantes)} acima do threshold ({SIMILARIDADE_MINIMA})"
-            f"{' [COM filtro de tags: ' + str(tags_detectadas) + ']' if usou_tags else ' [SEM filtro de tags]'}"
+            f"[RETRIEVER] Busca concluida para terapeuta {terapeuta_id}: "
+            f"{len(resultado.data)} encontrados, {len(chunks_relevantes)} relevantes "
+            f"(threshold={SIMILARIDADE_MINIMA}) | "
+            f"Similaridades top-5: {sims} | "
+            f"{'COM tags: ' + str(tags_detectadas) if usou_tags else 'SEM tags'} | "
+            f"Performance: embed={t_embed_ms:.0f}ms, busca={t_busca_ms:.0f}ms, total={t_total_ms:.0f}ms"
         )
 
         return chunks_relevantes
 
+    except ConnectionError:
+        raise  # Ja logado acima, propagar sem re-logar
     except Exception as e:
-        logger.error(f"Erro na busca vetorial para terapeuta {terapeuta_id}: {e}", exc_info=True)
+        logger.error(
+            f"[RETRIEVER] Erro na busca vetorial para terapeuta {terapeuta_id}: "
+            f"{type(e).__name__}: {e}",
+            exc_info=True,
+        )
         raise
 
 

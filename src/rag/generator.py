@@ -5,6 +5,9 @@ Usa o system prompt especifico da Escola de Alquimia Joel Aleixo,
 com contexto organizado por nivel de maturidade diagnostica.
 Temperature 0 para eliminar alucinacoes.
 Suporta historico de conversa para consultas multi-turno.
+
+Retry com backoff exponencial para erros transientes da API (429, 5xx).
+Timeout configuravel para evitar requests pendurados.
 """
 
 import asyncio
@@ -21,6 +24,7 @@ from src.core.prompts import (
     extrair_fontes_resposta,
     detectar_modo,
 )
+from src.core.retry import retry_async
 
 logger = logging.getLogger(__name__)
 
@@ -74,12 +78,26 @@ Responda APENAS com a categoria, sem explicacao.
 Mensagem: {mensagem}"""
 
 
+# Timeout para chamadas a API do Claude (em segundos).
+# Evita que requests fiquem pendurados indefinidamente em caso de lentidao.
+_API_TIMEOUT_SECONDS = 120.0
+
+
 def _get_anthropic_client() -> anthropic.AsyncAnthropic:
-    """Retorna instancia singleton do cliente Anthropic."""
+    """
+    Retorna instancia singleton do cliente Anthropic.
+
+    Configura timeout padrao para todas as requests.
+    O cliente e reutilizado em todas as chamadas para evitar
+    overhead de criar conexoes HTTP repetidamente.
+    """
     global _anthropic_client
     if _anthropic_client is None:
         settings = get_settings()
-        _anthropic_client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
+        _anthropic_client = anthropic.AsyncAnthropic(
+            api_key=settings.ANTHROPIC_API_KEY,
+            timeout=_API_TIMEOUT_SECONDS,
+        )
     return _anthropic_client
 
 
@@ -241,33 +259,14 @@ async def gerar_resposta(
         # O system prompt contem instrucoes, contexto RAG e regras anti-delirio.
         messages = _montar_mensagens_historico(historico_mensagens, pergunta)
 
-        # Retry com backoff para erros 529 (Overloaded) e 500/502/503
-        max_tentativas = 3
-        response = None
-        for tentativa in range(1, max_tentativas + 1):
-            try:
-                response = await client.messages.create(
-                    model=settings.CLAUDE_MODEL,
-                    max_tokens=max_tokens,
-                    temperature=0,  # ZERO criatividade = ZERO delirio
-                    system=system_prompt,
-                    messages=messages,
-                )
-                break  # Sucesso — sai do loop
-            except anthropic.APIStatusError as api_err:
-                status = getattr(api_err, "status_code", 0)
-                if status in (429, 500, 502, 503, 529) and tentativa < max_tentativas:
-                    espera = tentativa * 2  # 2s, 4s
-                    logger.warning(
-                        f"[GENERATOR] Claude API erro {status} (tentativa {tentativa}/{max_tentativas}). "
-                        f"Retry em {espera}s..."
-                    )
-                    await asyncio.sleep(espera)
-                else:
-                    raise  # Erro nao-retryavel ou ultima tentativa
-
-        if response is None:
-            raise RuntimeError("Falha ao obter resposta do Claude apos retries")
+        # Chamada a API com retry automatico para erros transientes (429, 5xx)
+        response = await _chamar_claude_com_retry(
+            client=client,
+            model=settings.CLAUDE_MODEL,
+            max_tokens=max_tokens,
+            system=system_prompt,
+            messages=messages,
+        )
 
         # Extrai o texto da resposta
         resposta = response.content[0].text
@@ -292,31 +291,91 @@ async def gerar_resposta(
         raise
 
 
+@retry_async(
+    max_tentativas=3,
+    delay_base=2.0,
+    delay_max=10.0,
+    excecoes=(anthropic.APIStatusError, anthropic.APIConnectionError, anthropic.APITimeoutError),
+    nome_operacao="Claude API (gerar_resposta)",
+)
+async def _chamar_claude_com_retry(
+    client: anthropic.AsyncAnthropic,
+    model: str,
+    max_tokens: int,
+    system: str,
+    messages: list[dict],
+) -> anthropic.types.Message:
+    """
+    Chama a API do Claude com retry automatico via decorator.
+
+    Retenta apenas erros transientes:
+    - APIStatusError: inclui 429 (rate limit), 500, 502, 503, 529 (overloaded)
+    - APIConnectionError: falha de rede
+    - APITimeoutError: timeout da request
+
+    Erros de autenticacao (401) e validacao (400) sao propagados
+    imediatamente pelo decorator (nao estao na lista de excecoes retentaveis,
+    mas APIStatusError os inclui — o raise dentro filtra por status code).
+
+    Args:
+        client: Cliente Anthropic async.
+        model: Nome do modelo Claude a usar.
+        max_tokens: Limite de tokens na resposta.
+        system: System prompt completo.
+        messages: Lista de mensagens no formato da API.
+
+    Returns:
+        Objeto Message da API do Claude.
+
+    Raises:
+        anthropic.APIStatusError: Se o erro nao for transiente ou todas as tentativas falharem.
+        anthropic.APIConnectionError: Se a conexao falhar em todas as tentativas.
+        anthropic.APITimeoutError: Se todas as tentativas excederem o timeout.
+    """
+    try:
+        return await client.messages.create(
+            model=model,
+            max_tokens=max_tokens,
+            temperature=0,  # ZERO criatividade = ZERO delirio
+            system=system,
+            messages=messages,
+        )
+    except anthropic.APIStatusError as e:
+        # Propaga imediatamente erros nao-transientes (400, 401, 403, 404)
+        # para que o decorator NAO retente esses casos
+        if e.status_code not in (429, 500, 502, 503, 529):
+            raise anthropic.APIError(str(e)) from e  # tipo fora da lista de retry
+        raise  # Erros transientes sao retentados pelo decorator
+
+
 async def classificar_intencao(mensagem: str) -> IntencaoMensagem:
     """
     Classifica a intencao da mensagem usando Claude Haiku (rapido e barato).
+
     Usado para logging adicional no webhook. A deteccao principal de modo e
     feita por detectar_modo() em prompts.py (por palavras-chave, sem custo de API).
+
+    Tem timeout de 15s e fallback para DUVIDA_GERAL em caso de erro,
+    pois a classificacao e apenas informativa e nao deve bloquear o fluxo.
 
     Args:
         mensagem: Texto da mensagem recebida.
 
     Returns:
-        IntencaoMensagem com a classificacao.
+        IntencaoMensagem com a classificacao. Retorna DUVIDA_GERAL em caso de erro.
     """
     client = _get_anthropic_client()
     prompt = PROMPT_CLASSIFICACAO.format(mensagem=mensagem)
 
     try:
-        response = await client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=50,
-            messages=[
-                {
-                    "role": "user",
-                    "content": prompt,
-                }
-            ],
+        # Timeout de 15s — classificacao e acessoria, nao pode travar o fluxo
+        response = await asyncio.wait_for(
+            client.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=50,
+                messages=[{"role": "user", "content": prompt}],
+            ),
+            timeout=15.0,
         )
 
         classificacao_raw = response.content[0].text.strip().upper()
@@ -333,6 +392,9 @@ async def classificar_intencao(mensagem: str) -> IntencaoMensagem:
         logger.info(f"Intencao classificada: {intencao.value} | Mensagem: '{mensagem[:80]}...'")
         return intencao
 
+    except asyncio.TimeoutError:
+        logger.warning(f"Timeout ao classificar intencao (15s). Mensagem: '{mensagem[:50]}...'")
+        return IntencaoMensagem.DUVIDA_GERAL
     except Exception as e:
         logger.error(f"Erro ao classificar intencao: {e}", exc_info=True)
         return IntencaoMensagem.DUVIDA_GERAL

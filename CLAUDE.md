@@ -85,15 +85,25 @@ terapeutas-agent/
 ├── docs/
 │   ├── arquitetura.md     ← detalhes técnicos
 │   ├── roadmap.md         ← fases do produto
-│   └── pitch.md           ← pitch para terapeutas
+│   ├── pitch.md           ← pitch para terapeutas
+│   └── vendas/            ← materiais de vendas
+│       ├── pitch-tony.md
+│       ├── one-pager.md
+│       ├── objecoes.md
+│       ├── roi-calculator.md
+│       └── email-prospecao.md
 ├── prompts/
 │   ├── system_prompt.md   ← prompt do agente terapeuta
 │   ├── rag_template.md    ← template de RAG
 │   └── onboarding.md      ← mensagens de onboarding
+├── scripts/               ← scripts utilitários
 ├── skills/                ← skills do Claude Code para este projeto
 │   ├── setup-backend/
 │   ├── setup-evolution/
 │   └── setup-supabase/
+├── portal-vercel/         ← portal web (deploy Vercel)
+│   ├── index.html         ← portal do terapeuta (app)
+│   └── landing.html       ← landing page de vendas
 ├── arquitetura/
 │   └── diagramas.md
 └── src/                   ← código (criado durante dev)
@@ -138,3 +148,60 @@ DATABASE_URL=
 - Priorizar **MVP rápido** — lançar em 2 semanas, iterar depois
 - Código limpo, comentado em português
 - Sempre criar `.env.example` junto com qualquer `.env`
+
+---
+
+## Skills Instaladas
+
+### Desenvolvimento
+- **superpowers** — TDD, debugging sistemático, planos de implementação, subagents paralelos, code review
+- **claude-api** — Best practices para Claude API (prompt caching, streaming, tool use)
+- **webapp-testing** — Testes automatizados com Playwright
+- **frontend-design** — Design de interfaces profissionais
+- **pdf** — Geração e manipulação de PDFs
+
+### Marketing & Vendas
+- **sales-enablement** — Materiais de venda para o Tony (pitch, one-pager, objeções)
+- **pricing-strategy** — Validação e otimização de preços
+- **cold-email** — Sequências de prospecção B2B
+- **referral-program** — Programa de indicação entre terapeutas
+- **churn-prevention** — Redução de cancelamentos
+- **revops** — Lead scoring e roteamento
+
+### UI/UX
+- **ui-ux-pro-max** — Design system com 67 estilos, 161 regras de healthcare
+
+---
+
+## Fluxo de Desenvolvimento
+
+### Antes de codar
+1. Usar `/writing-plans` para planejar a implementação
+2. Quebrar em tarefas de 2-5 minutos
+
+### Durante o desenvolvimento
+1. Usar TDD: RED → GREEN → REFACTOR
+2. `/systematic-debugging` para bugs complexos
+3. `/subagent-driven-development` para tarefas paralelas
+
+### Antes de deploy
+1. `/verification-before-completion` — verificar tudo
+2. `/simplify` — revisar código por reuso e qualidade
+3. Testar com `/webapp-testing`
+
+---
+
+## Materiais de Vendas
+Arquivos em `docs/vendas/`:
+- `pitch-tony.md` — Script do pitch deck (14 slides)
+- `one-pager.md` — Documento resumo para deixar com terapeuta
+- `objecoes.md` — Guia de objeções e respostas
+- `roi-calculator.md` — Calculadora de ROI
+- `email-prospecao.md` — 5 templates de email frio
+
+---
+
+## Páginas Web
+- `portal-vercel/index.html` — Portal do terapeuta (app)
+- `portal-vercel/landing.html` — Landing page de vendas
+- Deploy: Vercel (portal-vercel-ten.vercel.app)

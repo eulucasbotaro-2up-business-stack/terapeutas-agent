@@ -899,7 +899,7 @@ async def listar_mapas(
     authorization: str = Header(...),
     paciente_id: str = Query(""),
     pagina: int = Query(1, ge=1),
-    por_pagina: int = Query(20, ge=1, le=100),
+    por_pagina: int = Query(50, ge=1, le=200),
 ):
     terapeuta_id = _get_terapeuta_id(authorization)
     sb = get_supabase()
