@@ -47,9 +47,19 @@ async def webhook_asaas(
 
     # Validar token do Asaas (configurar ASAAS_WEBHOOK_TOKEN no Railway)
     expected_token = getattr(settings, "ASAAS_WEBHOOK_TOKEN", "")
-    if expected_token and asaas_access_token != expected_token:
-        logger.warning(f"Webhook Asaas: token inválido recebido")
-        raise HTTPException(status_code=401, detail="Token inválido")
+    if not expected_token:
+        # Se token nao configurado, BLOQUEIA para evitar bypass de auth
+        logger.critical(
+            "[ASAAS] ASAAS_WEBHOOK_TOKEN nao configurado. "
+            "Webhook bloqueado para evitar processamento de eventos falsos."
+        )
+        raise HTTPException(
+            status_code=503,
+            detail="ASAAS_WEBHOOK_TOKEN nao configurado. Webhook desabilitado.",
+        )
+    if asaas_access_token != expected_token:
+        logger.warning("Webhook Asaas: token invalido recebido")
+        raise HTTPException(status_code=401, detail="Token invalido")
 
     try:
         body = await request.json()

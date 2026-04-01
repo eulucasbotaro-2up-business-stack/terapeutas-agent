@@ -7,9 +7,10 @@ import logging
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
+from src.core.auth import verificar_admin_token
 from src.core.supabase_client import get_supabase
 from src.core.niveis import MODULOS, obter_nome_modulo
 from src.models.schemas import TerapeutaCreate, TerapeutaResponse
@@ -20,7 +21,11 @@ from src.rag.aprendizado import (
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/terapeutas", tags=["Terapeutas"])
+router = APIRouter(
+    prefix="/terapeutas",
+    tags=["Terapeutas"],
+    dependencies=[Depends(verificar_admin_token)],
+)
 
 
 # =============================================

@@ -12,9 +12,10 @@ from collections import defaultdict
 from typing import Optional
 
 import anthropic
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
 
+from src.core.auth import verificar_admin_token
 from src.core.config import get_settings
 from src.core.supabase_client import get_supabase
 from src.core.prompts import detectar_modo, ModoOperacao, MENSAGEM_FORA_ESCOPO
@@ -29,7 +30,11 @@ from src.core.ux_rules import humanizar_resposta
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/teste", tags=["Teste"])
+router = APIRouter(
+    prefix="/teste",
+    tags=["Teste"],
+    dependencies=[Depends(verificar_admin_token)],
+)
 
 # Histórico em memória por session_id (simples, para teste)
 _historico: dict[str, list[dict]] = defaultdict(list)

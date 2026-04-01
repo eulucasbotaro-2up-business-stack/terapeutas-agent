@@ -7,15 +7,20 @@ import logging
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, UploadFile, File
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, UploadFile, File
 
+from src.core.auth import verificar_admin_token
 from src.core.supabase_client import get_supabase
 from src.models.schemas import DocumentoResponse
 from src.rag.processor import processar_pdf
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/documentos", tags=["Documentos"])
+router = APIRouter(
+    prefix="/documentos",
+    tags=["Documentos"],
+    dependencies=[Depends(verificar_admin_token)],
+)
 
 # Tamanho máximo de upload: 20 MB
 MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024
@@ -219,23 +224,26 @@ async def listar_documentos(terapeuta_id: UUID):
 # =============================================
 
 @router.delete(
-    "/{documento_id}",
+    "/{terapeuta_id}/{documento_id}",
     summary="Remover documento e seus embeddings",
 )
-async def remover_documento(documento_id: UUID):
+async def remover_documento(terapeuta_id: UUID, documento_id: UUID):
     """
     Remove um documento completamente:
     1. Remove os embeddings (chunks) do pgvector
     2. Remove o arquivo do Supabase Storage
     3. Remove o registro da tabela 'documentos'
+
+    Exige terapeuta_id na URL para garantir isolamento multi-tenant.
     """
     supabase = get_supabase()
 
-    # Buscar o documento
+    # Buscar o documento COM filtro de terapeuta (multi-tenancy)
     documento = (
         supabase.table("documentos")
         .select("*")
         .eq("id", str(documento_id))
+        .eq("terapeuta_id", str(terapeuta_id))
         .limit(1)
         .execute()
     )
@@ -249,10 +257,12 @@ async def remover_documento(documento_id: UUID):
     doc = documento.data[0]
     storage_path = doc.get("storage_path", "")
 
-    # 1. Remover embeddings associados ao documento
+    # 1. Remover embeddings associados ao documento (filtro duplo por seguranca)
     try:
         supabase.table("embeddings").delete().eq(
             "documento_id", str(documento_id)
+        ).eq(
+            "terapeuta_id", str(terapeuta_id)
         ).execute()
         logger.info(f"Embeddings removidos para documento {documento_id}")
     except Exception as e:

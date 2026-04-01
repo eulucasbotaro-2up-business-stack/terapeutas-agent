@@ -3,14 +3,19 @@ Endpoints administrativos para o Agente de Evolução.
 Permite acionar análises e consultar aprendizados via HTTP.
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import Optional
 
+from src.core.auth import verificar_admin_token
 from src.rag.registro_erros import APRENDIZADOS, get_resumo_aprendizados, get_aprendizados_para_llm
 from src.agents.evolution_agent import processar_feedback_erro, gerar_relatorio_evolucao
 
-router = APIRouter(prefix="/admin/evolution", tags=["Evolução"])
+router = APIRouter(
+    prefix="/admin/evolution",
+    tags=["Evolução"],
+    dependencies=[Depends(verificar_admin_token)],
+)
 
 
 class FeedbackErroRequest(BaseModel):
