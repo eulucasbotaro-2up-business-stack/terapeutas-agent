@@ -355,7 +355,7 @@ async def _chamar_claude_com_retry(
         # Propaga imediatamente erros nao-transientes (400, 401, 403, 404)
         # para que o decorator NAO retente esses casos
         if e.status_code not in (429, 500, 502, 503, 529):
-            raise anthropic.APIError(str(e)) from e  # tipo fora da lista de retry
+            raise RuntimeError(f"Claude API erro nao-transiente ({e.status_code}): {e}") from e
         raise  # Erros transientes sao retentados pelo decorator
 
 

@@ -64,6 +64,11 @@ _JWT_EXPIRE_HOURS = 24
 
 def _gerar_token(terapeuta_id: str) -> str:
     settings = get_settings()
+    if settings.SECRET_KEY == "trocar-em-producao":
+        raise HTTPException(
+            status_code=503,
+            detail="SECRET_KEY não configurada. Sistema inseguro. Contate o administrador."
+        )
     payload = {
         "sub": terapeuta_id,
         "iat": datetime.now(timezone.utc),
@@ -403,19 +408,23 @@ async def recuperar_senha(body: RecuperarSenhaIn):
 
     # Tentar enviar código via WhatsApp se terapeuta tem telefone
     try:
-        terapeuta_res = sb.table("terapeutas").select("telefone, numero_whatsapp").eq("id", terapeuta_id).limit(1).execute()
-        terapeuta = terapeuta_res.data[0] if terapeuta_res.data else {}
-        telefone = terapeuta.get("telefone") or terapeuta.get("numero_whatsapp")
-        if telefone:
-            from src.whatsapp.evolution import enviar_texto
-            await enviar_texto(
-                terapeuta_id,
-                telefone,
-                f"Seu código de recuperação de senha: {codigo}\n\nVálido por 15 minutos."
+        terapeuta_res = sb.table("terapeutas").select("telefone, numero_whatsapp, nome_instancia_evolution").eq("id", terapeuta_id).limit(1).execute()
+        terapeuta_info = terapeuta_res.data[0] if terapeuta_res.data else {}
+        telefone = terapeuta_info.get("telefone") or terapeuta_info.get("numero_whatsapp")
+        instancia = terapeuta_info.get("nome_instancia_evolution")
+        if telefone and instancia:
+            from src.whatsapp.evolution import EvolutionClient
+            client = EvolutionClient()
+            await client.enviar_mensagem(
+                instance=instancia,
+                numero=telefone,
+                texto=f"Seu código de recuperação de senha: {codigo}\n\nVálido por 15 minutos.",
             )
             logger.info(f"[PORTAL] Código enviado via WhatsApp para {telefone}")
+        elif telefone:
+            logger.info(f"[PORTAL] Código de recuperação para {body.email}: {codigo} (sem instância Evolution para envio)")
     except Exception as e:
-        logger.warning(f"[PORTAL] Falha ao enviar código via WhatsApp: {e}")
+        logger.warning(f"[PORTAL] Falha ao enviar código via WhatsApp: {e}. Código logado: {codigo}")
 
     return {"ok": True, "mensagem": "Se o email estiver cadastrado, um código foi enviado."}
 
