@@ -318,6 +318,45 @@ class MetaCloudClient:
             },
         )
 
+    async def send_image_url(
+        self,
+        phone_number: str,
+        url: str,
+        caption: str = "",
+    ) -> dict[str, Any]:
+        """
+        Envia imagem via WhatsApp Cloud API usando URL pública.
+
+        A Meta Cloud API suporta envio por link direto (sem upload prévio),
+        desde que a URL seja acessível publicamente.
+
+        Args:
+            phone_number: Número do destinatário.
+            url: URL pública da imagem.
+            caption: Legenda opcional.
+
+        Returns:
+            Resposta da API com status do envio.
+        """
+        logger.info(
+            "Enviando imagem por URL para %s via Meta Cloud API: %s",
+            phone_number, url[:80],
+        )
+        return await self._request(
+            method="POST",
+            path=f"/{self.phone_number_id}/messages",
+            json_body={
+                "messaging_product": "whatsapp",
+                "recipient_type": "individual",
+                "to": phone_number,
+                "type": "image",
+                "image": {
+                    "link": url,
+                    "caption": caption,
+                },
+            },
+        )
+
     async def mark_as_read(
         self,
         message_id: str,

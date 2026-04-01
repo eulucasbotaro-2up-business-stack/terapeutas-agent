@@ -83,7 +83,50 @@ def _get_router_client() -> anthropic.AsyncAnthropic:
     return _router_client
 
 
-def _classificar_localmente(texto: str, is_audio: bool = False) -> Optional[ModoOperacao]:
+def _historico_tem_caso_ativo(historico: list[dict]) -> bool:
+    """
+    Verifica se o histórico recente indica um caso clínico em andamento.
+    Retorna True se a última mensagem do agente contém sinais de diagnóstico
+    ativo (pergunta clínica, análise em andamento, pedido de informação do caso).
+
+    Isso evita que respostas curtas do terapeuta ("Falante", "sim", "dor nas pernas")
+    sejam classificadas como SAUDACAO quando são continuação de um caso.
+    """
+    if not historico:
+        return False
+
+    # Procura a última mensagem do agente (assistant) no histórico
+    ultima_agente = ""
+    for msg in reversed(historico):
+        role = msg.get("role", "")
+        if role in ("agente", "assistant"):
+            ultima_agente = (msg.get("content", "") or msg.get("conteudo", "") or msg.get("mensagem", "") or "").lower()
+            break
+
+    if not ultima_agente:
+        return False
+
+    # Sinais de que o agente fez uma pergunta clínica ou está no meio de uma análise
+    _SINAIS_CASO_ATIVO = [
+        # Perguntas clínicas diretas
+        "?",
+        # Termos que indicam análise em andamento
+        "paciente", "caso", "diagnóstico", "diagnostico", "mapa",
+        "elemento", "camada", "floral", "serpente", "substância", "substancia",
+        "terra", "fogo", "água", "agua", "enxofre", "mercúrio", "mercurio",
+        # Perguntas sobre observação clínica
+        "agitado", "falante", "calado", "fechado", "pesado",
+        "tipo", "comportamento", "observou", "percebeu", "notou",
+        "como ele", "como ela", "quando você", "quando voce",
+        # Continuação de análise
+        "me conta", "me diz", "me fala", "descreve", "detalha",
+        "preciso saber", "importante saber", "ajuda a entender",
+    ]
+
+    return any(sinal in ultima_agente for sinal in _SINAIS_CASO_ATIVO)
+
+
+def _classificar_localmente(texto: str, is_audio: bool = False, historico: list[dict] | None = None) -> Optional[ModoOperacao]:
     """
     Tenta classificar a mensagem localmente por keywords conhecidas.
     Retorna None se a mensagem for ambígua e precisar do Haiku.
@@ -123,6 +166,9 @@ def _classificar_localmente(texto: str, is_audio: bool = False) -> Optional[Modo
         pass
 
     # Saudação: só para mensagens curtas (≤4 palavras) com keyword óbvia — e nunca para áudio
+    # REGRA CRÍTICA: se há caso ativo no histórico, NÃO classificar como SAUDACAO
+    # mesmo que a mensagem pareça uma saudação ("oi", "tudo bem") — pode ser
+    # continuação natural da conversa
     if not is_audio and num_palavras <= 4:
         for kw in _KEYWORDS_OBVIAS_SAUDACAO:
             if kw in texto_lower:
@@ -137,6 +183,10 @@ def _classificar_localmente(texto: str, is_audio: bool = False) -> Optional[Modo
                     for kw2 in grupo
                 )
                 if not tem_outro:
+                    # Se há caso ativo, redirecionar para CONSULTA em vez de SAUDACAO
+                    if _historico_tem_caso_ativo(historico or []):
+                        logger.info(f"[ROUTER] Mensagem parece SAUDACAO mas há caso ativo → CONSULTA: '{texto[:60]}'")
+                        return ModoOperacao.CONSULTA
                     logger.info(f"[ROUTER] SAUDACAO detectada localmente: '{texto[:60]}'")
                     return ModoOperacao.SAUDACAO
 
@@ -176,12 +226,21 @@ def _classificar_localmente(texto: str, is_audio: bool = False) -> Optional[Modo
         return None
 
     # Mensagem muito curta (1 palavra ≤15 chars) sem keyword reconhecível
-    # → quase sempre é um nome ou saudação informal — tratar como SAUDACAO
-    # sem chamar LLM (economiza custo + latência)
+    # REGRA CRÍTICA: se há caso ativo no histórico, a palavra curta é quase
+    # certamente uma RESPOSTA à pergunta do agente (ex: "Falante", "sim",
+    # "calado", "dor") — deve ir para CONSULTA, NÃO para SAUDACAO.
     # Exceção: áudio nunca é SAUDACAO, mesmo se transcrição for curta
     if not is_audio and num_palavras == 1 and len(texto) <= 15:
+        if _historico_tem_caso_ativo(historico or []):
+            logger.info(f"[ROUTER] Mensagem curta com caso ativo → CONSULTA: '{texto}'")
+            return ModoOperacao.CONSULTA
         logger.info(f"[ROUTER] Mensagem muito curta/nome-like → SAUDACAO local: '{texto}'")
         return ModoOperacao.SAUDACAO
+
+    # Mensagem de 2-3 palavras sem keywords mas com caso ativo → CONSULTA
+    if num_palavras <= 3 and _historico_tem_caso_ativo(historico or []):
+        logger.info(f"[ROUTER] Mensagem curta ({num_palavras} palavras) com caso ativo → CONSULTA: '{texto[:60]}'")
+        return ModoOperacao.CONSULTA
 
     return None
 
@@ -303,6 +362,12 @@ async def _classificar_com_haiku(
                 f"[ROUTER] Haiku retornou SAUDACAO para áudio — sobrescrevendo para CONSULTA: '{texto[:50]}'"
             )
             modo = ModoOperacao.CONSULTA
+        # Caso ativo no histórico: SAUDACAO → CONSULTA (resposta curta à pergunta clínica)
+        if modo == ModoOperacao.SAUDACAO and _historico_tem_caso_ativo(historico):
+            logger.info(
+                f"[ROUTER] Haiku retornou SAUDACAO mas há caso ativo → CONSULTA: '{texto[:50]}'"
+            )
+            modo = ModoOperacao.CONSULTA
         logger.info(
             f"[ROUTER] Haiku classificou '{texto[:50]}' → {categoria_raw} → {modo.value}"
         )
@@ -347,7 +412,7 @@ async def rotear_mensagem(
         return ModoOperacao.SAUDACAO
 
     # Etapa 1: tentar classificação local (sem LLM)
-    modo_local = _classificar_localmente(texto, is_audio=is_audio)
+    modo_local = _classificar_localmente(texto, is_audio=is_audio, historico=historico)
     if modo_local is not None:
         logger.info(f"[ROUTER] Classificação local: {modo_local.value} para '{texto[:50]}'")
         return modo_local

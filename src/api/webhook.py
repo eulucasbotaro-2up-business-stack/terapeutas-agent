@@ -1563,20 +1563,58 @@ async def _processar_mensagem(payload: dict) -> None:
                 # Inicializa variável de nota de imagem para system prompt (usada mais abaixo)
                 _nota_imagem_sp = ""
                 if dados_nasc and not dados_nasc.get("falta_ano") and not dados_nasc.get("falta_cidade") and not _eh_refazer:
-                    _mapa_json_cache = await asyncio.to_thread(
+                    _mapa_cache_result = await asyncio.to_thread(
                         _buscar_mapa_salvo, terapeuta_id, numero_paciente,
                         dados_nasc["data"], dados_nasc["hora"],
                     )
-                    if _mapa_json_cache:
+                    if _mapa_cache_result:
+                        _mapa_json_cache = _mapa_cache_result["mapa_json"]
+                        _mapa_img_urls = _mapa_cache_result.get("imagem_urls", [])
                         logger.info(
                             f"[Evolution] Mapa em cache para {numero_paciente} "
-                            f"({dados_nasc['data']} {dados_nasc['hora']}) — injetando sem recalcular"
+                            f"({dados_nasc['data']} {dados_nasc['hora']}) — injetando sem recalcular | "
+                            f"imagem_urls={len(_mapa_img_urls)}"
                         )
                         mapa_prefixo = (
                             "MAPA NATAL CALCULADO AUTOMATICAMENTE (Swiss Ephemeris — dado preciso, nao alucinado):\n"
                             f"{_mapa_json_cache}\n\n"
                         )
                         chunks_texto = mapa_prefixo + chunks_texto
+
+                        # Enviar imagens do cache via URL (BUG FIX: antes, cache
+                        # não enviava imagens — só injetava texto)
+                        _cache_imagem_enviada = False
+                        _caption_base = (
+                            f"{dados_nasc.get('nome', 'Paciente')}\n"
+                            f"{dados_nasc['data']} {dados_nasc['hora']} | {dados_nasc.get('cidade', '')}"
+                        )
+                        for _img_url in _mapa_img_urls:
+                            try:
+                                _img_label = "Mapa Alquimico" if "alquimico" in _img_url.lower() else "Mapa Natal"
+                                await evolution.enviar_imagem_url(
+                                    instance=instance_name,
+                                    numero=numero_paciente,
+                                    url=_img_url,
+                                    caption=f"{_img_label} — {_caption_base}",
+                                )
+                                _cache_imagem_enviada = True
+                                logger.info(f"[Evolution] Imagem do cache enviada por URL para {numero_paciente}: {_img_url[:60]}")
+                            except Exception as img_url_err:
+                                logger.warning(f"[Evolution] Falha ao enviar imagem do cache por URL: {img_url_err}")
+                        if _cache_imagem_enviada:
+                            _nota_imagem_sp = (
+                                "\n\nINSTRUCAO INTERNA — nao reproduza este aviso na resposta: "
+                                "A imagem do mapa alquimico ja foi enviada como arquivo separado. "
+                                "NAO mencione a imagem, NAO diga que foi enviada, NAO diga que houve instabilidade. "
+                                "Va direto para a leitura alquimica completa — comece pela primeira linha."
+                            )
+                        else:
+                            _nota_imagem_sp = (
+                                "\n\nINSTRUCAO INTERNA — nao reproduza este aviso na resposta: "
+                                "A imagem do mapa NAO foi enviada desta vez por instabilidade tecnica. "
+                                "ENTREGUE A LEITURA ALQUIMICA COMPLETA AGORA — nao peca permissao, nao pergunte se deve continuar, nao mencione a imagem. "
+                                "Se o terapeuta pedir para reenviar a imagem, diga que ele deve digitar 'refazer mapa'."
+                            )
 
                 if not _mapa_json_cache and dados_nasc and not dados_nasc.get("falta_ano") and not dados_nasc.get("falta_cidade"):
                     # Pré-mensagem: avisa que está gerando (melhora UX)
@@ -1934,31 +1972,39 @@ def _eh_pedido_refazer_mapa(texto: str) -> bool:
     return any(kw in texto_lower for kw in KEYWORDS_REFAZER_MAPA)
 
 
-def _buscar_mapa_salvo(terapeuta_id: str, paciente_numero: str, data: str, hora: str) -> str | None:
+def _buscar_mapa_salvo(terapeuta_id: str, paciente_numero: str, data: str, hora: str) -> dict | None:
     """
-    Busca mapa_json salvo no banco para evitar recalcular com Kerykeion.
+    Busca mapa salvo no banco para evitar recalcular com Kerykeion.
     Primeiro tenta buscar por (terapeuta_id, numero_telefone, tipo_mapa).
     Fallback para chave antiga (data+hora) para registros legados sem tipo_mapa.
-    Retorna o mapa_json (texto) ou None se não existe.
+    Retorna dict com mapa_json e imagem_urls, ou None se não existe.
+
+    Retorno: {"mapa_json": str, "imagem_urls": list[str]}
     """
     try:
         sb = get_supabase()
-        # Busca por tipo_mapa (regra nova — max 1 de cada tipo por paciente)
+        # Busca AMBOS os tipos (Natal + Alquimico) para ter as imagem_urls
         res = (
             sb.table("mapas_astrais")
-            .select("mapa_json, nome, tipo_mapa")
+            .select("mapa_json, nome, tipo_mapa, imagem_url")
             .eq("terapeuta_id", terapeuta_id)
             .eq("numero_telefone", paciente_numero)
-            .eq("tipo_mapa", "Mapa Natal")
-            .limit(1)
+            .in_("tipo_mapa", ["Mapa Natal", "Mapa Alquimico"])
             .execute()
         )
         if res.data:
-            return res.data[0]["mapa_json"]
+            mapa_json = res.data[0].get("mapa_json", "")
+            imagem_urls = [
+                row["imagem_url"]
+                for row in res.data
+                if row.get("imagem_url")
+            ]
+            return {"mapa_json": mapa_json, "imagem_urls": imagem_urls}
+
         # Fallback para registros legados sem tipo_mapa
         res = (
             sb.table("mapas_astrais")
-            .select("mapa_json, nome")
+            .select("mapa_json, nome, imagem_url")
             .eq("terapeuta_id", terapeuta_id)
             .eq("numero_telefone", paciente_numero)
             .eq("data_nascimento", data)
@@ -1967,7 +2013,13 @@ def _buscar_mapa_salvo(terapeuta_id: str, paciente_numero: str, data: str, hora:
             .execute()
         )
         if res.data:
-            return res.data[0]["mapa_json"]
+            mapa_json = res.data[0].get("mapa_json", "")
+            imagem_urls = [
+                row["imagem_url"]
+                for row in res.data
+                if row.get("imagem_url")
+            ]
+            return {"mapa_json": mapa_json, "imagem_urls": imagem_urls}
     except Exception as e:
         logger.warning(f"Erro ao buscar mapa salvo: {e}")
     return None
@@ -3055,20 +3107,57 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                 # Inicializa variável de nota de imagem para system prompt (usada mais abaixo)
                 _nota_imagem_sp = ""
                 if dados_nasc and not dados_nasc.get("falta_ano") and not dados_nasc.get("falta_cidade") and not _eh_refazer:
-                    _mapa_json_cache = await asyncio.to_thread(
+                    _mapa_cache_result = await asyncio.to_thread(
                         _buscar_mapa_salvo, terapeuta_id, numero_paciente,
                         dados_nasc["data"], dados_nasc["hora"],
                     )
-                    if _mapa_json_cache:
+                    if _mapa_cache_result:
+                        _mapa_json_cache = _mapa_cache_result["mapa_json"]
+                        _mapa_img_urls = _mapa_cache_result.get("imagem_urls", [])
                         logger.info(
                             f"[Meta] Mapa em cache para {numero_paciente} "
-                            f"({dados_nasc['data']} {dados_nasc['hora']}) — injetando sem recalcular"
+                            f"({dados_nasc['data']} {dados_nasc['hora']}) — injetando sem recalcular | "
+                            f"imagem_urls={len(_mapa_img_urls)}"
                         )
                         mapa_prefixo = (
                             "MAPA NATAL CALCULADO AUTOMATICAMENTE (Swiss Ephemeris — dado preciso, nao alucinado):\n"
                             f"{_mapa_json_cache}\n\n"
                         )
                         chunks_texto = mapa_prefixo + chunks_texto
+
+                        # Enviar imagens do cache via URL (BUG FIX: antes, cache
+                        # não enviava imagens — só injetava texto)
+                        _cache_imagem_enviada = False
+                        _caption_base = (
+                            f"{dados_nasc.get('nome', 'Paciente')}\n"
+                            f"{dados_nasc['data']} {dados_nasc['hora']} | {dados_nasc.get('cidade', '')}"
+                        )
+                        for _img_url in _mapa_img_urls:
+                            try:
+                                _img_label = "Mapa Alquimico" if "alquimico" in _img_url.lower() else "Mapa Natal"
+                                await meta_client.send_image_url(
+                                    phone_number=numero_paciente,
+                                    url=_img_url,
+                                    caption=f"{_img_label} — {_caption_base}",
+                                )
+                                _cache_imagem_enviada = True
+                                logger.info(f"[Meta] Imagem do cache enviada por URL para {numero_paciente}: {_img_url[:60]}")
+                            except Exception as img_url_err:
+                                logger.warning(f"[Meta] Falha ao enviar imagem do cache por URL: {img_url_err}")
+                        if _cache_imagem_enviada:
+                            _nota_imagem_sp = (
+                                "\n\nINSTRUCAO INTERNA — nao reproduza este aviso na resposta: "
+                                "A imagem do mapa alquimico ja foi enviada como arquivo separado. "
+                                "NAO mencione a imagem, NAO diga que foi enviada, NAO diga que houve instabilidade. "
+                                "Va direto para a leitura alquimica completa — comece pela primeira linha."
+                            )
+                        else:
+                            _nota_imagem_sp = (
+                                "\n\nINSTRUCAO INTERNA — nao reproduza este aviso na resposta: "
+                                "A imagem do mapa NAO foi enviada desta vez por instabilidade tecnica. "
+                                "ENTREGUE A LEITURA ALQUIMICA COMPLETA AGORA — nao peca permissao, nao pergunte se deve continuar, nao mencione a imagem. "
+                                "Se o terapeuta pedir para reenviar a imagem, diga que ele deve digitar 'refazer mapa'."
+                            )
 
                 if not _mapa_json_cache and dados_nasc and not dados_nasc.get("falta_ano") and not dados_nasc.get("falta_cidade"):
                     # Pré-mensagem: avisa que está gerando (melhora UX)
