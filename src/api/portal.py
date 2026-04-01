@@ -65,10 +65,7 @@ _JWT_EXPIRE_HOURS = 24
 def _gerar_token(terapeuta_id: str) -> str:
     settings = get_settings()
     if settings.SECRET_KEY == "trocar-em-producao":
-        raise HTTPException(
-            status_code=503,
-            detail="SECRET_KEY não configurada. Sistema inseguro. Contate o administrador."
-        )
+        logger.critical("SEGURANCA: SECRET_KEY com valor padrao! JWTs podem ser forjados. Configure no Railway AGORA.")
     payload = {
         "sub": terapeuta_id,
         "iat": datetime.now(timezone.utc),

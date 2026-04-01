@@ -1178,8 +1178,26 @@ async def _processar_mensagem(payload: dict) -> None:
 
         # 5b. Coletar nome se ainda não temos
         if estado.aguardando_nome:
+            import re as _re_nome
             texto_nome = _extrair_texto_para_codigo(texto_mensagem)
-            nome_extraido = await _extrair_nome_com_llm(texto_nome, settings)
+
+            # Fallback 1: regex "meu nome é X", "me chamo X", "sou o X"
+            _match_nome_re = _re_nome.search(
+                r"(?:meu nome [eé]|me chamo|sou (?:o |a )?|pode me chamar de)\s*([A-Za-zÀ-ú]+(?:\s+[A-Za-zÀ-ú]+){0,2})",
+                texto_nome, _re_nome.IGNORECASE,
+            )
+            nome_extraido = _match_nome_re.group(1).strip() if _match_nome_re else None
+
+            # Fallback 2: texto curto com apenas letras (1-3 palavras) = provavelmente um nome
+            if not nome_extraido:
+                palavras = [p for p in texto_nome.strip().split() if any(c.isalpha() for c in p)]
+                if 1 <= len(palavras) <= 3 and all(p.replace("-","").replace("'","").isalpha() for p in palavras):
+                    nome_extraido = " ".join(p.capitalize() for p in palavras)
+
+            # Fallback 3: LLM extraction
+            if not nome_extraido:
+                nome_extraido = await _extrair_nome_com_llm(texto_nome, settings)
+
             if nome_extraido:
                 # Salvar sugestão e pedir confirmação
                 await asyncio.to_thread(salvar_nome_sugerido, terapeuta_id, numero_paciente, nome_extraido)
