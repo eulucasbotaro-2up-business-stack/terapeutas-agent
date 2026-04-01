@@ -82,6 +82,7 @@ from src.rag.aprendizado import (
 from src.whatsapp.evolution import EvolutionClient
 from src.whatsapp.meta_cloud import MetaCloudClient
 from src.core.ux_rules import humanizar_resposta
+from src.core.diagnostico_auto import processar_diagnostico_auto
 from src.whatsapp.messages import (
     extrair_numero_mensagem,
     eh_mensagem_valida,
@@ -1690,6 +1691,15 @@ async def _processar_mensagem(payload: dict) -> None:
                 )
             except Exception as e:
                 logger.warning(f"Falha no aprendizado contínuo: {e}")
+        # Extracao automatica de diagnostico (background, somente CONSULTA com paciente vinculado)
+        if modo == ModoOperacao.CONSULTA and paciente_vinculado_id and resposta_salvar:
+            asyncio.create_task(
+                processar_diagnostico_auto(
+                    resposta=resposta_salvar,
+                    terapeuta_id=terapeuta_id,
+                    paciente_id=paciente_vinculado_id,
+                )
+            )
 
     except Exception as e:
         logger.error(f"Erro ao processar mensagem Evolution: {e}", exc_info=True)
@@ -3053,6 +3063,15 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                 )
             except Exception as e:
                 logger.warning(f"Falha no aprendizado contínuo (Meta): {e}")
+        # Extracao automatica de diagnostico (background, somente CONSULTA com paciente vinculado)
+        if modo == ModoOperacao.CONSULTA and paciente_vinculado_id_meta and resposta_salvar:
+            asyncio.create_task(
+                processar_diagnostico_auto(
+                    resposta=resposta_salvar,
+                    terapeuta_id=terapeuta_id,
+                    paciente_id=paciente_vinculado_id_meta,
+                )
+            )
 
     except Exception as e:
         logger.error(f"Erro ao processar mensagem Meta: {e}", exc_info=True)
