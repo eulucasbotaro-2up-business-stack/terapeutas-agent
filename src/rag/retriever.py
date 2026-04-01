@@ -161,17 +161,22 @@ def detectar_tags(pergunta: str) -> list[str]:
 
 
 def _get_openai_client() -> AsyncOpenAI:
-    """Retorna instância singleton do cliente OpenAI para embeddings."""
+    """Retorna instância singleton do cliente OpenAI para embeddings.
+    Configura timeout de 30s para evitar requests pendurados."""
     global _openai_client
     if _openai_client is None:
         settings = get_settings()
-        _openai_client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+        _openai_client = AsyncOpenAI(
+            api_key=settings.OPENAI_API_KEY,
+            timeout=30.0,  # Timeout de 30s — evita hang indefinido
+        )
     return _openai_client
 
 
 async def gerar_embedding_pergunta(pergunta: str) -> list[float]:
     """
     Gera o embedding de uma pergunta do paciente via OpenAI API.
+    Inclui timeout de 30s e retry (2 tentativas) para erros transientes.
 
     Args:
         pergunta: Texto da pergunta.
@@ -180,26 +185,41 @@ async def gerar_embedding_pergunta(pergunta: str) -> list[float]:
         Vetor de embedding com 1536 dimensoes.
 
     Raises:
-        openai.APIError: Se a API da OpenAI retornar erro.
+        openai.APIError: Se a API da OpenAI retornar erro apos retries.
         asyncio.TimeoutError: Se a chamada exceder 30 segundos.
     """
+    import asyncio as _asyncio
+
     settings = get_settings()
     client = _get_openai_client()
 
     t0 = time.perf_counter()
-    try:
-        response = await client.embeddings.create(
-            model=settings.EMBEDDING_MODEL,
-            input=pergunta,
-        )
-    except Exception as e:
-        logger.error(f"Erro ao gerar embedding: {type(e).__name__}: {e}")
-        raise
+    ultima_excecao = None
 
-    embedding = response.data[0].embedding
-    elapsed_ms = (time.perf_counter() - t0) * 1000
-    logger.debug(f"Embedding gerado em {elapsed_ms:.0f}ms ({len(embedding)} dimensoes)")
-    return embedding
+    for tentativa in range(1, 3):  # Max 2 tentativas
+        try:
+            response = await client.embeddings.create(
+                model=settings.EMBEDDING_MODEL,
+                input=pergunta,
+            )
+            embedding = response.data[0].embedding
+            elapsed_ms = (time.perf_counter() - t0) * 1000
+            logger.debug(f"Embedding gerado em {elapsed_ms:.0f}ms ({len(embedding)} dimensoes)")
+            return embedding
+        except Exception as e:
+            ultima_excecao = e
+            if tentativa < 2:
+                logger.warning(
+                    f"[RETRIEVER] Erro ao gerar embedding (tentativa {tentativa}/2): "
+                    f"{type(e).__name__}: {e}. Retry em 1s..."
+                )
+                await _asyncio.sleep(1)
+            else:
+                logger.error(f"Erro ao gerar embedding apos 2 tentativas: {type(e).__name__}: {e}")
+                raise
+
+    # Nunca deveria chegar aqui, mas seguranca
+    raise ultima_excecao or RuntimeError("Falha inesperada ao gerar embedding")
 
 
 async def buscar_contexto(

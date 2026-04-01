@@ -765,11 +765,21 @@ def _gerar_imagem_locked(dados: "DadosMapa") -> bytes:
                     facecolor=BG, bbox_inches="tight")
         buf.seek(0)
         png_bytes = buf.read()
+        buf.close()
+        # IMPORTANTE: fechar a Figure para liberar memoria (evita memory leak)
+        import matplotlib.pyplot as _plt
+        _plt.close(fig)
         logger.info(f"Mapa Alquimico gerado: {len(png_bytes) // 1024} KB")
         return png_bytes
 
     except Exception as e:
         logger.error(f"Falha ao gerar imagem do mapa natal: {e}", exc_info=True)
+        # Tenta fechar a fig mesmo em caso de erro para nao vazar memoria
+        try:
+            import matplotlib.pyplot as _plt
+            _plt.close(fig)
+        except Exception:
+            pass
         raise RuntimeError(f"Falha na geracao da imagem: {e}") from e
 
 
@@ -1021,9 +1031,19 @@ def _gerar_imagem_tradicional_locked(dados: "DadosMapa") -> bytes:
         fig.savefig(buf, format="png", dpi=110, facecolor=BG, bbox_inches="tight")
         buf.seek(0)
         png_bytes = buf.read()
+        buf.close()
+        # IMPORTANTE: fechar a Figure para liberar memoria (evita memory leak)
+        import matplotlib.pyplot as _plt
+        _plt.close(fig)
         logger.info(f"Mapa Natal Tradicional gerado: {len(png_bytes) // 1024} KB")
         return png_bytes
 
     except Exception as e:
         logger.error(f"Falha ao gerar imagem tradicional: {e}", exc_info=True)
+        # Tenta fechar a fig mesmo em caso de erro para nao vazar memoria
+        try:
+            import matplotlib.pyplot as _plt
+            _plt.close(fig)
+        except Exception:
+            pass
         raise RuntimeError(f"Falha na geracao da imagem tradicional: {e}") from e

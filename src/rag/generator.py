@@ -269,7 +269,13 @@ async def gerar_resposta(
             messages=messages,
         )
 
-        # Extrai o texto da resposta
+        # Extrai o texto da resposta (com guard contra resposta vazia)
+        if not response.content or not hasattr(response.content[0], "text"):
+            logger.error(
+                f"[GENERATOR] Claude retornou resposta sem texto. "
+                f"Content: {response.content}, stop_reason: {response.stop_reason}"
+            )
+            raise RuntimeError("Claude API retornou resposta vazia")
         resposta = response.content[0].text
 
         # Verificacao de grounding — detecta possiveis alucinacoes
