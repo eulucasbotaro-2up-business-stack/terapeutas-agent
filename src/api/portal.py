@@ -818,11 +818,29 @@ async def listar_diagnosticos(
     return {"diagnosticos": res.data or [], "pagina": pagina}
 
 
+_DIAG_COLS_DB = {
+    "id", "terapeuta_id", "paciente_id", "status", "sessao_data",
+    "elemento_dominante", "elemento_carente", "elementos_detalhes",
+    "dna_comprometido", "dna_descricao", "serpentes_ativas", "serpentes_descricao",
+    "setenio_atual", "setenio_descricao", "florais_prescritos", "protocolo_texto",
+    "fonte", "conversa_origem_id", "origem",
+    # Novas colunas (adicionadas via migration quando disponível)
+    "substancias", "substancias_descricao", "nivel_floral", "florais_nivel_descricao",
+    "fluxo_continuo", "fluxo_continuo_descricao", "matriz_alquimica", "aliastrons",
+    "progresso_status", "progresso_observacoes",
+}
+
+
+def _filtrar_campos_diag(data: dict) -> dict:
+    """Remove campos que não existem como colunas na tabela diagnosticos_alquimicos."""
+    return {k: v for k, v in data.items() if k in _DIAG_COLS_DB and v is not None and v != {} and v != []}
+
+
 @router.post("/diagnosticos", summary="Criar diagnóstico")
 async def criar_diagnostico(body: DiagnosticoIn, authorization: str = Header(...)):
     terapeuta_id = _get_terapeuta_id(authorization)
     sb = get_supabase()
-    data = body.model_dump(exclude_none=True)
+    data = _filtrar_campos_diag(body.model_dump(exclude_none=True))
     data["terapeuta_id"] = terapeuta_id
     if not data.get("sessao_data"):
         data["sessao_data"] = datetime.now(timezone.utc).date().isoformat()
@@ -834,7 +852,7 @@ async def criar_diagnostico(body: DiagnosticoIn, authorization: str = Header(...
 async def editar_diagnostico(diagnostico_id: str, body: DiagnosticoUpdate, authorization: str = Header(...)):
     terapeuta_id = _get_terapeuta_id(authorization)
     sb = get_supabase()
-    data = body.model_dump(exclude_unset=True)
+    data = _filtrar_campos_diag(body.model_dump(exclude_unset=True))
     if not data:
         raise HTTPException(status_code=400, detail="Nenhum campo para atualizar.")
     data["atualizado_em"] = datetime.now(timezone.utc).isoformat()
@@ -1022,11 +1040,17 @@ async def get_agenda(authorization: str = Header(...)):
     return {"agenda": agenda, "hoje": hoje.isoformat()}
 
 
+_ACOMP_COLS_DB = {
+    "id", "terapeuta_id", "paciente_id", "tipo", "descricao",
+    "data_prevista", "hora_prevista", "data_realizado", "status", "prioridade",
+}
+
+
 @router.post("/acompanhamentos", summary="Criar acompanhamento")
 async def criar_acompanhamento(body: AcompanhamentoIn, authorization: str = Header(...)):
     terapeuta_id = _get_terapeuta_id(authorization)
     sb = get_supabase()
-    data = body.model_dump(exclude_none=True)
+    data = {k: v for k, v in body.model_dump(exclude_none=True).items() if k in _ACOMP_COLS_DB}
     data["terapeuta_id"] = terapeuta_id
     res = sb.table("acompanhamentos").insert(data).execute()
     return res.data[0] if res.data else {}
@@ -1159,8 +1183,8 @@ async def relatorio_visao_geral(authorization: str = Header(...)):
     return {
         "pacientes_ativos": total_pac.count or 0,
         "total_conversas": total_conv.count or 0,
-        "conversas_este_mes": conv_mes.count or 0,
-        "diagnosticos_este_mes": diag_mes.count or 0,
+        "conversas_mes": conv_mes.count or 0,
+        "diagnosticos_mes": diag_mes.count or 0,
         "proximos_retornos": proximos.data or [],
         "elementos_distribuicao": elementos,
     }
@@ -1555,8 +1579,8 @@ async def financeiro_resumo(authorization: str = Header(...)):
             "fim": agora.date().isoformat(),
         },
         "pacientes_ativos": pacientes_ativos,
-        "diagnosticos_este_mes": diagnosticos_mes,
-        "conversas_este_mes": conversas_mes,
+        "diagnosticos_mes": diagnosticos_mes,
+        "conversas_mes": conversas_mes,
         "assinatura": assinatura,
         "receita_estimada": valor_plano,
         "custo_estimado_ia": round(conversas_mes * 0.005, 2),  # ~R$0.005 por conversa
