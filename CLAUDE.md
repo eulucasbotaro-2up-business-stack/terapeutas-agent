@@ -171,6 +171,13 @@ DATABASE_URL=
 ### UI/UX
 - **ui-ux-pro-max** — Design system com 67 estilos, 161 regras de healthcare
 
+### Alquimia & Diagnóstico (customizadas)
+- **diagnostico-alquimico** — Diagnóstico em 5 camadas (Elementos, Substâncias, DNA, Florais, Cruzamento)
+- **plano-tratamento** — Planos de tratamento alquímico individualizados
+- **relatorio-clinico** — Relatórios clínicos (SOAP alquímico, progresso, resumo de caso)
+- **infograficos-terapia** — Visuais de elementos, substâncias, DNA e progresso
+- **visual-explainer** — Geração de páginas HTML visuais para relatórios e dashboards
+
 ---
 
 ## Fluxo de Desenvolvimento
