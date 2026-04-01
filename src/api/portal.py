@@ -933,9 +933,10 @@ async def listar_mapas(
 
 @router.get("/mapas/{mapa_id}", summary="Detalhes de um mapa natal")
 async def get_mapa(mapa_id: str, authorization: str = Header(...)):
-    _get_terapeuta_id(authorization)
+    terapeuta_id = _get_terapeuta_id(authorization)
     sb = get_supabase()
-    res = sb.table("mapas_astrais").select("*").eq("id", mapa_id).limit(1).execute()
+    # SEGURANÇA: filtra por terapeuta_id para impedir acesso cross-tenant
+    res = sb.table("mapas_astrais").select("*").eq("id", mapa_id).eq("terapeuta_id", terapeuta_id).limit(1).execute()
     if not res.data:
         raise HTTPException(status_code=404, detail="Mapa não encontrado.")
     return res.data[0]

@@ -13,7 +13,7 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s %(name)s: %(message)s",
 )
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -98,14 +98,17 @@ async def health_check():
 
 
 @app.get("/config", tags=["Sistema"])
-async def verificar_config():
+async def verificar_config(x_admin_token: str = Header(default="")):
     """
     Verifica quais configurações estão preenchidas (sem expor valores sensíveis).
-    ATENÇÃO: campos *_key_presente indicam apenas que a variável existe no .env —
-    não garantem que a chave é válida ou que o serviço está funcionando.
+    PROTEGIDO: requer SECRET_KEY no header X-Admin-Token.
     Útil para debug durante setup.
     """
     settings = get_settings()
+
+    # SEGURANÇA: requer autenticação para não expor info do sistema
+    if not x_admin_token or x_admin_token != settings.SECRET_KEY:
+        raise HTTPException(status_code=401, detail="Token admin inválido.")
 
     # Asaas: chave válida começa com '$aact_' (produção) ou '$aaah_' (sandbox)
     asaas_key = settings.ASAAS_API_KEY
@@ -118,7 +121,7 @@ async def verificar_config():
         "evolution_configurado": bool(settings.EVOLUTION_API_URL and settings.EVOLUTION_API_KEY),
         "meta_cloud_configurado": bool(settings.META_WHATSAPP_TOKEN and settings.META_PHONE_NUMBER_ID),
         "asaas_key_presente": bool(asaas_key),
-        "asaas_key_valida": asaas_key_valida,  # false se chave for placeholder ou formato errado
+        "asaas_key_valida": asaas_key_valida,
         "modelo_llm": settings.CLAUDE_MODEL,
         "modelo_embedding": settings.EMBEDDING_MODEL,
     }

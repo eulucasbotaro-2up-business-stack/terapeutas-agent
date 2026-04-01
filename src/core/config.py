@@ -164,11 +164,12 @@ def check_startup_config() -> None:
     if not tem_evolution and not tem_meta:
         logger.warning("CONFIG: nenhuma integração WhatsApp configurada (Evolution API ou Meta Cloud API)")
 
-    # SECRET_KEY padrão é insegura em produção
+    # SECRET_KEY padrão é PERIGOSA em produção — qualquer um pode forjar JWTs
     if settings.SECRET_KEY == "trocar-em-producao":
-        logger.warning(
-            "CONFIG: SECRET_KEY está com o valor padrão 'trocar-em-producao'. "
-            "Defina uma chave forte no .env antes de ir para produção."
+        logger.critical(
+            "SEGURANCA: SECRET_KEY está com o valor padrão 'trocar-em-producao'. "
+            "QUALQUER PESSOA pode forjar tokens JWT e acessar dados de terapeutas. "
+            "Defina uma chave forte no .env IMEDIATAMENTE."
         )
 
     # CORS aberto demais

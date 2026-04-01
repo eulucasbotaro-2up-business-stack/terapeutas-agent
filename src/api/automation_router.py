@@ -25,8 +25,14 @@ _AUTOMATION_SECRET = os.getenv("AUTOMATION_SECRET", "")
 
 
 def _validar_token(x_automation_token: str = Header(default="")) -> None:
-    """Valida o token de segurança para endpoints de automação."""
-    if _AUTOMATION_SECRET and x_automation_token != _AUTOMATION_SECRET:
+    """Valida o token de segurança para endpoints de automação.
+    SEGURANÇA: Se AUTOMATION_SECRET não estiver configurado, bloqueia TODOS os requests."""
+    if not _AUTOMATION_SECRET:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="AUTOMATION_SECRET não configurado. Endpoints de automação desabilitados.",
+        )
+    if x_automation_token != _AUTOMATION_SECRET:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token de automação inválido.",
