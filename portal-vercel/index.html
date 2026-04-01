@@ -937,7 +937,7 @@
                                     <span class="badge text-xs mr-2"
                                         :class="ev.tipo === 'conversa' ? 'bg-blue-100 text-blue-700' : ev.tipo === 'diagnostico' ? 'bg-brand-50 text-brand-600' : 'bg-gray-100 text-gray-600'"
                                         x-text="ev.tipo"></span>
-                                    <span class="text-sm font-medium text-gray-800" x-text="ev.titulo || (ev.conteudo ? ev.conteudo.substring(0, 60) + (ev.conteudo.length > 60 ? '...' : '') : '')"></span>
+                                    <span class="text-sm font-medium text-gray-800" x-text="ev.titulo || ev.resumo || (ev.conteudo ? ev.conteudo.substring(0, 60) + (ev.conteudo.length > 60 ? '...' : '') : '')"></span>
                                 </div>
                                 <span class="text-xs text-gray-400 flex-shrink-0 ml-2" x-text="formatarDataCurta(ev.data)"></span>
                             </div>
