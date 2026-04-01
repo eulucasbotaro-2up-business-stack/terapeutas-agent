@@ -1281,7 +1281,7 @@ async def _processar_mensagem(payload: dict) -> None:
                         await evolution.enviar_mensagem(instance=instance_name, numero=numero_paciente, texto=msg2)
                         await asyncio.sleep(1.5)
 
-                        msg3 = "Acesse e explore a plataforma. Quando quiser, é só me chamar aqui pelo WhatsApp que vamos trabalhar juntos nos seus casos clínicos."
+                        msg3 = "Agora vamos iniciar! Quer trazer algum caso clínico, fazer um mapa natal, entender algo do método ou criar conteúdo?"
                         await evolution.enviar_mensagem(instance=instance_name, numero=numero_paciente, texto=msg3)
 
                         logger.info(f"[ONBOARDING] Acesso portal criado para {nome} ({email}) — terapeuta_id={t_id}")
@@ -2784,7 +2784,7 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                         await meta_client.send_text_message(phone_number=numero_paciente, message=msg2)
                         await asyncio.sleep(1.5)
 
-                        msg3 = "Acesse e explore a plataforma. Quando quiser, é só me chamar aqui pelo WhatsApp que vamos trabalhar juntos nos seus casos clínicos."
+                        msg3 = "Agora vamos iniciar! Quer trazer algum caso clínico, fazer um mapa natal, entender algo do método ou criar conteúdo?"
                         await meta_client.send_text_message(phone_number=numero_paciente, message=msg3)
 
                         logger.info(f"[ONBOARDING] Acesso portal criado para {nome} ({email}) — terapeuta_id={t_id}")
