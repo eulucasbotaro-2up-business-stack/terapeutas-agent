@@ -98,7 +98,14 @@ router = APIRouter(prefix="/webhook", tags=["Webhook WhatsApp"])
 _PROCESSED_MESSAGE_IDS: "OrderedDict[str, float]" = OrderedDict()
 _DEDUP_TTL_SECONDS = 300
 _DEDUP_MAX_SIZE = 1000
-_DEDUP_LOCK = asyncio.Lock()  # Protege acesso concorrente ao OrderedDict
+_DEDUP_LOCK: asyncio.Lock | None = None  # Inicializado lazy para evitar problema com event loop
+
+
+def _get_dedup_lock() -> asyncio.Lock:
+    global _DEDUP_LOCK
+    if _DEDUP_LOCK is None:
+        _DEDUP_LOCK = asyncio.Lock()
+    return _DEDUP_LOCK
 
 # Contador de falhas consecutivas de geração de mapa por número de paciente.
 # Após _MAPA_MAX_TENTATIVAS falhas, envia mensagem de suporte e para de tentar.
@@ -120,7 +127,7 @@ async def _ja_processado(message_id: str) -> bool:
     if not message_id:
         return False
     agora = time.monotonic()
-    async with _DEDUP_LOCK:
+    async with _get_dedup_lock():
         # Limpar entradas expiradas (FIFO — as mais antigas estão no início)
         while _PROCESSED_MESSAGE_IDS:
             oldest_id, oldest_ts = next(iter(_PROCESSED_MESSAGE_IDS.items()))
@@ -367,6 +374,11 @@ Responda APENAS com o ID do paciente (UUID) ou a palavra NENHUM. Nada mais."""
                 "paciente_nome": nome_pac,
                 "timestamp": agora,
             }
+            # Evitar crescimento ilimitado do cache
+            if len(_PACIENTE_ATIVO_CACHE) > 500:
+                keys_to_remove = list(_PACIENTE_ATIVO_CACHE.keys())[:100]
+                for k in keys_to_remove:
+                    del _PACIENTE_ATIVO_CACHE[k]
             logger.info(f"Paciente vinculado detectado: {nome_pac} ({resultado})")
             return resultado
 
@@ -1542,7 +1554,12 @@ async def _processar_mensagem(payload: dict) -> None:
                         else:
                             # Imagem nunca enviada — falha real no cálculo
                             _MAPA_FALHAS[numero_paciente] = _MAPA_FALHAS.get(numero_paciente, 0) + 1
-                            tentativas_falha = _MAPA_FALHAS[numero_paciente]
+                            # Evitar crescimento ilimitado do dict de falhas
+                            if len(_MAPA_FALHAS) > 200:
+                                keys_to_remove = list(_MAPA_FALHAS.keys())[:100]
+                                for k in keys_to_remove:
+                                    del _MAPA_FALHAS[k]
+                            tentativas_falha = _MAPA_FALHAS.get(numero_paciente, 0)
                             if tentativas_falha >= _MAPA_MAX_TENTATIVAS:
                                 _MAPA_FALHAS[numero_paciente] = 0
                                 msg_suporte = (
@@ -2915,7 +2932,12 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                         else:
                             # Imagem nunca enviada — falha real no cálculo
                             _MAPA_FALHAS[numero_paciente] = _MAPA_FALHAS.get(numero_paciente, 0) + 1
-                            tentativas_falha = _MAPA_FALHAS[numero_paciente]
+                            # Evitar crescimento ilimitado do dict de falhas
+                            if len(_MAPA_FALHAS) > 200:
+                                keys_to_remove = list(_MAPA_FALHAS.keys())[:100]
+                                for k in keys_to_remove:
+                                    del _MAPA_FALHAS[k]
+                            tentativas_falha = _MAPA_FALHAS.get(numero_paciente, 0)
                             if tentativas_falha >= _MAPA_MAX_TENTATIVAS:
                                 # 3ª falha consecutiva — avisar o usuário e sugerir suporte
                                 _MAPA_FALHAS[numero_paciente] = 0

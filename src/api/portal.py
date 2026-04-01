@@ -368,6 +368,11 @@ class RedefinirSenhaIn(BaseModel):
     nova_senha: str
 
 
+class AlterarSenhaIn(BaseModel):
+    senha_atual: str
+    nova_senha: str
+
+
 @router.post("/auth/recuperar-senha", summary="Solicitar código de recuperação de senha")
 async def recuperar_senha(body: RecuperarSenhaIn):
     sb = get_supabase()
@@ -395,6 +400,22 @@ async def recuperar_senha(body: RecuperarSenhaIn):
 
     # TODO: Enviar email com o código. Por enquanto, logamos.
     logger.info(f"[PORTAL] Código de recuperação para {body.email}: {codigo}")
+
+    # Tentar enviar código via WhatsApp se terapeuta tem telefone
+    try:
+        terapeuta_res = sb.table("terapeutas").select("telefone, numero_whatsapp").eq("id", terapeuta_id).limit(1).execute()
+        terapeuta = terapeuta_res.data[0] if terapeuta_res.data else {}
+        telefone = terapeuta.get("telefone") or terapeuta.get("numero_whatsapp")
+        if telefone:
+            from src.whatsapp.evolution import enviar_texto
+            await enviar_texto(
+                terapeuta_id,
+                telefone,
+                f"Seu código de recuperação de senha: {codigo}\n\nVálido por 15 minutos."
+            )
+            logger.info(f"[PORTAL] Código enviado via WhatsApp para {telefone}")
+    except Exception as e:
+        logger.warning(f"[PORTAL] Falha ao enviar código via WhatsApp: {e}")
 
     return {"ok": True, "mensagem": "Se o email estiver cadastrado, um código foi enviado."}
 
@@ -812,7 +833,9 @@ async def editar_diagnostico(diagnostico_id: str, body: DiagnosticoUpdate, autho
         raise HTTPException(status_code=400, detail="Nenhum campo para atualizar.")
     data["atualizado_em"] = datetime.now(timezone.utc).isoformat()
     res = sb.table("diagnosticos_alquimicos").update(data).eq("id", diagnostico_id).eq("terapeuta_id", terapeuta_id).execute()
-    return res.data[0] if res.data else {}
+    if not res.data:
+        raise HTTPException(status_code=404, detail="Diagnóstico não encontrado.")
+    return res.data[0]
 
 
 @router.delete("/diagnosticos/{diagnostico_id}", summary="Arquivar diagnóstico")
@@ -932,7 +955,7 @@ async def criar_anotacao(body: AnotacaoIn, authorization: str = Header(...)):
 async def editar_anotacao(anotacao_id: str, body: AnotacaoUpdate, authorization: str = Header(...)):
     terapeuta_id = _get_terapeuta_id(authorization)
     sb = get_supabase()
-    data = {k: v for k, v in body.model_dump().items() if v is not None}
+    data = body.model_dump(exclude_unset=True)
     data["atualizado_em"] = datetime.now(timezone.utc).isoformat()
     res = sb.table("anotacoes_prontuario").update(data).eq("id", anotacao_id).eq("terapeuta_id", terapeuta_id).execute()
     return res.data[0] if res.data else {}
@@ -1007,7 +1030,7 @@ async def criar_acompanhamento(body: AcompanhamentoIn, authorization: str = Head
 async def atualizar_acompanhamento(acomp_id: str, body: AcompanhamentoUpdate, authorization: str = Header(...)):
     terapeuta_id = _get_terapeuta_id(authorization)
     sb = get_supabase()
-    data = {k: v for k, v in body.model_dump().items() if v is not None}
+    data = body.model_dump(exclude_unset=True)
     data["atualizado_em"] = datetime.now(timezone.utc).isoformat()
     if data.get("status") == "realizado" and not data.get("data_realizado"):
         data["data_realizado"] = datetime.now(timezone.utc).date().isoformat()
@@ -1210,16 +1233,21 @@ async def relatorio_diagnosticos(
 
 @router.post("/auth/alterar-senha", summary="Alterar senha do terapeuta logado")
 async def alterar_senha(
-    body: dict,
+    body: AlterarSenhaIn,
     authorization: str = Header(...),
 ):
     terapeuta_id = _get_terapeuta_id(authorization)
-    nova_senha = body.get("nova_senha", "")
-    if not nova_senha or len(nova_senha) < 8:
+    if not body.nova_senha or len(body.nova_senha) < 8:
         raise HTTPException(status_code=400, detail="Senha deve ter no mínimo 8 caracteres.")
 
     sb = get_supabase()
-    senha_hash = bcrypt.hashpw(nova_senha.encode(), bcrypt.gensalt()).decode()
+
+    # Verificar senha atual antes de permitir alteração
+    auth_res = sb.table("portal_auth").select("senha_hash").eq("terapeuta_id", terapeuta_id).limit(1).execute()
+    if not auth_res.data or not _verificar_senha(body.senha_atual, auth_res.data[0]["senha_hash"]):
+        raise HTTPException(status_code=401, detail="Senha atual incorreta.")
+
+    senha_hash = bcrypt.hashpw(body.nova_senha.encode(), bcrypt.gensalt()).decode()
     sb.table("portal_auth").update({"senha_hash": senha_hash}).eq("terapeuta_id", terapeuta_id).execute()
     return {"ok": True}
 
@@ -1247,9 +1275,18 @@ async def obter_assinatura(authorization: str = Header(...)):
     terapeuta_id = _get_terapeuta_id(authorization)
     sb = get_supabase()
     try:
-        res = sb.table("assinaturas").select("*").eq("terapeuta_id", terapeuta_id).limit(1).execute()
+        res = sb.table("codigos_liberacao").select("*").eq("terapeuta_id", terapeuta_id).eq("ativo", True).order("criado_em", desc=True).limit(1).execute()
         if res.data:
-            return res.data[0]
+            codigo = res.data[0]
+            return {
+                "status": codigo.get("status_assinatura", "disponivel"),
+                "valor": 297,
+                "plano": "Mensal",
+                "codigo": codigo.get("codigo"),
+                "meses_contratados": codigo.get("meses_contratados", 1),
+                "criado_em": codigo.get("criado_em"),
+                "pagamentos": []
+            }
     except Exception:
         pass
     # Fallback trial
