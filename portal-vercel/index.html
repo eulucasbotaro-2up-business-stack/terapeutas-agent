@@ -54,6 +54,16 @@
     <style>
         [x-cloak] { display: none !important; }
 
+        /* Onboarding Tour */
+        .tour-highlight {
+            outline: 3px solid #7C3AED !important;
+            outline-offset: 4px;
+            border-radius: 8px;
+            z-index: 9997 !important;
+            position: relative;
+            transition: outline 0.2s ease;
+        }
+
         :root {
             --brand-primary: #6D28D9;
             --brand-secondary: #0D9488;
@@ -574,7 +584,7 @@
     <div class="sidebar-overlay" :class="sidebarOpen ? 'open' : ''" @click="sidebarOpen = false"></div>
 
     <!-- SIDEBAR -->
-    <aside class="w-[260px] text-white flex flex-col flex-shrink-0 fixed h-full z-40 sidebar-desktop" :class="sidebarOpen ? 'open' : ''" style="background: linear-gradient(180deg, #1e1145 0%, #2E1065 50%, #1a1040 100%);">
+    <aside id="tour-sidebar" class="w-[260px] text-white flex flex-col flex-shrink-0 fixed h-full z-40 sidebar-desktop" :class="sidebarOpen ? 'open' : ''" style="background: linear-gradient(180deg, #1e1145 0%, #2E1065 50%, #1a1040 100%);">
         <!-- Logo section -->
         <div class="p-5 border-b border-white/10">
             <div class="flex items-center gap-3">
@@ -593,6 +603,7 @@
             <p class="text-[10px] font-semibold uppercase tracking-widest text-purple-400/50 px-3 pt-2 pb-1.5">Menu</p>
             <template x-for="item in menuItems" :key="item.id">
                 <button @click="navegar(item.id); sidebarOpen = false"
+                    :id="'tour-menu-' + item.id"
                     class="sidebar-link w-full flex items-center gap-3 px-3 py-2.5 text-sm text-left min-h-[44px]"
                     :class="secao === item.id ? 'active text-white font-semibold' : 'text-purple-200/80 hover:text-white'">
                     <i :data-lucide="item.lucideIcon" class="w-[18px] h-[18px]" style="flex-shrink:0;"></i>
@@ -631,14 +642,14 @@
             <div class="flex items-center gap-2">
                 <span x-show="loading" class="spinner"></span>
                 <!-- Notification bell -->
-                <button class="relative p-2.5 text-gray-400 hover:text-brand-500 transition rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-brand-50" @click="navegar('acompanhamentos')">
+                <button id="tour-notificacoes" class="relative p-2.5 text-gray-400 hover:text-brand-500 transition rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-brand-50" @click="navegar('acompanhamentos')">
                     <i data-lucide="bell" class="w-5 h-5"></i>
                     <span x-show="notificationCount > 0"
                         class="absolute top-1.5 right-1.5 bg-red-500 text-white text-[10px] rounded-full w-4.5 h-4.5 flex items-center justify-center font-bold" style="width:18px;height:18px;font-size:10px;"
                         x-text="notificationCount"></span>
                 </button>
                 <!-- User avatar -->
-                <div class="flex items-center gap-2.5 pl-2 border-l border-gray-100 ml-1">
+                <div id="tour-perfil" class="flex items-center gap-2.5 pl-2 border-l border-gray-100 ml-1">
                     <div class="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-md"
                         style="background: linear-gradient(135deg, #7C3AED, #0D9488);"
                         x-text="terapeuta?.nome?.charAt(0)?.toUpperCase() || 'T'"></div>
@@ -660,7 +671,7 @@
             </div>
 
             <!-- Stats cards -->
-            <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+            <div id="tour-dashboard-stats" class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
                 <div class="glass-card-static p-4 sm:p-5 stat-card stat-purple">
                     <div class="flex items-center justify-between mb-2">
                         <p class="text-[10px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wide">Pacientes Ativos</p>
@@ -705,7 +716,7 @@
 
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                 <!-- Agenda do dia -->
-                <div class="glass-card-static p-5">
+                <div id="tour-agenda" class="glass-card-static p-5">
                     <h3 class="font-heading font-semibold text-gray-800 mb-4 flex items-center gap-2">
                         <i data-lucide="calendar" class="w-5 h-5 text-brand-500"></i> Agenda de Hoje
                     </h3>
@@ -766,7 +777,7 @@
         </div>
 
         <!-- ---- PACIENTES ---- -->
-        <div x-show="secao === 'pacientes'" class="fade-in">
+        <div id="tour-pacientes" x-show="secao === 'pacientes'" class="fade-in">
             <div x-show="!prontuario" class="fade-in">
             <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-5">
                 <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full sm:w-auto">
@@ -2323,6 +2334,14 @@
                 </div>
             </div>
 
+            <div class="glass-card p-5 mb-6">
+                <h3 class="text-sm font-heading font-semibold text-gray-800 mb-2">Tour da Plataforma</h3>
+                <p class="text-xs text-gray-500 mb-3">Reveja o tour guiado para conhecer as funcionalidades.</p>
+                <button @click="localStorage.removeItem('onboarding_tour_done'); showOnboarding = true; tourStep = 0; positionTourTooltip();" class="btn-ghost text-xs">
+                    Rever tour guiado
+                </button>
+            </div>
+
             <div class="glass-card-static p-6">
                 <h3 class="font-heading font-semibold text-gray-800 mb-5 flex items-center gap-2">
                     <i data-lucide="lock" class="w-5 h-5 text-gray-500"></i> Alterar Senha
@@ -2346,6 +2365,47 @@
 
         </div> <!-- /p-6 -->
     </main>
+</div>
+
+<!-- =============================================
+     ONBOARDING TOUR
+============================================= -->
+<div x-show="showOnboarding" x-cloak style="z-index:9999;">
+    <!-- Backdrop with spotlight -->
+    <div id="tour-backdrop" style="position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9998;transition:all 0.3s;pointer-events:none;"></div>
+
+    <!-- Tooltip -->
+    <div id="tour-tooltip" style="position:fixed;z-index:9999;width:340px;max-width:90vw;background:white;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.2);padding:24px;transition:all 0.3s ease;">
+        <!-- Progress dots -->
+        <div style="display:flex;gap:6px;margin-bottom:16px;">
+            <template x-for="(s, i) in tourSteps" :key="i">
+                <div style="width:8px;height:8px;border-radius:50%;transition:all 0.2s;"
+                    :style="i === tourStep ? 'background:#7C3AED;transform:scale(1.3)' : i < tourStep ? 'background:#C4B5FD' : 'background:#E5E7EB'"></div>
+            </template>
+        </div>
+
+        <!-- Content -->
+        <div style="margin-bottom:4px;display:flex;align-items:center;gap:8px;">
+            <span style="font-size:1.5rem;" x-text="tourSteps[tourStep]?.emoji || ''"></span>
+            <h3 style="font-size:1.1rem;font-weight:700;color:#1a1a1a;margin:0;" x-text="tourSteps[tourStep]?.title"></h3>
+        </div>
+        <p style="font-size:0.875rem;color:#6B7280;line-height:1.5;margin:8px 0 20px;" x-text="tourSteps[tourStep]?.description"></p>
+
+        <!-- Actions -->
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+            <button @click="skipTour()" style="background:none;border:none;color:#9CA3AF;font-size:0.8rem;cursor:pointer;">Pular tour</button>
+            <div style="display:flex;gap:8px;">
+                <button x-show="tourStep > 0" @click="prevTourStep()"
+                    style="background:none;border:1.5px solid #E5E7EB;border-radius:8px;padding:8px 16px;cursor:pointer;font-size:0.85rem;color:#374151;">
+                    Anterior
+                </button>
+                <button @click="nextTourStep()"
+                    style="background:linear-gradient(135deg,#7C3AED,#6D28D9);color:white;border:none;border-radius:8px;padding:8px 20px;cursor:pointer;font-size:0.85rem;font-weight:600;min-height:40px;">
+                    <span x-text="tourStep === tourSteps.length - 1 ? 'Começar!' : 'Próximo'"></span>
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- =============================================
@@ -2811,6 +2871,75 @@ function portalApp() {
         dashboardLoaded: false,
         notificationCount: 0,
 
+        // -- Onboarding Tour
+        showOnboarding: false,
+        tourStep: 0,
+        tourSteps: [
+            {
+                emoji: '\ud83d\udc4b',
+                title: 'Bem-vindo ao seu Portal!',
+                description: 'Vou te mostrar as principais funcionalidades em poucos passos. Aqui você acompanha tudo sobre seus pacientes.',
+                target: null,
+                position: 'center'
+            },
+            {
+                emoji: '\ud83d\udcca',
+                title: 'Dashboard',
+                description: 'Este é seu painel principal. Aqui você vê quantos pacientes ativos tem, a agenda do dia e os próximos retornos.',
+                target: '#tour-dashboard-stats',
+                position: 'bottom'
+            },
+            {
+                emoji: '\ud83d\udc65',
+                title: 'Seus Pacientes',
+                description: 'Clique em Pacientes no menu para ver todos. Cada paciente tem um prontuário completo com diagnósticos, notas e mapas natais.',
+                target: '#tour-menu-pacientes',
+                position: 'right'
+            },
+            {
+                emoji: '\ud83d\udcac',
+                title: 'Conversas WhatsApp',
+                description: 'Aqui você acompanha todo o histórico de conversas do seu agente IA com os pacientes pelo WhatsApp.',
+                target: '#tour-menu-conversas_whats',
+                position: 'right'
+            },
+            {
+                emoji: '\ud83d\udd2c',
+                title: 'Diagnósticos',
+                description: 'Acesse todos os diagnósticos alquímicos. O agente IA extrai automaticamente os diagnósticos das conversas para você revisar.',
+                target: '#tour-menu-diagnosticos',
+                position: 'right'
+            },
+            {
+                emoji: '\ud83d\udcc5',
+                title: 'Agenda',
+                description: 'Organize seus retornos e follow-ups. Você recebe notificações dos compromissos pendentes.',
+                target: '#tour-menu-acompanhamentos',
+                position: 'right'
+            },
+            {
+                emoji: '\ud83c\udf0d',
+                title: 'Mapas Natais',
+                description: 'Mapas natais e alquímicos gerados automaticamente pelo agente IA quando o paciente informa os dados de nascimento.',
+                target: '#tour-menu-mapas',
+                position: 'right'
+            },
+            {
+                emoji: '\u2699\ufe0f',
+                title: 'Configurações',
+                description: 'Personalize seu agente: nome, tom de voz, horário de atendimento e mensagem de boas-vindas.',
+                target: '#tour-menu-configuracoes',
+                position: 'right'
+            },
+            {
+                emoji: '\ud83d\ude80',
+                title: 'Tudo pronto!',
+                description: 'Agora é só usar. Mande seus pacientes conversar com seu agente pelo WhatsApp e acompanhe tudo por aqui. Bom trabalho!',
+                target: null,
+                position: 'center'
+            }
+        ],
+
         // -- Menu (with Lucide icon names)
         menuItems: [
             { id: 'dashboard',        label: 'Inicio',          icon: '\u{1F3E0}', lucideIcon: 'layout-dashboard', badge: 0 },
@@ -2930,6 +3059,7 @@ function portalApp() {
                     this.terapeuta = me;
                     this.autenticado = true;
                     await this.carregarDashboard();
+                    this.$nextTick(() => { this.initTour(); });
                 } catch (e) {
                     localStorage.removeItem('portal_token');
                     this.token = null;
@@ -2979,6 +3109,7 @@ function portalApp() {
                 localStorage.setItem('portal_token', this.token);
                 this.autenticado = true;
                 await this.carregarDashboard();
+                this.$nextTick(() => { this.initTour(); });
             } catch (e) {
                 this.loginErro = 'Erro de conexao. Tente novamente.';
             } finally {
@@ -2993,6 +3124,96 @@ function portalApp() {
             this.terapeuta = null;
             this.secao = 'dashboard';
             this.recuperarSenhaStep = 0;
+        },
+
+        // -- Onboarding Tour
+        initTour() {
+            const tourDone = localStorage.getItem('onboarding_tour_done');
+            if (!tourDone) {
+                this.showOnboarding = true;
+                this.tourStep = 0;
+                this.positionTourTooltip();
+            }
+        },
+
+        positionTourTooltip() {
+            this.$nextTick(() => {
+                const step = this.tourSteps[this.tourStep];
+                const tooltip = document.getElementById('tour-tooltip');
+                const backdrop = document.getElementById('tour-backdrop');
+                if (!tooltip) return;
+
+                // Remove previous highlight
+                document.querySelectorAll('.tour-highlight').forEach(el => el.classList.remove('tour-highlight'));
+
+                if (!step.target || step.position === 'center') {
+                    tooltip.style.top = '50%';
+                    tooltip.style.left = '50%';
+                    tooltip.style.transform = 'translate(-50%, -50%)';
+                    backdrop.style.background = 'rgba(0,0,0,0.6)';
+                    return;
+                }
+
+                const el = document.querySelector(step.target);
+                if (!el) {
+                    tooltip.style.top = '50%';
+                    tooltip.style.left = '50%';
+                    tooltip.style.transform = 'translate(-50%, -50%)';
+                    return;
+                }
+
+                // Highlight target
+                el.classList.add('tour-highlight');
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+                setTimeout(() => {
+                    const rect = el.getBoundingClientRect();
+                    const W = 340, GAP = 16;
+                    tooltip.style.transform = 'none';
+
+                    // Spotlight effect
+                    const cx = rect.left + rect.width / 2;
+                    const cy = rect.top + rect.height / 2;
+                    const r = Math.max(rect.width, rect.height) * 0.8 + 20;
+                    backdrop.style.background = 'radial-gradient(ellipse ' + r + 'px ' + (r * 0.7) + 'px at ' + cx + 'px ' + cy + 'px, transparent 80%, rgba(0,0,0,0.65) 100%)';
+
+                    if (step.position === 'bottom') {
+                        tooltip.style.top = (rect.bottom + GAP) + 'px';
+                        tooltip.style.left = Math.max(8, Math.min(rect.left + rect.width/2 - W/2, window.innerWidth - W - 8)) + 'px';
+                    } else if (step.position === 'right') {
+                        tooltip.style.top = Math.max(8, rect.top + rect.height/2 - 80) + 'px';
+                        tooltip.style.left = Math.min(rect.right + GAP, window.innerWidth - W - 8) + 'px';
+                    } else if (step.position === 'top') {
+                        tooltip.style.top = (rect.top - 200 - GAP) + 'px';
+                        tooltip.style.left = Math.max(8, rect.left + rect.width/2 - W/2) + 'px';
+                    } else if (step.position === 'left') {
+                        tooltip.style.top = Math.max(8, rect.top + rect.height/2 - 80) + 'px';
+                        tooltip.style.left = Math.max(8, rect.left - W - GAP) + 'px';
+                    }
+                }, 200);
+            });
+        },
+
+        nextTourStep() {
+            if (this.tourStep >= this.tourSteps.length - 1) {
+                this.skipTour();
+                return;
+            }
+            this.tourStep++;
+            this.positionTourTooltip();
+        },
+
+        prevTourStep() {
+            if (this.tourStep > 0) {
+                this.tourStep--;
+                this.positionTourTooltip();
+            }
+        },
+
+        skipTour() {
+            this.showOnboarding = false;
+            localStorage.setItem('onboarding_tour_done', 'true');
+            document.querySelectorAll('.tour-highlight').forEach(el => el.classList.remove('tour-highlight'));
         },
 
         // -- Password Recovery
@@ -3097,6 +3318,7 @@ function portalApp() {
                     this.recuperarSenhaStep = 0;
                     this.mostrarToast('Senha redefinida com sucesso!', true);
                     await this.carregarDashboard();
+                    this.$nextTick(() => { this.initTour(); });
                 } else {
                     this.recuperarSenhaStep = 0;
                     this.loginForm.email = this.recuperarForm.email;
