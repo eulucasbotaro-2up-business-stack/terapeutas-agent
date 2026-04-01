@@ -1056,7 +1056,7 @@
                 <div x-show="abaProntuario === 'elementos'" class="space-y-4">
                     <template x-if="!getLatestDiag() || !getLatestDiag().elementos_detalhes">
                         <div class="text-center py-8 text-gray-400 text-sm">
-                            <span class="text-3xl block mb-2">\u{1F702}</span>
+                            <span class="text-3xl block mb-2">&#x1F702;</span>
                             Nenhum dado de elementos registrado. Crie um diagnostico com detalhes dos elementos.
                         </div>
                     </template>
@@ -1095,8 +1095,8 @@
                                         <!-- Cross-reference com mapa astral -->
                                         <template x-if="(prontuario?.mapas_natais || []).length > 0">
                                             <p class="text-[10px] text-gray-400 mt-2 flex items-center gap-1">
-                                                <span>\u2B50</span>
-                                                <span>Mapa astral dispon\u00EDvel para cross-reference</span>
+                                                <span>⭐</span>
+                                                <span>Mapa astral disponível para cruzamento</span>
                                             </p>
                                         </template>
                                     </div>
@@ -1138,8 +1138,8 @@
                 <div x-show="abaProntuario === 'substancias'" class="space-y-4">
                     <template x-if="!getLatestDiag()">
                         <div class="text-center py-8 text-gray-400 text-sm">
-                            <span class="text-3xl block mb-2">\u2697\uFE0F</span>
-                            Nenhum diagnostico encontrado. Crie um diagnostico para visualizar as subst\u00E2ncias.
+                            <span class="text-3xl block mb-2">&#x2697;&#xFE0F;</span>
+                            Nenhum diagnostico encontrado. Crie um diagnostico para visualizar as substâncias.
                         </div>
                     </template>
                     <template x-if="getLatestDiag()">
@@ -1148,7 +1148,7 @@
                                 <!-- Enxofre (Sulfur) -->
                                 <div class="glass-card p-4 border border-orange-200">
                                     <div class="flex items-center gap-2 mb-1">
-                                        <span class="text-xl">\u{1F525}</span>
+                                        <span class="text-xl">🔥</span>
                                         <div>
                                             <p class="text-sm font-semibold text-gray-800">Enxofre</p>
                                             <p class="text-[10px] text-gray-400">Terra + Fogo</p>
@@ -1169,13 +1169,13 @@
                                 <!-- Sal (Salt) -->
                                 <div class="glass-card p-4 border border-gray-300">
                                     <div class="flex items-center gap-2 mb-1">
-                                        <span class="text-xl">\u{1F48E}</span>
+                                        <span class="text-xl">💎</span>
                                         <div>
                                             <p class="text-sm font-semibold text-gray-800">Sal</p>
                                             <p class="text-[10px] text-gray-400">Ponte entre elementos</p>
                                         </div>
                                     </div>
-                                    <p class="text-[10px] text-gray-500 mb-3">Melanc\u00F3lico, sem identidade, neutro</p>
+                                    <p class="text-[10px] text-gray-500 mb-3">Melancólico, sem identidade, neutro</p>
                                     <div class="flex items-center gap-2 mb-1">
                                         <div class="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden">
                                             <div class="h-full rounded-full transition-all duration-500 bg-gray-500" :style="'width:' + getSubstanciaPercentage('sal') + '%'"></div>
@@ -1190,13 +1190,13 @@
                                 <!-- Mercurio (Mercury) -->
                                 <div class="glass-card p-4 border border-cyan-200">
                                     <div class="flex items-center gap-2 mb-1">
-                                        <span class="text-xl">\u{1F30A}</span>
+                                        <span class="text-xl">🌊</span>
                                         <div>
-                                            <p class="text-sm font-semibold text-gray-800">Merc\u00FArio</p>
-                                            <p class="text-[10px] text-gray-400">Ar + \u00C1gua</p>
+                                            <p class="text-sm font-semibold text-gray-800">Mercúrio</p>
+                                            <p class="text-[10px] text-gray-400">Ar + Água</p>
                                         </div>
                                     </div>
-                                    <p class="text-[10px] text-gray-500 mb-3">Flu\u00EDdo, comunicativo, adaptativo</p>
+                                    <p class="text-[10px] text-gray-500 mb-3">Fluído, comunicativo, adaptativo</p>
                                     <div class="flex items-center gap-2 mb-1">
                                         <div class="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden">
                                             <div class="h-full rounded-full transition-all duration-500 bg-cyan-500" :style="'width:' + getSubstanciaPercentage('mercurio') + '%'"></div>
@@ -1211,9 +1211,9 @@
 
                             <div class="glass-card p-3 mt-3 bg-warm-50 border border-gray-200">
                                 <p class="text-xs text-gray-500">
-                                    <span class="font-semibold text-gray-700">Como ler:</span> As subst\u00E2ncias s\u00E3o combina\u00E7\u00F5es dos 4 elementos. Quando uma subst\u00E2ncia est\u00E1 predominante, indica o padr\u00E3o comportamental dominante do paciente.
+                                    <span class="font-semibold text-gray-700">Como ler:</span> As substâncias são combinações dos 4 elementos. Quando uma substância está predominante, indica o padrão comportamental dominante do paciente.
                                 </p>
-                                <p x-show="!getLatestDiag()?.substancias" class="text-[10px] text-amber-600 mt-1">\u26A0\uFE0F Valores estimados a partir dos elementos (sem dados diretos de subst\u00E2ncias)</p>
+                                <p x-show="!getLatestDiag()?.substancias" class="text-[10px] text-amber-600 mt-1">&#x26A0;&#xFE0F; Valores estimados a partir dos elementos (sem dados diretos de substâncias)</p>
                             </div>
 
                             <p class="text-[10px] text-gray-400 mt-3 text-right" x-text="'Baseado no diagnostico de ' + formatarDataCurta(getLatestDiag()?.sessao_data)"></p>
@@ -1225,7 +1225,7 @@
                 <div x-show="abaProntuario === 'dna_alquimico'" class="space-y-4">
                     <template x-if="!getLatestDiag()">
                         <div class="text-center py-8 text-gray-400 text-sm">
-                            <span class="text-3xl block mb-2">\u{1F9EC}</span>
+                            <span class="text-3xl block mb-2">🧬</span>
                             Nenhum diagnostico com dados de DNA encontrado.
                         </div>
                     </template>
@@ -1234,8 +1234,8 @@
                             <!-- Setenio atual -->
                             <div x-show="getLatestDiag()?.setenio_atual" class="glass-card p-4 border border-brand-200 mb-3">
                                 <div class="flex items-center gap-2 mb-2">
-                                    <span class="text-lg">\u{1F504}</span>
-                                    <span class="text-sm font-semibold text-gray-800">Set\u00EAnio Atual</span>
+                                    <span class="text-lg">🔄</span>
+                                    <span class="text-sm font-semibold text-gray-800">Setênio Atual</span>
                                 </div>
                                 <div class="flex items-center gap-3">
                                     <div class="w-12 h-12 rounded-full bg-brand-100 border-2 border-brand-300 flex items-center justify-center">
@@ -1253,10 +1253,10 @@
                                 <!-- Serpente do Pai -->
                                 <div class="glass-card p-4 border border-indigo-200">
                                     <div class="flex items-center gap-2 mb-3">
-                                        <span class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-sm">\u{1F40D}</span>
+                                        <span class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-sm">🐍</span>
                                         <div>
                                             <p class="text-sm font-semibold text-gray-800">Serpente do Pai</p>
-                                            <p class="text-[10px] text-gray-400">Heran\u00E7a paterna</p>
+                                            <p class="text-[10px] text-gray-400">Herança paterna</p>
                                         </div>
                                     </div>
                                     <div x-show="(getLatestDiag()?.dna_comprometido || []).length > 0">
@@ -1268,7 +1268,7 @@
                                         </div>
                                     </div>
                                     <div x-show="getLatestDiag()?.serpentes_descricao" class="mt-2">
-                                        <p class="text-xs text-gray-500 mb-1">Descri\u00E7\u00E3o:</p>
+                                        <p class="text-xs text-gray-500 mb-1">Descrição:</p>
                                         <p class="text-xs text-gray-600 leading-relaxed" x-text="getLatestDiag()?.serpentes_descricao"></p>
                                     </div>
                                     <div x-show="!(getLatestDiag()?.dna_comprometido || []).length && !getLatestDiag()?.serpentes_descricao" class="text-xs text-gray-400 italic">
@@ -1279,10 +1279,10 @@
                                 <!-- Serpente da Mae -->
                                 <div class="glass-card p-4 border border-pink-200">
                                     <div class="flex items-center gap-2 mb-3">
-                                        <span class="w-8 h-8 rounded-full bg-pink-100 flex items-center justify-center text-sm">\u{1F40D}</span>
+                                        <span class="w-8 h-8 rounded-full bg-pink-100 flex items-center justify-center text-sm">🐍</span>
                                         <div>
-                                            <p class="text-sm font-semibold text-gray-800">Serpente da M\u00E3e</p>
-                                            <p class="text-[10px] text-gray-400">Heran\u00E7a materna</p>
+                                            <p class="text-sm font-semibold text-gray-800">Serpente da Mãe</p>
+                                            <p class="text-[10px] text-gray-400">Herança materna</p>
                                         </div>
                                     </div>
                                     <div x-show="(getLatestDiag()?.serpentes_ativas || []).length > 0">
@@ -1294,7 +1294,7 @@
                                         </div>
                                     </div>
                                     <div x-show="getLatestDiag()?.dna_descricao" class="mt-2">
-                                        <p class="text-xs text-gray-500 mb-1">Descri\u00E7\u00E3o:</p>
+                                        <p class="text-xs text-gray-500 mb-1">Descrição:</p>
                                         <p class="text-xs text-gray-600 leading-relaxed" x-text="getLatestDiag()?.dna_descricao"></p>
                                     </div>
                                     <div x-show="!(getLatestDiag()?.serpentes_ativas || []).length && !getLatestDiag()?.dna_descricao" class="text-xs text-gray-400 italic">
@@ -1312,8 +1312,8 @@
                 <div x-show="abaProntuario === 'progresso'" class="space-y-4">
                     <template x-if="(prontuario?.diagnosticos || []).length === 0">
                         <div class="text-center py-8 text-gray-400 text-sm">
-                            <span class="text-3xl block mb-2">\u{1F4C8}</span>
-                            Nenhum diagnostico para avaliar progresso. Crie diagnosticos para acompanhar a evolu\u00E7\u00E3o.
+                            <span class="text-3xl block mb-2">📈</span>
+                            Nenhum diagnostico para avaliar progresso. Crie diagnosticos para acompanhar a evolução.
                         </div>
                     </template>
                     <template x-if="(prontuario?.diagnosticos || []).length > 0">
@@ -1337,17 +1337,17 @@
                             <!-- Alerta de surto -->
                             <div x-show="detectSurto()" class="glass-card p-3 mb-3 border-l-4 border-red-400 bg-red-50">
                                 <div class="flex items-center gap-2">
-                                    <span class="text-sm">\u{1F6A8}</span>
+                                    <span class="text-sm">🚨</span>
                                     <div>
                                         <p class="text-xs font-semibold text-red-700">Alerta de Surto</p>
-                                        <p class="text-[10px] text-red-600">Varia\u00E7\u00F5es bruscas nos elementos entre consultas detectadas</p>
+                                        <p class="text-[10px] text-red-600">Variações bruscas nos elementos entre consultas detectadas</p>
                                     </div>
                                 </div>
                             </div>
 
                             <!-- Timeline de diagnosticos -->
                             <div class="space-y-2">
-                                <p class="text-xs font-semibold text-gray-600 mb-2">Hist\u00F3rico de Diagnosticos</p>
+                                <p class="text-xs font-semibold text-gray-600 mb-2">Histórico de Diagnosticos</p>
                                 <template x-for="(d, idx) in [...(prontuario?.diagnosticos || [])].sort((a,b) => new Date(b.sessao_data || b.criado_em) - new Date(a.sessao_data || a.criado_em))" :key="d.id">
                                     <div class="glass-card p-3 relative">
                                         <div class="flex items-center justify-between mb-2">
@@ -1893,81 +1893,209 @@
 
         <!-- ---- FINANCEIRO ---- -->
         <div x-show="secao === 'financeiro'" class="fade-in">
+            <!-- Header com ações -->
             <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
                 <div>
-                    <h2 class="text-xl font-heading font-bold text-gray-800">Financeiro</h2>
-                    <p class="text-sm text-gray-400 mt-0.5">Vis\u00E3o geral das receitas e m\u00E9tricas</p>
+                    <h3 class="text-lg font-heading font-bold text-gray-900">Financeiro</h3>
+                    <p class="text-sm text-gray-500">Visão geral das receitas e métricas</p>
+                </div>
+                <div class="flex gap-2">
+                    <button class="btn-ghost text-xs flex items-center gap-1.5" @click="window.print()">
+                        <i data-lucide="download" class="w-4 h-4"></i> Exportar
+                    </button>
+                    <button class="btn-primary text-xs flex items-center gap-1.5" onclick="window.open('https://www.asaas.com', '_blank')">
+                        <i data-lucide="external-link" class="w-4 h-4"></i> Abrir Asaas
+                    </button>
                 </div>
             </div>
 
-            <!-- Cards de metricas -->
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+            <!-- KPI Cards -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <!-- Receita Mensal -->
                 <div class="glass-card p-5">
-                    <div class="flex items-center gap-3 mb-2">
-                        <div class="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-11 h-11 rounded-xl bg-green-100 flex items-center justify-center">
                             <i data-lucide="dollar-sign" class="w-5 h-5 text-green-600"></i>
                         </div>
-                        <div>
-                            <p class="text-xs text-gray-400">Receita Mensal</p>
-                            <p class="text-lg font-heading font-bold text-gray-800" x-text="'R$ ' + ((financeiroData?.pacientes_ativos || stats?.pacientes_ativos || 0) * 297).toLocaleString('pt-BR')"></p>
+                        <div class="min-w-0">
+                            <p class="text-xs text-gray-500 font-medium">Receita Mensal</p>
+                            <p class="text-xl font-heading font-bold text-gray-900" x-text="'R$ ' + ((financeiroData?.pacientes_ativos || stats?.pacientes_ativos || 0) * 297).toLocaleString('pt-BR')"></p>
                         </div>
                     </div>
-                    <p class="text-[10px] text-gray-400">Estimativa baseada em pacientes ativos</p>
+                    <div class="flex items-center gap-1 text-[11px] text-green-600">
+                        <i data-lucide="trending-up" class="w-3.5 h-3.5"></i>
+                        <span>Estimativa baseada em pacientes ativos</span>
+                    </div>
                 </div>
 
+                <!-- Pacientes Ativos -->
                 <div class="glass-card p-5">
-                    <div class="flex items-center gap-3 mb-2">
-                        <div class="w-10 h-10 rounded-xl bg-brand-50 flex items-center justify-center">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-11 h-11 rounded-xl bg-brand-50 flex items-center justify-center">
                             <i data-lucide="users" class="w-5 h-5 text-brand-600"></i>
                         </div>
-                        <div>
-                            <p class="text-xs text-gray-400">Pacientes Ativos</p>
-                            <p class="text-lg font-heading font-bold text-gray-800" x-text="financeiroData?.pacientes_ativos || stats?.pacientes_ativos || 0"></p>
+                        <div class="min-w-0">
+                            <p class="text-xs text-gray-500 font-medium">Pacientes Ativos</p>
+                            <p class="text-xl font-heading font-bold text-gray-900" x-text="financeiroData?.pacientes_ativos || stats?.pacientes_ativos || 0"></p>
                         </div>
                     </div>
-                    <p class="text-[10px] text-gray-400">Total de pacientes atendidos</p>
+                    <div class="flex items-center gap-1 text-[11px] text-brand-600">
+                        <i data-lucide="user-check" class="w-3.5 h-3.5"></i>
+                        <span>Total de pacientes cadastrados</span>
+                    </div>
+                </div>
+
+                <!-- Receita por Paciente -->
+                <div class="glass-card p-5">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-11 h-11 rounded-xl bg-teal-50 flex items-center justify-center">
+                            <i data-lucide="receipt" class="w-5 h-5 text-teal-600"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-xs text-gray-500 font-medium">Receita / Paciente</p>
+                            <p class="text-xl font-heading font-bold text-gray-900">R$ 297</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1 text-[11px] text-teal-600">
+                        <i data-lucide="bar-chart-3" class="w-3.5 h-3.5"></i>
+                        <span>Valor médio por paciente/mês</span>
+                    </div>
+                </div>
+
+                <!-- Taxa de Ocupação -->
+                <div class="glass-card p-5">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-11 h-11 rounded-xl bg-amber-50 flex items-center justify-center">
+                            <i data-lucide="activity" class="w-5 h-5 text-amber-600"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-xs text-gray-500 font-medium">Taxa de Ocupação</p>
+                            <p class="text-xl font-heading font-bold text-gray-900" x-text="((financeiroData?.pacientes_ativos || stats?.pacientes_ativos || 0) > 0 ? Math.min(100, Math.round(((financeiroData?.diagnosticos_mes || 0) / (financeiroData?.pacientes_ativos || stats?.pacientes_ativos || 1)) * 100)) : 0) + '%'"></p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1 text-[11px] text-amber-600">
+                        <i data-lucide="pie-chart" class="w-3.5 h-3.5"></i>
+                        <span>Diagnósticos / pacientes este mês</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabela de receita por paciente -->
+            <div class="glass-card p-5 mb-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h4 class="text-sm font-heading font-semibold text-gray-800">Detalhamento de Receita</h4>
+                    <span class="badge bg-brand-50 text-brand-700 text-xs px-2.5 py-1" x-text="(pacientes?.filter(p => p.ativo !== false)?.length || 0) + ' ativos'"></span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="border-b border-gray-200">
+                                <th class="text-left py-2.5 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Paciente</th>
+                                <th class="text-left py-2.5 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+                                <th class="text-right py-2.5 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Valor</th>
+                                <th class="text-right py-2.5 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden sm:table-cell">Última conversa</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="pac in (pacientes || []).filter(p => p.ativo !== false).slice(0, 10)" :key="pac.id || pac.nome">
+                                <tr class="border-b border-gray-100 hover:bg-gray-50/50 transition-colors">
+                                    <td class="py-3 px-3">
+                                        <div class="flex items-center gap-2.5">
+                                            <div class="w-8 h-8 rounded-full bg-brand-100 flex items-center justify-center text-xs font-bold text-brand-700" x-text="(pac.nome || 'P').charAt(0).toUpperCase()"></div>
+                                            <span class="font-medium text-gray-800" x-text="pac.nome || 'Paciente'"></span>
+                                        </div>
+                                    </td>
+                                    <td class="py-3 px-3">
+                                        <span class="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-green-50 text-green-700">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                                            Ativo
+                                        </span>
+                                    </td>
+                                    <td class="py-3 px-3 text-right font-semibold text-gray-800">R$ 297</td>
+                                    <td class="py-3 px-3 text-right text-gray-500 hidden sm:table-cell" x-text="pac.ultima_conversa ? new Date(pac.ultima_conversa).toLocaleDateString('pt-BR') : '—'"></td>
+                                </tr>
+                            </template>
+                        </tbody>
+                        <tfoot>
+                            <tr class="border-t-2 border-gray-200">
+                                <td class="py-3 px-3 font-heading font-bold text-gray-900" colspan="2">Total</td>
+                                <td class="py-3 px-3 text-right font-heading font-bold text-gray-900" x-text="'R$ ' + ((pacientes || []).filter(p => p.ativo !== false).length * 297).toLocaleString('pt-BR')"></td>
+                                <td class="hidden sm:table-cell"></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                <template x-if="!pacientes || pacientes.filter(p => p.ativo !== false).length === 0">
+                    <div class="text-center py-8">
+                        <i data-lucide="inbox" class="w-8 h-8 text-gray-300 mx-auto mb-2"></i>
+                        <p class="text-sm text-gray-400">Nenhum paciente ativo encontrado</p>
+                    </div>
+                </template>
+            </div>
+
+            <!-- Resumo mensal: Consultas + Diagnósticos -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                <div class="glass-card p-5">
+                    <div class="flex items-center gap-3">
+                        <div class="w-11 h-11 rounded-xl bg-blue-50 flex items-center justify-center">
+                            <i data-lucide="message-square" class="w-5 h-5 text-blue-600"></i>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-500 font-medium">Conversas este mês</p>
+                            <p class="text-2xl font-heading font-bold text-gray-900" x-text="financeiroData?.conversas_mes || 0"></p>
+                        </div>
+                    </div>
+                    <div class="mt-3 pt-3 border-t border-gray-100">
+                        <div class="flex items-center justify-between text-xs text-gray-500">
+                            <span>Interações via WhatsApp</span>
+                            <i data-lucide="message-circle" class="w-3.5 h-3.5 text-blue-400"></i>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="glass-card p-5">
-                    <div class="flex items-center gap-3 mb-2">
-                        <div class="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center">
-                            <i data-lucide="trending-up" class="w-5 h-5 text-teal-600"></i>
+                    <div class="flex items-center gap-3">
+                        <div class="w-11 h-11 rounded-xl bg-purple-50 flex items-center justify-center">
+                            <i data-lucide="clipboard-check" class="w-5 h-5 text-purple-600"></i>
                         </div>
                         <div>
-                            <p class="text-xs text-gray-400">Receita / Paciente</p>
-                            <p class="text-lg font-heading font-bold text-gray-800">R$ 297</p>
+                            <p class="text-xs text-gray-500 font-medium">Diagnósticos este mês</p>
+                            <p class="text-2xl font-heading font-bold text-gray-900" x-text="financeiroData?.diagnosticos_mes || 0"></p>
                         </div>
                     </div>
-                    <p class="text-[10px] text-gray-400">Valor m\u00E9dio por paciente/m\u00EAs</p>
-                </div>
-            </div>
-
-            <!-- Grafico placeholder -->
-            <div class="glass-card p-5 mb-6">
-                <h3 class="text-sm font-heading font-semibold text-gray-700 mb-4">Receita dos \u00FAltimos 6 meses</h3>
-                <div class="flex items-end gap-2 h-40">
-                    <template x-for="(mes, idx) in ['Out','Nov','Dez','Jan','Fev','Mar']" :key="mes">
-                        <div class="flex-1 flex flex-col items-center gap-1">
-                            <div class="w-full rounded-t-lg transition-all duration-500"
-                                :style="'height:' + (20 + Math.random() * 80) + '%;background: linear-gradient(to top, #7C3AED, #a78bfa);'"></div>
-                            <span class="text-[10px] text-gray-400" x-text="mes"></span>
+                    <div class="mt-3 pt-3 border-t border-gray-100">
+                        <div class="flex items-center justify-between text-xs text-gray-500">
+                            <span>Análises realizadas pelo agente</span>
+                            <i data-lucide="brain" class="w-3.5 h-3.5 text-purple-400"></i>
                         </div>
-                    </template>
+                    </div>
                 </div>
-                <p class="text-[10px] text-gray-400 mt-3 text-center">* Dados ilustrativos. Integra\u00E7\u00E3o com Asaas em breve.</p>
             </div>
 
-            <!-- Empty state / instrucoes -->
-            <div class="glass-card p-6 text-center border border-dashed border-gray-300">
-                <div class="w-14 h-14 mx-auto mb-3 rounded-full bg-amber-50 flex items-center justify-center">
-                    <i data-lucide="wallet" class="w-6 h-6 text-amber-500"></i>
+            <!-- CTA Integração Asaas -->
+            <div class="glass-card p-6 border border-brand-100 bg-gradient-to-br from-brand-50/30 to-teal-50/20">
+                <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                    <div class="w-14 h-14 rounded-2xl bg-white shadow-sm flex items-center justify-center flex-shrink-0">
+                        <i data-lucide="wallet" class="w-7 h-7 text-brand-600"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <h4 class="font-heading font-bold text-gray-900 mb-1">Integração com Asaas</h4>
+                        <p class="text-sm text-gray-600 leading-relaxed">Automatize cobranças, acompanhe pagamentos recebidos e controle inadimplência diretamente pelo portal. Configure sua conta Asaas para começar.</p>
+                    </div>
+                    <div class="flex gap-2 w-full sm:w-auto flex-shrink-0">
+                        <button class="btn-primary text-xs flex items-center gap-1.5 flex-1 sm:flex-initial justify-center min-h-[44px]" onclick="window.open('https://www.asaas.com', '_blank')">
+                            <i data-lucide="settings" class="w-4 h-4"></i> Configurar Asaas
+                        </button>
+                        <button class="btn-ghost text-xs flex items-center gap-1.5 flex-1 sm:flex-initial justify-center min-h-[44px]" onclick="window.open('https://docs.asaas.com', '_blank')">
+                            <i data-lucide="help-circle" class="w-4 h-4"></i> Saiba mais
+                        </button>
+                    </div>
                 </div>
-                <h3 class="font-heading font-semibold text-gray-700 mb-1">Integra\u00E7\u00E3o Financeira</h3>
-                <p class="text-sm text-gray-400 max-w-md mx-auto">Em breve voc\u00EA poder\u00E1 visualizar cobran\u00E7as, pagamentos recebidos e inadimpl\u00EAncia diretamente pelo portal. A integra\u00E7\u00E3o com Asaas est\u00E1 sendo preparada.</p>
-                <div class="flex flex-wrap justify-center gap-2 mt-4">
-                    <span class="badge bg-green-50 text-green-700 text-xs px-3 py-1">Cobran\u00E7as autom\u00E1ticas</span>
-                    <span class="badge bg-blue-50 text-blue-700 text-xs px-3 py-1">Recib\u00F3s digitais</span>
-                    <span class="badge bg-brand-50 text-brand-700 text-xs px-3 py-1">Relat\u00F3rios de receita</span>
+                <div class="flex flex-wrap gap-2 mt-4 pt-4 border-t border-brand-100/50">
+                    <span class="badge bg-green-50 text-green-700 text-xs px-3 py-1">Cobranças automáticas</span>
+                    <span class="badge bg-blue-50 text-blue-700 text-xs px-3 py-1">Recibos digitais</span>
+                    <span class="badge bg-brand-50 text-brand-700 text-xs px-3 py-1">Relatórios de receita</span>
+                    <span class="badge bg-amber-50 text-amber-700 text-xs px-3 py-1">Controle de inadimplência</span>
                 </div>
             </div>
         </div>
