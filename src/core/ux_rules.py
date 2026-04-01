@@ -123,19 +123,19 @@ _ABERTURAS_ALTERNATIVAS = [
 def verificar_grounding(resposta: str, chunks: list[dict]) -> str:
     """
     Verifica se a resposta esta ancorada nos chunks fornecidos.
-    Detecta sinais de alucinacao e emite warnings.
+    Detecta sinais de alucinacao e REMOVE trechos suspeitos.
 
-    Sinais de alucinacao:
-    - Cita conceitos muito especificos que nao aparecem em nenhum chunk
-    - Menciona nomes proprios que nao estao nos chunks
-    - Usa afirmacoes categoricas sobre dosagens/protocolos sem base nos chunks
+    Comportamento ATIVO (nao apenas logging):
+    - Florais citados que nao estao nos chunks: REMOVE a frase inteira
+    - Dosagens inventadas: REMOVE a menção
+    - Loga tudo para auditoria
 
     Args:
         resposta: Texto da resposta gerada.
         chunks: Lista de chunks usados como contexto.
 
     Returns:
-        Resposta original (nao modifica, apenas loga warnings).
+        Resposta com trechos alucinados removidos.
     """
     if not chunks or not resposta:
         return resposta
@@ -145,36 +145,72 @@ def verificar_grounding(resposta: str, chunks: list[dict]) -> str:
         c.get("conteudo", c.get("content", "")).lower()
         for c in chunks
     )
-    resposta_lower = resposta.lower()
 
-    # Verifica menções a florais especificos — se cita um floral pelo nome,
-    # o nome deveria aparecer em pelo menos um chunk
+    # Termos genericos da escola que sao conceitos, nao florais especificos
+    _CONCEITOS_ESCOLA = {
+        "elementos", "equilibrio", "sintese", "primus", "torus", "matrix",
+        "dna", "tartarus", "umbilical", "cruzes", "vitriol", "alliastros",
+        "nigredo", "albedo", "rubedo", "phoenix", "pletora", "fluxus",
+        "corpus", "celestes", "rescue", "continuum",
+    }
+
+    alucinacoes_encontradas = []
+
+    # 1. Verifica florais especificos nao presentes nos chunks
     _florais_pattern = re.compile(
-        r'(?:floral|composto|essencia|kit)\s+(?:sutil\s+)?([A-Z][a-zà-ú]+(?:\s+(?:do|da|dos|das|de)\s+[A-Z][a-zà-ú]+)?)',
+        r'(?:floral|composto|essencia)\s+(?:sutil\s+)?([A-Z][a-zà-ú]+(?:\s+(?:do|da|dos|das|de)\s+[A-Z][a-zà-ú]+)?)',
         re.IGNORECASE
     )
     florais_na_resposta = _florais_pattern.findall(resposta)
     for floral in florais_na_resposta:
         floral_lower = floral.lower().strip()
-        if len(floral_lower) > 3 and floral_lower not in conteudo_chunks:
-            # Termos genericos que nao sao florais especificos
-            _genericos = {"elementos", "equilibrio", "sintese", "primus", "torus", "matrix", "dna"}
-            if floral_lower not in _genericos:
-                logger.warning(
-                    f"[GROUNDING] Possivel alucinacao: floral '{floral}' citado na resposta "
-                    f"mas NAO encontrado nos chunks. Pode ser invencao do modelo."
-                )
+        if (len(floral_lower) > 3
+                and floral_lower not in conteudo_chunks
+                and floral_lower not in _CONCEITOS_ESCOLA):
+            alucinacoes_encontradas.append(("floral", floral))
+            logger.warning(
+                f"[GROUNDING] ALUCINACAO REMOVIDA: floral '{floral}' "
+                f"NAO encontrado nos chunks."
+            )
 
-    # Verifica menções a dosagens especificas (gotas, ml, horarios)
+    # 2. Verifica dosagens especificas (gotas, ml)
     _dosagem_pattern = re.compile(r'\d+\s*(?:gotas?|ml|drops?)', re.IGNORECASE)
     dosagens_na_resposta = _dosagem_pattern.findall(resposta)
     for dosagem in dosagens_na_resposta:
         dosagem_lower = dosagem.lower().strip()
         if dosagem_lower not in conteudo_chunks:
+            alucinacoes_encontradas.append(("dosagem", dosagem))
             logger.warning(
-                f"[GROUNDING] Possivel alucinacao: dosagem '{dosagem}' citada na resposta "
-                f"mas NAO encontrada nos chunks. Pode ser invencao do modelo."
+                f"[GROUNDING] ALUCINACAO REMOVIDA: dosagem '{dosagem}' "
+                f"NAO encontrada nos chunks."
             )
+
+    # 3. Remove trechos alucinados da resposta
+    if alucinacoes_encontradas:
+        resultado = resposta
+        for tipo, termo in alucinacoes_encontradas:
+            if tipo == "floral":
+                # Remove a frase inteira que contem o floral inventado
+                # (do inicio da frase ate o proximo ponto final)
+                padrao = re.compile(
+                    r'[^.!?\n]*\b' + re.escape(termo) + r'\b[^.!?\n]*[.!?]?\s*',
+                    re.IGNORECASE
+                )
+                resultado = padrao.sub('', resultado)
+            elif tipo == "dosagem":
+                # Remove apenas a mencao de dosagem
+                resultado = resultado.replace(termo, '___')
+
+        # Limpa artefatos da remocao
+        resultado = re.sub(r'\s*___\s*', ' ', resultado)
+        resultado = re.sub(r'\n\s*\n\s*\n', '\n\n', resultado)
+        resultado = resultado.strip()
+
+        logger.info(
+            f"[GROUNDING] {len(alucinacoes_encontradas)} alucinacao(oes) removidas. "
+            f"Resposta reduzida de {len(resposta)} para {len(resultado)} chars."
+        )
+        return resultado
 
     return resposta
 
