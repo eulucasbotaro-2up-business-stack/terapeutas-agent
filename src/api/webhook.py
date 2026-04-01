@@ -483,6 +483,28 @@ def _extrair_audio_bytes(b64_data: str) -> bytes | None:
         return None
 
 
+def _criar_acesso_portal_sync(email: str, senha: str, nome: str, telefone: str) -> str:
+    """Cria terapeuta + portal_auth. Retorna terapeuta_id. Sync — chamar via to_thread."""
+    import bcrypt
+    from src.core.supabase_client import get_supabase
+    from uuid import uuid4
+    sb = get_supabase()
+    existing = sb.table("terapeutas").select("id").eq("email", email).limit(1).execute()
+    if existing.data:
+        t_id = existing.data[0]["id"]
+        sb.table("terapeutas").update({"nome": nome, "telefone": telefone}).eq("id", t_id).execute()
+    else:
+        t_id = str(uuid4())
+        sb.table("terapeutas").insert({"id": t_id, "nome": nome, "email": email, "telefone": telefone, "especialidade": "Alquimia Terapêutica"}).execute()
+    senha_hash = bcrypt.hashpw(senha.encode(), bcrypt.gensalt()).decode()
+    existing_auth = sb.table("portal_auth").select("id").eq("terapeuta_id", t_id).limit(1).execute()
+    if existing_auth.data:
+        sb.table("portal_auth").update({"senha_hash": senha_hash}).eq("terapeuta_id", t_id).execute()
+    else:
+        sb.table("portal_auth").insert({"terapeuta_id": t_id, "senha_hash": senha_hash}).execute()
+    return t_id
+
+
 def _extrair_texto_para_codigo(texto: str) -> str:
     """
     Remove prefixos de mídia transcrita do texto antes de validar como código.
@@ -1233,41 +1255,18 @@ async def _processar_mensagem(payload: dict) -> None:
                     senha = estado.onboarding_senha_temp
                     nome = estado.nome_usuario
 
+                    if not email or not senha:
+                        logger.error(f"[ONBOARDING] email ou senha None — estado corrompido para {numero_paciente}")
+                        await asyncio.to_thread(atualizar_onboarding, terapeuta_id, numero_paciente, "email")
+                        msg_retry = "Houve um problema. Vamos recomeçar — qual seu e-mail?"
+                        await evolution.enviar_mensagem(instance=instance_name, numero=numero_paciente, texto=msg_retry)
+                        await _salvar_conversa(terapeuta_id=terapeuta_id, paciente_numero=numero_paciente, mensagem_paciente="[SENHA_OCULTADA]", resposta_agente="[ONBOARDING_ESTADO_CORROMPIDO]", intencao="ONBOARDING")
+                        return
+
                     try:
-                        from src.core.supabase_client import get_supabase as _get_sb
-                        import bcrypt
-                        sb = _get_sb()
-
-                        # 1. Criar ou atualizar terapeuta
-                        existing = sb.table("terapeutas").select("id").eq("email", email).limit(1).execute()
-                        if existing.data:
-                            t_id = existing.data[0]["id"]
-                            sb.table("terapeutas").update({"nome": nome, "telefone": numero_paciente}).eq("id", t_id).execute()
-                        else:
-                            t_id = str(uuid4())
-                            sb.table("terapeutas").insert({
-                                "id": t_id,
-                                "nome": nome,
-                                "email": email,
-                                "telefone": numero_paciente,
-                                "especialidade": "Alquimia Terapêutica",
-                            }).execute()
-
-                        # 2. Criar portal_auth
-                        senha_hash = bcrypt.hashpw(senha.encode(), bcrypt.gensalt()).decode()
-                        existing_auth = sb.table("portal_auth").select("id").eq("terapeuta_id", t_id).limit(1).execute()
-                        if existing_auth.data:
-                            sb.table("portal_auth").update({"senha_hash": senha_hash}).eq("terapeuta_id", t_id).execute()
-                        else:
-                            sb.table("portal_auth").insert({
-                                "terapeuta_id": t_id,
-                                "senha_hash": senha_hash,
-                            }).execute()
-
-                        # 3. Limpar onboarding
+                        t_id = await asyncio.to_thread(_criar_acesso_portal_sync, email, senha, nome, numero_paciente)
                         await asyncio.to_thread(limpar_onboarding, terapeuta_id, numero_paciente)
 
-                        # 4. Enviar credenciais
                         msg1 = f"Tudo pronto, {nome}! Seu acesso ao portal foi criado com sucesso."
                         await evolution.enviar_mensagem(instance=instance_name, numero=numero_paciente, texto=msg1)
                         await asyncio.sleep(1.5)
@@ -1289,14 +1288,21 @@ async def _processar_mensagem(payload: dict) -> None:
 
                     except Exception as e:
                         logger.error(f"[ONBOARDING] Erro ao criar acesso: {e}", exc_info=True)
-                        await asyncio.to_thread(limpar_onboarding, terapeuta_id, numero_paciente)
-                        msg_erro = "Houve um problema ao criar seu acesso. Mas não se preocupe, você já pode usar o WhatsApp normalmente. O acesso à plataforma será criado em breve."
+                        # Don't clear onboarding — let user retry
+                        await asyncio.to_thread(atualizar_onboarding, terapeuta_id, numero_paciente, "confirmar_senha", email=email, senha_temp=senha)
+                        msg_erro = "Houve um problema ao criar seu acesso. Tente novamente — sua senha está correta? (sim/não)"
                         await evolution.enviar_mensagem(instance=instance_name, numero=numero_paciente, texto=msg_erro)
                 else:
                     await asyncio.to_thread(atualizar_onboarding, terapeuta_id, numero_paciente, "senha", email=estado.onboarding_email)
                     await evolution.enviar_mensagem(instance=instance_name, numero=numero_paciente, texto="Sem problema! Digite a senha novamente:")
                 await _salvar_conversa(terapeuta_id=terapeuta_id, paciente_numero=numero_paciente, mensagem_paciente="[SENHA_OCULTADA]", resposta_agente="[ONBOARDING_CRIAR_ACESSO]", intencao="ONBOARDING")
                 return
+
+            else:
+                logger.error(f"[ONBOARDING] Step desconhecido: {step} para {numero_paciente} — limpando")
+                await asyncio.to_thread(limpar_onboarding, terapeuta_id, numero_paciente)
+
+            return  # Sempre retorna se estava em onboarding — impede fall-through
 
         # 5b. Coletar nome se ainda não temos
         if estado.aguardando_nome:
@@ -2752,35 +2758,16 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                     senha = estado.onboarding_senha_temp
                     nome = estado.nome_usuario
 
+                    if not email or not senha:
+                        logger.error(f"[ONBOARDING] email ou senha None — estado corrompido para {numero_paciente}")
+                        await asyncio.to_thread(atualizar_onboarding, terapeuta_id, numero_paciente, "email")
+                        msg_retry = "Houve um problema. Vamos recomeçar — qual seu e-mail?"
+                        await meta_client.send_text_message(phone_number=numero_paciente, message=msg_retry)
+                        await _salvar_conversa(terapeuta_id=terapeuta_id, paciente_numero=numero_paciente, mensagem_paciente="[SENHA_OCULTADA]", resposta_agente="[ONBOARDING_ESTADO_CORROMPIDO]", intencao="ONBOARDING")
+                        return
+
                     try:
-                        from src.core.supabase_client import get_supabase as _get_sb
-                        import bcrypt
-                        sb = _get_sb()
-
-                        existing = sb.table("terapeutas").select("id").eq("email", email).limit(1).execute()
-                        if existing.data:
-                            t_id = existing.data[0]["id"]
-                            sb.table("terapeutas").update({"nome": nome, "telefone": numero_paciente}).eq("id", t_id).execute()
-                        else:
-                            t_id = str(uuid4())
-                            sb.table("terapeutas").insert({
-                                "id": t_id,
-                                "nome": nome,
-                                "email": email,
-                                "telefone": numero_paciente,
-                                "especialidade": "Alquimia Terapêutica",
-                            }).execute()
-
-                        senha_hash = bcrypt.hashpw(senha.encode(), bcrypt.gensalt()).decode()
-                        existing_auth = sb.table("portal_auth").select("id").eq("terapeuta_id", t_id).limit(1).execute()
-                        if existing_auth.data:
-                            sb.table("portal_auth").update({"senha_hash": senha_hash}).eq("terapeuta_id", t_id).execute()
-                        else:
-                            sb.table("portal_auth").insert({
-                                "terapeuta_id": t_id,
-                                "senha_hash": senha_hash,
-                            }).execute()
-
+                        t_id = await asyncio.to_thread(_criar_acesso_portal_sync, email, senha, nome, numero_paciente)
                         await asyncio.to_thread(limpar_onboarding, terapeuta_id, numero_paciente)
 
                         msg1 = f"Tudo pronto, {nome}! Seu acesso ao portal foi criado com sucesso."
@@ -2804,8 +2791,9 @@ async def _processar_mensagem_meta(payload: dict) -> None:
 
                     except Exception as e:
                         logger.error(f"[ONBOARDING] Erro ao criar acesso: {e}", exc_info=True)
-                        await asyncio.to_thread(limpar_onboarding, terapeuta_id, numero_paciente)
-                        msg_erro = "Houve um problema ao criar seu acesso. Mas não se preocupe, você já pode usar o WhatsApp normalmente. O acesso à plataforma será criado em breve."
+                        # Don't clear onboarding — let user retry
+                        await asyncio.to_thread(atualizar_onboarding, terapeuta_id, numero_paciente, "confirmar_senha", email=email, senha_temp=senha)
+                        msg_erro = "Houve um problema ao criar seu acesso. Tente novamente — sua senha está correta? (sim/não)"
                         await meta_client.send_text_message(phone_number=numero_paciente, message=msg_erro)
                 else:
                     await asyncio.to_thread(atualizar_onboarding, terapeuta_id, numero_paciente, "senha", email=estado.onboarding_email)
@@ -2813,10 +2801,33 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                 await _salvar_conversa(terapeuta_id=terapeuta_id, paciente_numero=numero_paciente, mensagem_paciente="[SENHA_OCULTADA]", resposta_agente="[ONBOARDING_CRIAR_ACESSO]", intencao="ONBOARDING")
                 return
 
+            else:
+                logger.error(f"[ONBOARDING] Step desconhecido: {step} para {numero_paciente} — limpando")
+                await asyncio.to_thread(limpar_onboarding, terapeuta_id, numero_paciente)
+
+            return  # Sempre retorna se estava em onboarding — impede fall-through
+
         # 6b. Coletar nome se ainda não temos
         if estado.aguardando_nome:
+            import re as _re_nome
             texto_nome = _extrair_texto_para_codigo(texto_mensagem)
-            nome_extraido = await _extrair_nome_com_llm(texto_nome, settings)
+
+            # Fallback 1: regex "meu nome é X", "me chamo X", "sou o X"
+            _match_nome_re = _re_nome.search(
+                r"(?:meu nome [eé]|me chamo|sou (?:o |a )?|pode me chamar de)\s*([A-Za-zÀ-ú]+(?:\s+[A-Za-zÀ-ú]+){0,2})",
+                texto_nome, _re_nome.IGNORECASE,
+            )
+            nome_extraido = _match_nome_re.group(1).strip() if _match_nome_re else None
+
+            # Fallback 2: texto curto com apenas letras (1-3 palavras) = provavelmente um nome
+            if not nome_extraido:
+                palavras = [p for p in texto_nome.strip().split() if any(c.isalpha() for c in p)]
+                if 1 <= len(palavras) <= 3 and all(p.replace("-","").replace("'","").isalpha() for p in palavras):
+                    nome_extraido = " ".join(p.capitalize() for p in palavras)
+
+            # Fallback 3: LLM extraction
+            if not nome_extraido:
+                nome_extraido = await _extrair_nome_com_llm(texto_nome, settings)
             if nome_extraido:
                 await asyncio.to_thread(salvar_nome_sugerido, terapeuta_id, numero_paciente, nome_extraido)
                 msg_confirmar = gerar_msg_confirmar_nome(nome_extraido)
