@@ -937,7 +937,7 @@
                                     <span class="badge text-xs mr-2"
                                         :class="ev.tipo === 'conversa' ? 'bg-blue-100 text-blue-700' : ev.tipo === 'diagnostico' ? 'bg-brand-50 text-brand-600' : 'bg-gray-100 text-gray-600'"
                                         x-text="ev.tipo"></span>
-                                    <span class="text-sm font-medium text-gray-800" x-text="ev.titulo || ev.conteudo?.substring(0, 60) + '...'"></span>
+                                    <span class="text-sm font-medium text-gray-800" x-text="ev.titulo || (ev.conteudo ? ev.conteudo.substring(0, 60) + (ev.conteudo.length > 60 ? '...' : '') : '')"></span>
                                 </div>
                                 <span class="text-xs text-gray-400 flex-shrink-0 ml-2" x-text="formatarDataCurta(ev.data)"></span>
                             </div>
@@ -964,7 +964,7 @@
                                 <div x-show="d.dna_comprometido?.length"><span class="text-gray-500">DNA:</span> <span class="font-semibold" x-text="(d.dna_comprometido||[]).join(', ')"></span></div>
                                 <div x-show="d.serpentes_ativas?.length"><span class="text-gray-500">Serpentes:</span> <span class="font-semibold" x-text="(d.serpentes_ativas||[]).join(', ')"></span></div>
                             </div>
-                            <p x-show="d.protocolo_texto" class="text-xs text-gray-600 mt-2 border-t border-gray-100 pt-2" x-text="d.protocolo_texto?.substring(0,200) + '...'"></p>
+                            <p x-show="d.protocolo_texto" class="text-xs text-gray-600 mt-2 border-t border-gray-100 pt-2" x-text="d.protocolo_texto?.length > 200 ? d.protocolo_texto.substring(0,200) + '...' : d.protocolo_texto"></p>
                         </div>
                     </template>
                 </div>
@@ -1166,8 +1166,8 @@
                                 </div>
                             </div>
                             <div class="flex gap-2 w-full sm:w-auto flex-shrink-0">
-                                <button @click="autoExtrair(d.paciente_id)" class="text-xs px-3 py-2 bg-teal-50 border border-teal-300 text-teal-700 rounded-lg hover:bg-teal-100 transition font-medium flex-1 sm:flex-initial min-h-[44px] flex items-center gap-1.5 justify-center" title="Envia um resumo completo do paciente via WhatsApp">
-                                    <i data-lucide="send" class="w-3.5 h-3.5"></i> Enviar resumo
+                                <button @click="autoExtrair(d.paciente_id)" class="text-xs px-3 py-2 bg-teal-50 border border-teal-300 text-teal-700 rounded-lg hover:bg-teal-100 transition font-medium flex-1 sm:flex-initial min-h-[44px] flex items-center gap-1.5 justify-center" title="Extrai diagnostico automatico com IA baseado nas conversas">
+                                    <i data-lucide="sparkles" class="w-3.5 h-3.5"></i> Extrair com IA
                                 </button>
                                 <button @click="abrirModalDiagnostico(d)" class="btn-ghost text-xs flex-1 sm:flex-initial flex items-center gap-1 justify-center">
                                     <i data-lucide="pencil" class="w-3.5 h-3.5"></i> Editar
@@ -1708,6 +1708,70 @@
                         <span x-show="!loading">Salvar Alteracoes</span>
                         <span x-show="loading">Salvando...</span>
                     </button>
+                </div>
+            </div>
+
+            <div class="glass-card-static p-6 mb-6">
+                <h3 class="font-heading font-semibold text-gray-800 mb-5 flex items-center gap-2">
+                    <i data-lucide="bot" class="w-5 h-5 text-brand-500"></i> Preferencias do Agente
+                </h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Tom de Voz</label>
+                        <select class="input" x-model="configForm.tom_de_voz">
+                            <option value="acolhedor">Acolhedor</option>
+                            <option value="profissional">Profissional</option>
+                            <option value="profissional e acolhedor">Profissional e Acolhedor</option>
+                            <option value="didatico">Didatico</option>
+                            <option value="direto">Direto e Objetivo</option>
+                        </select>
+                    </div>
+                    <div class="grid sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1.5">Horario Inicio</label>
+                            <input type="time" class="input" x-model="configForm.horario_inicio">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1.5">Horario Fim</label>
+                            <input type="time" class="input" x-model="configForm.horario_fim">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Mensagem de Boas-vindas</label>
+                        <textarea class="input min-h-[80px]" x-model="configForm.mensagem_boas_vindas" placeholder="Mensagem enviada automaticamente quando um novo paciente inicia conversa..." rows="3"></textarea>
+                    </div>
+                    <button @click="salvarPreferencias()" class="btn-primary w-full sm:w-auto inline-flex items-center gap-1.5 justify-center" :disabled="loading">
+                        <i data-lucide="save" class="w-4 h-4"></i>
+                        <span x-show="!loading">Salvar Preferencias</span>
+                        <span x-show="loading">Salvando...</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="glass-card-static p-6 mb-6">
+                <h3 class="font-heading font-semibold text-gray-800 mb-5 flex items-center gap-2">
+                    <i data-lucide="file-text" class="w-5 h-5 text-brand-500"></i> Documentos da Base de Conhecimento
+                </h3>
+                <div class="space-y-3">
+                    <div x-show="(documentos || []).length === 0" class="text-center py-6 text-gray-400 text-sm">
+                        Nenhum documento enviado ainda. Envie PDFs para alimentar a base de conhecimento do seu agente.
+                    </div>
+                    <template x-for="doc in (documentos || [])" :key="doc.id">
+                        <div class="flex items-center justify-between bg-warm-50 rounded-lg px-4 py-3 border border-warm-200">
+                            <div class="flex items-center gap-3 min-w-0">
+                                <i data-lucide="file" class="w-5 h-5 text-brand-500 flex-shrink-0"></i>
+                                <div class="min-w-0">
+                                    <p class="text-sm font-medium text-gray-800 truncate" x-text="doc.nome_arquivo"></p>
+                                    <p class="text-xs text-gray-400" x-text="(doc.tamanho_bytes / 1024).toFixed(0) + ' KB — ' + (doc.processado ? 'Processado (' + doc.total_chunks + ' chunks)' : 'Processando...')"></p>
+                                </div>
+                            </div>
+                            <span class="flex-shrink-0 ml-2">
+                                <span x-show="doc.processado" class="inline-flex items-center gap-1 text-xs text-teal-600"><i data-lucide="check-circle" class="w-3.5 h-3.5"></i> OK</span>
+                                <span x-show="!doc.processado" class="inline-flex items-center gap-1 text-xs text-amber-600"><i data-lucide="loader" class="w-3.5 h-3.5 animate-spin"></i> Processando</span>
+                            </span>
+                        </div>
+                    </template>
+                    <p class="text-xs text-gray-400 mt-2">Para enviar novos documentos, use a API de upload ou entre em contato com o suporte.</p>
                 </div>
             </div>
 
@@ -2280,7 +2344,19 @@ function portalApp() {
                 if (typeof lucide !== 'undefined') {
                     lucide.createIcons();
                     // Re-create icons whenever Alpine updates DOM
-                    const observer = new MutationObserver(() => { lucide.createIcons(); });
+                    // Debounced observer to avoid infinite loop (createIcons modifies DOM)
+                    let iconsPending = false;
+                    const observer = new MutationObserver(() => {
+                        if (!iconsPending) {
+                            iconsPending = true;
+                            requestAnimationFrame(() => {
+                                observer.disconnect();
+                                lucide.createIcons();
+                                observer.observe(document.body, { childList: true, subtree: true });
+                                iconsPending = false;
+                            });
+                        }
+                    });
                     observer.observe(document.body, { childList: true, subtree: true });
                 }
             });
@@ -2297,7 +2373,7 @@ function portalApp() {
                     body: JSON.stringify(this.loginForm),
                 });
                 if (!res.ok) {
-                    const err = await res.json();
+                    const err = await res.json().catch(() => ({}));
                     this.loginErro = err.detail || 'Credenciais invalidas';
                     return;
                 }
@@ -2803,7 +2879,11 @@ function portalApp() {
         },
 
         gerenciarAssinatura() {
-            this.mostrarToast('Redirecionando para o portal de pagamento...', true);
+            if (this.assinatura?.link_pagamento) {
+                window.open(this.assinatura.link_pagamento, '_blank');
+            } else {
+                this.mostrarToast('Portal de pagamento ainda nao disponivel. Entre em contato com o suporte.', false);
+            }
         },
 
         // -- Configuracoes
@@ -2940,6 +3020,15 @@ function portalApp() {
 
         // -- CRUD: Paciente
         async salvarPaciente() {
+            // Validacao de campos obrigatorios
+            if (!this.editandoPaciente.nome?.trim()) {
+                this.mostrarToast('Nome do paciente e obrigatorio.', false);
+                return;
+            }
+            if (!this.editandoPaciente.numero_telefone?.trim()) {
+                this.mostrarToast('Telefone do paciente e obrigatorio.', false);
+                return;
+            }
             this.loading = true;
             try {
                 const dados = {
@@ -2964,6 +3053,12 @@ function portalApp() {
 
         // -- CRUD: Diagnostico
         async salvarDiagnostico() {
+            // Validacao: paciente obrigatorio para novos diagnosticos
+            const pid = this.pacienteContexto?.id || this.editandoDiag.paciente_id;
+            if (!this.editandoDiag.id && !pid) {
+                this.mostrarToast('Selecione um paciente antes de criar o diagnostico.', false);
+                return;
+            }
             this.loading = true;
             try {
                 const dados = {
