@@ -1132,22 +1132,18 @@ async def _processar_mensagem(payload: dict) -> None:
             nome_sugerido = estado.nome_sugerido or ""
 
             if confirmou:
-                # Confirmar nome e dar boas-vindas
+                # Confirmar nome e iniciar onboarding de cadastro (sem boas-vindas genérica)
                 nome = await asyncio.to_thread(confirmar_nome_sugerido, terapeuta_id, numero_paciente, nome_sugerido)
-                msg_nome = gerar_msg_boas_vindas_nome(nome)
-                await evolution.enviar_mensagem(instance=instance_name, numero=numero_paciente, texto=msg_nome)
-                await _salvar_conversa(
-                    terapeuta_id=terapeuta_id, paciente_numero=numero_paciente,
-                    mensagem_paciente=texto_mensagem, resposta_agente=msg_nome, intencao="NOME_CONFIRMADO",
-                )
-                # Iniciar onboarding de cadastro
                 await asyncio.to_thread(atualizar_onboarding, terapeuta_id, numero_paciente, "email")
-                await asyncio.sleep(1.5)
                 msg_cadastro = f"Perfeito {nome}, agora vamos criar o acesso da sua plataforma, onde você vai poder acompanhar seus pacientes, diagnósticos e todo o histórico do atendimento."
                 await evolution.enviar_mensagem(instance=instance_name, numero=numero_paciente, texto=msg_cadastro)
                 await asyncio.sleep(1.5)
                 msg_email = "Qual o e-mail para cadastrar na plataforma?"
                 await evolution.enviar_mensagem(instance=instance_name, numero=numero_paciente, texto=msg_email)
+                await _salvar_conversa(
+                    terapeuta_id=terapeuta_id, paciente_numero=numero_paciente,
+                    mensagem_paciente=texto_mensagem, resposta_agente=msg_cadastro, intencao="NOME_CONFIRMADO",
+                )
             elif rejeitou:
                 # Usuário rejeitou — pedir de novo
                 await asyncio.to_thread(rejeitar_nome_sugerido, terapeuta_id, numero_paciente)
@@ -2660,20 +2656,16 @@ async def _processar_mensagem_meta(payload: dict) -> None:
 
             if confirmou:
                 nome = await asyncio.to_thread(confirmar_nome_sugerido, terapeuta_id, numero_paciente, nome_sugerido)
-                msg_nome = gerar_msg_boas_vindas_nome(nome)
-                await meta_client.send_text_message(phone_number=numero_paciente, message=msg_nome)
-                await _salvar_conversa(
-                    terapeuta_id=terapeuta_id, paciente_numero=numero_paciente,
-                    mensagem_paciente=texto_mensagem, resposta_agente=msg_nome, intencao="NOME_CONFIRMADO",
-                )
-                # Iniciar onboarding de cadastro
                 await asyncio.to_thread(atualizar_onboarding, terapeuta_id, numero_paciente, "email")
-                await asyncio.sleep(1.5)
                 msg_cadastro = f"Perfeito {nome}, agora vamos criar o acesso da sua plataforma, onde você vai poder acompanhar seus pacientes, diagnósticos e todo o histórico do atendimento."
                 await meta_client.send_text_message(phone_number=numero_paciente, message=msg_cadastro)
                 await asyncio.sleep(1.5)
                 msg_email = "Qual o e-mail para cadastrar na plataforma?"
                 await meta_client.send_text_message(phone_number=numero_paciente, message=msg_email)
+                await _salvar_conversa(
+                    terapeuta_id=terapeuta_id, paciente_numero=numero_paciente,
+                    mensagem_paciente=texto_mensagem, resposta_agente=msg_cadastro, intencao="NOME_CONFIRMADO",
+                )
             elif rejeitou:
                 await asyncio.to_thread(rejeitar_nome_sugerido, terapeuta_id, numero_paciente)
                 await meta_client.send_text_message(phone_number=numero_paciente, message=MSG_PEDIR_NOME_NOVAMENTE)
