@@ -12,6 +12,7 @@ Responsabilidades:
 5. Registrar violações e bloquear na 3ª
 """
 
+import json
 import logging
 import re
 import requests
@@ -345,6 +346,17 @@ class EstadoChat:
         self.mensagem_pendente_topico: Optional[str] = row.get("mensagem_pendente_topico")
         self.topico_anterior: Optional[str] = row.get("topico_anterior")
 
+        # Onboarding cadastro (estado armazenado no campo plano como JSON)
+        _onboarding: dict = {}
+        if row.get("plano"):
+            try:
+                _onboarding = json.loads(row["plano"]) if isinstance(row["plano"], str) else (row["plano"] if isinstance(row["plano"], dict) else {})
+            except (json.JSONDecodeError, TypeError):
+                _onboarding = {}
+        self.onboarding_step: Optional[str] = _onboarding.get("step")
+        self.onboarding_email: Optional[str] = _onboarding.get("email")
+        self.onboarding_senha_temp: Optional[str] = _onboarding.get("senha_temp")
+
     @property
     def is_pendente(self) -> bool:
         return self.estado == "PENDENTE_CODIGO"
@@ -361,6 +373,11 @@ class EstadoChat:
     def aguardando_nome(self) -> bool:
         """True quando ATIVO, sem nome confirmado e sem confirmação de nome pendente."""
         return self.is_ativo and not self.nome_usuario and not self.aguardando_confirmacao_nome
+
+    @property
+    def aguardando_onboarding(self) -> bool:
+        """True quando ATIVO, nome confirmado e onboarding de cadastro em andamento."""
+        return self.is_ativo and bool(self.nome_usuario) and self.onboarding_step is not None
 
 
 # =============================================================================
@@ -747,3 +764,41 @@ def registrar_violacao(
     ).eq("numero_telefone", numero_telefone).execute()
 
     return novas_violacoes
+
+
+# =============================================================================
+# ONBOARDING DE CADASTRO (email → senha → criar acesso portal)
+# =============================================================================
+
+def atualizar_onboarding(
+    terapeuta_id: str,
+    numero_telefone: str,
+    step: str,
+    email: Optional[str] = None,
+    senha_temp: Optional[str] = None,
+) -> None:
+    """Atualiza o estado do onboarding de cadastro no campo plano (JSON)."""
+    data: dict = {"step": step}
+    if email:
+        data["email"] = email
+    if senha_temp:
+        data["senha_temp"] = senha_temp
+    supabase = get_supabase()
+    supabase.table("chat_estado").update({
+        "plano": json.dumps(data),
+        "atualizado_em": datetime.now(timezone.utc).isoformat(),
+    }).eq("terapeuta_id", terapeuta_id).eq("numero_telefone", numero_telefone).execute()
+    logger.info(f"[ONBOARDING] step={step} para {numero_telefone}")
+
+
+def limpar_onboarding(
+    terapeuta_id: str,
+    numero_telefone: str,
+) -> None:
+    """Limpa o estado do onboarding após conclusão ou erro."""
+    supabase = get_supabase()
+    supabase.table("chat_estado").update({
+        "plano": None,
+        "atualizado_em": datetime.now(timezone.utc).isoformat(),
+    }).eq("terapeuta_id", terapeuta_id).eq("numero_telefone", numero_telefone).execute()
+    logger.info(f"[ONBOARDING] Onboarding limpo para {numero_telefone}")
