@@ -38,9 +38,17 @@ _RE_ELEMENTO_CARENTE = re.compile(
     r"falta\s+de\s+(terra|ar|fogo|[aá]gua)",
     re.IGNORECASE | re.UNICODE,
 )
-# Variantes adicionais: "elemento X em excesso", "X em desequilíbrio"
+# Variantes adicionais: "elemento X em excesso/falta/desequilibrio", "desequilibrio no elemento X"
 _RE_ELEMENTO_DESEQUILIBRIO = re.compile(
-    r"(terra|ar|fogo|[aá]gua)\s+em\s+desequil[ií]brio",
+    r"(terra|ar|fogo|[aá]gua)\s+em\s+(?:desequil[ií]brio|excesso|falta)",
+    re.IGNORECASE | re.UNICODE,
+)
+_RE_DESEQUILIBRIO_NO_ELEMENTO = re.compile(
+    r"desequil[ií]brio\s+(?:no|do)\s+elemento\s+(terra|ar|fogo|[aá]gua)",
+    re.IGNORECASE | re.UNICODE,
+)
+_RE_ELEMENTO_EM_ESTADO = re.compile(
+    r"elemento\s+(terra|ar|fogo|[aá]gua)\s+em\s+(?:excesso|falta|desequil[ií]brio)",
     re.IGNORECASE | re.UNICODE,
 )
 
@@ -57,7 +65,7 @@ _RE_SERPENTE_MAE = re.compile(r"serpente\s+da\s+m[aã]e", re.IGNORECASE | re.UNI
 _RE_NIVEL_FLORAL = re.compile(r"n[íi]vel\s+(\d)", re.IGNORECASE | re.UNICODE)
 
 # Setenio
-_RE_SETENIO = re.compile(r"(\d)[ºo]?\s*set[êe]nio", re.IGNORECASE | re.UNICODE)
+_RE_SETENIO = re.compile(r"(\d+)[ºo]?\s*set[êe]nio", re.IGNORECASE | re.UNICODE)
 # Variante: "primeiro setenio", "segundo setenio", etc.
 _SETENIO_POR_EXTENSO = {
     "primeiro": 1, "segundo": 2, "terceiro": 3, "quarto": 4,
@@ -128,7 +136,11 @@ def extrair_diagnostico_automatico(
         dados["elemento_carente"] = elemento
         sinais_encontrados.append(f"elemento_carente={elemento}")
 
-    match_deseq = _RE_ELEMENTO_DESEQUILIBRIO.search(resposta)
+    match_deseq = (
+        _RE_ELEMENTO_DESEQUILIBRIO.search(resposta)
+        or _RE_DESEQUILIBRIO_NO_ELEMENTO.search(resposta)
+        or _RE_ELEMENTO_EM_ESTADO.search(resposta)
+    )
     if match_deseq and not match_dom:
         # Se nao encontrou excesso, desequilibrio serve como dominante
         elemento = _normalizar_elemento(match_deseq.group(1))

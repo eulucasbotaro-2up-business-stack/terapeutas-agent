@@ -296,7 +296,6 @@ def humanizar_resposta(texto: str) -> str:
         "conforme o material",
         "nos materiais",
     ]
-    resultado_lower = resultado.lower()
     for ref in _refs_materiais:
         # Remove case-insensitive, preservando o texto ao redor
         resultado = re.sub(re.escape(ref), "", resultado, flags=re.IGNORECASE).strip()
@@ -464,14 +463,15 @@ def _limitar_emoticons(texto: str) -> str:
     if len(emojis_encontrados) <= 1:
         return texto
 
-    # Mantem o primeiro, remove os demais
+    # Mantem o primeiro, remove os demais (iterando para frente)
     primeiro = True
     resultado = texto
-    for match in reversed(emojis_encontrados):
+    for match in emojis_encontrados:
         if primeiro:
             primeiro = False
             continue
-        resultado = resultado[:match.start()] + resultado[match.end():]
+        # Remove this emoji
+        resultado = resultado.replace(match.group(), '', 1)
 
     return resultado
 

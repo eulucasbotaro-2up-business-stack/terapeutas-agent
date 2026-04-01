@@ -92,11 +92,9 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/webhook", tags=["Webhook WhatsApp"])
 
-# Deduplicação de mensagens Meta: evita processar o mesmo message_id duas vezes.
+# WARNING: In-memory dedup — resets on deploy. Duplicates may occur post-deploy.
+# TODO: Move to Redis/database for production scale.
 # Armazena (message_id -> timestamp). Limpeza automática após 5 minutos.
-# NOTA: Intencionalmente in-memory — dedup é de curto prazo (5min TTL) e perda
-# entre deploys é aceitável (pior caso: uma mensagem duplicada no restart).
-# Mover para banco adicionaria latência em toda mensagem sem benefício real.
 _PROCESSED_MESSAGE_IDS: "OrderedDict[str, float]" = OrderedDict()
 _DEDUP_TTL_SECONDS = 300
 _DEDUP_MAX_SIZE = 1000

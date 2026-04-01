@@ -1909,7 +1909,7 @@
                         </div>
                         <div>
                             <p class="text-xs text-gray-400">Receita Mensal</p>
-                            <p class="text-lg font-heading font-bold text-gray-800" x-text="'R$ ' + ((stats?.pacientes_ativos || 0) * 297).toLocaleString('pt-BR')"></p>
+                            <p class="text-lg font-heading font-bold text-gray-800" x-text="'R$ ' + ((financeiroData?.pacientes_ativos || stats?.pacientes_ativos || 0) * 297).toLocaleString('pt-BR')"></p>
                         </div>
                     </div>
                     <p class="text-[10px] text-gray-400">Estimativa baseada em pacientes ativos</p>
@@ -1922,7 +1922,7 @@
                         </div>
                         <div>
                             <p class="text-xs text-gray-400">Pacientes Ativos</p>
-                            <p class="text-lg font-heading font-bold text-gray-800" x-text="stats?.pacientes_ativos || 0"></p>
+                            <p class="text-lg font-heading font-bold text-gray-800" x-text="financeiroData?.pacientes_ativos || stats?.pacientes_ativos || 0"></p>
                         </div>
                     </div>
                     <p class="text-[10px] text-gray-400">Total de pacientes atendidos</p>
@@ -2182,12 +2182,12 @@
                                 <i data-lucide="file" class="w-5 h-5 text-brand-500 flex-shrink-0"></i>
                                 <div class="min-w-0">
                                     <p class="text-sm font-medium text-gray-800 truncate" x-text="doc.nome_arquivo"></p>
-                                    <p class="text-xs text-gray-400" x-text="(doc.tamanho_bytes / 1024).toFixed(0) + ' KB — ' + (doc.processado ? 'Processado (' + doc.total_chunks + ' chunks)' : 'Processando...')"></p>
+                                    <p class="text-xs text-gray-400" x-text="((doc.tamanho_bytes || 0) / 1024).toFixed(0) + ' KB — ' + (doc.status === 'processado' ? 'Processado (' + doc.total_chunks + ' chunks)' : 'Processando...')"></p>
                                 </div>
                             </div>
                             <span class="flex-shrink-0 ml-2">
-                                <span x-show="doc.processado" class="inline-flex items-center gap-1 text-xs text-teal-600"><i data-lucide="check-circle" class="w-3.5 h-3.5"></i> OK</span>
-                                <span x-show="!doc.processado" class="inline-flex items-center gap-1 text-xs text-amber-600"><i data-lucide="loader" class="w-3.5 h-3.5 animate-spin"></i> Processando</span>
+                                <span x-show="doc.status === 'processado'" class="inline-flex items-center gap-1 text-xs text-teal-600"><i data-lucide="check-circle" class="w-3.5 h-3.5"></i> OK</span>
+                                <span x-show="doc.status !== 'processado'" class="inline-flex items-center gap-1 text-xs text-amber-600"><i data-lucide="loader" class="w-3.5 h-3.5 animate-spin"></i> Processando</span>
                             </span>
                         </div>
                     </template>
@@ -2736,6 +2736,9 @@ function portalApp() {
         conversaSelecionada: null,
         conversasMensagens: [],
 
+        // -- Financeiro
+        financeiroData: null,
+
         // -- Subscription
         assinatura: {
             status: 'trial',
@@ -2814,12 +2817,12 @@ function portalApp() {
                     const observer = new MutationObserver(() => {
                         if (!iconsPending) {
                             iconsPending = true;
-                            requestAnimationFrame(() => {
+                            setTimeout(() => {
                                 observer.disconnect();
                                 lucide.createIcons();
                                 observer.observe(document.body, { childList: true, subtree: true });
                                 iconsPending = false;
-                            });
+                            }, 100);
                         }
                     });
                     observer.observe(document.body, { childList: true, subtree: true });
@@ -3013,6 +3016,7 @@ function portalApp() {
             else if (id === 'mapas') await this.carregarMapas();
             else if (id === 'configuracoes') await this.carregarConfig();
             else if (id === 'relatorios') { this.carregarRelatorioGeral(); this.carregarRelatoriosDiag(); }
+            else if (id === 'financeiro') await this.carregarFinanceiro();
             else if (id === 'assinatura') await this.carregarAssinatura();
             else if (id === 'conversas_whats') await this.carregarConversasWhats();
         },
@@ -3082,7 +3086,7 @@ function portalApp() {
             let lista = [...this.pacientes];
             if (this.buscaPaciente) {
                 const q = this.buscaPaciente.toLowerCase();
-                lista = lista.filter(p => p.nome.toLowerCase().includes(q) || (p.numero_telefone || '').includes(q) || (p.email || '').toLowerCase().includes(q));
+                lista = lista.filter(p => (p.nome || '').toLowerCase().includes(q) || (p.numero_telefone || '').includes(q) || (p.email || '').toLowerCase().includes(q));
             }
             if (this.filtroPacienteStatus) {
                 lista = lista.filter(p => p.status === this.filtroPacienteStatus);
@@ -3321,6 +3325,15 @@ function portalApp() {
         },
 
         // -- Assinatura
+        async carregarFinanceiro() {
+            this.loading = true;
+            try {
+                const data = await this.api('GET', '/portal/api/financeiro/resumo');
+                this.financeiroData = data;
+            } catch(e) { console.error('Erro financeiro:', e); }
+            this.loading = false;
+        },
+
         async carregarAssinatura() {
             this.assinaturaLoading = true;
             try {
@@ -3681,10 +3694,16 @@ function portalApp() {
             return [...diags].sort((a, b) => new Date(b.sessao_data || b.criado_em) - new Date(a.sessao_data || a.criado_em))[0];
         },
 
+        // Helper to get element value regardless of case (backend may use 'Terra' or 'terra')
+        _getElVal(obj, key) {
+            if (!obj) return 0;
+            return obj[key] || obj[key.charAt(0).toUpperCase() + key.slice(1)] || obj[key.toLowerCase()] || 0;
+        },
+
         getElementPercentage(element) {
             const d = this.getLatestDiag();
             if (!d || !d.elementos_detalhes) return 0;
-            return Math.round(d.elementos_detalhes[element] || 0);
+            return Math.round(this._getElVal(d.elementos_detalhes, element));
         },
 
         getSubstanciaPercentage(substancia) {
@@ -3697,9 +3716,10 @@ function portalApp() {
             // Senao calcula a partir dos elementos
             const el = d.elementos_detalhes;
             if (!el) return 0;
-            if (substancia === 'enxofre') return Math.round(((el.terra || 0) + (el.fogo || 0)) / 2);
-            if (substancia === 'sal') return Math.round(((el.terra || 0) + (el.ar || 0) + (el.fogo || 0) + (el.agua || 0)) / 4);
-            if (substancia === 'mercurio') return Math.round(((el.ar || 0) + (el.agua || 0)) / 2);
+            const gv = (k) => this._getElVal(el, k);
+            if (substancia === 'enxofre') return Math.round((gv('terra') + gv('fogo')) / 2);
+            if (substancia === 'sal') return Math.round((gv('terra') + gv('ar') + gv('fogo') + gv('agua')) / 4);
+            if (substancia === 'mercurio') return Math.round((gv('ar') + gv('agua')) / 2);
             return 0;
         },
 
@@ -3714,8 +3734,8 @@ function portalApp() {
             let improved = 0;
             let worsened = 0;
             keys.forEach(k => {
-                const curr = latest.elementos_detalhes[k] || 0;
-                const old = prev.elementos_detalhes[k] || 0;
+                const curr = this._getElVal(latest.elementos_detalhes, k);
+                const old = this._getElVal(prev.elementos_detalhes, k);
                 const diff = Math.abs(curr - 50) - Math.abs(old - 50);
                 if (diff < -5) improved++;
                 if (diff > 5) worsened++;
@@ -3734,7 +3754,7 @@ function portalApp() {
             if (!latest.elementos_detalhes || !prev.elementos_detalhes) return false;
             const keys = ['terra', 'ar', 'fogo', 'agua'];
             return keys.some(k => {
-                const diff = Math.abs((latest.elementos_detalhes[k] || 0) - (prev.elementos_detalhes[k] || 0));
+                const diff = Math.abs(this._getElVal(latest.elementos_detalhes, k) - this._getElVal(prev.elementos_detalhes, k));
                 return diff > 30;
             });
         },

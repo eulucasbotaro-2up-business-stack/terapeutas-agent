@@ -39,6 +39,8 @@ Endpoints:
 """
 
 import logging
+import random
+from collections import Counter
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -349,6 +351,128 @@ async def setup_senha(body: SetupSenhaIn, x_dashboard_token: str = Header(defaul
     return {"ok": True, "mensagem": "Senha configurada com sucesso."}
 
 
+# ─── RECUPERAÇÃO DE SENHA ───────────────────────────────────────────────────
+
+class RecuperarSenhaIn(BaseModel):
+    email: str
+
+
+class VerificarCodigoIn(BaseModel):
+    email: str
+    codigo: str
+
+
+class RedefinirSenhaIn(BaseModel):
+    email: str
+    codigo: str
+    nova_senha: str
+
+
+@router.post("/auth/recuperar-senha", summary="Solicitar código de recuperação de senha")
+async def recuperar_senha(body: RecuperarSenhaIn):
+    sb = get_supabase()
+
+    # 1. Buscar terapeuta pelo email
+    res = sb.table("terapeutas").select("id").eq("email", body.email).limit(1).execute()
+    if not res.data:
+        # Retornar sucesso mesmo se email não existir (segurança)
+        return {"ok": True, "mensagem": "Se o email estiver cadastrado, um código foi enviado."}
+    terapeuta_id = res.data[0]["id"]
+
+    # 2. Gerar código de 6 dígitos
+    codigo = f"{random.randint(100000, 999999)}"
+    expira_em = (datetime.now(timezone.utc) + timedelta(minutes=15)).isoformat()
+
+    # 3. Salvar código no portal_auth
+    auth_res = sb.table("portal_auth").select("id").eq("terapeuta_id", terapeuta_id).limit(1).execute()
+    if not auth_res.data:
+        return {"ok": True, "mensagem": "Se o email estiver cadastrado, um código foi enviado."}
+
+    sb.table("portal_auth").update({
+        "codigo_recuperacao": codigo,
+        "codigo_expira_em": expira_em,
+    }).eq("terapeuta_id", terapeuta_id).execute()
+
+    # TODO: Enviar email com o código. Por enquanto, logamos.
+    logger.info(f"[PORTAL] Código de recuperação para {body.email}: {codigo}")
+
+    return {"ok": True, "mensagem": "Se o email estiver cadastrado, um código foi enviado."}
+
+
+@router.post("/auth/verificar-codigo", summary="Verificar código de recuperação")
+async def verificar_codigo(body: VerificarCodigoIn):
+    sb = get_supabase()
+
+    # 1. Buscar terapeuta pelo email
+    res = sb.table("terapeutas").select("id").eq("email", body.email).limit(1).execute()
+    if not res.data:
+        raise HTTPException(status_code=400, detail="Código inválido ou expirado.")
+    terapeuta_id = res.data[0]["id"]
+
+    # 2. Buscar auth record e validar código
+    auth_res = sb.table("portal_auth").select("codigo_recuperacao, codigo_expira_em").eq("terapeuta_id", terapeuta_id).limit(1).execute()
+    if not auth_res.data:
+        raise HTTPException(status_code=400, detail="Código inválido ou expirado.")
+
+    auth = auth_res.data[0]
+    codigo_salvo = auth.get("codigo_recuperacao")
+    expira_em = auth.get("codigo_expira_em")
+
+    if not codigo_salvo or codigo_salvo != body.codigo:
+        raise HTTPException(status_code=400, detail="Código inválido ou expirado.")
+
+    if expira_em:
+        expira_dt = datetime.fromisoformat(expira_em.replace("Z", "+00:00"))
+        if datetime.now(timezone.utc) > expira_dt:
+            raise HTTPException(status_code=400, detail="Código inválido ou expirado.")
+
+    return {"ok": True, "mensagem": "Código verificado com sucesso."}
+
+
+@router.post("/auth/redefinir-senha", summary="Redefinir senha com código de recuperação")
+async def redefinir_senha(body: RedefinirSenhaIn):
+    sb = get_supabase()
+
+    if not body.nova_senha or len(body.nova_senha) < 8:
+        raise HTTPException(status_code=400, detail="Senha deve ter no mínimo 8 caracteres.")
+
+    # 1. Buscar terapeuta pelo email
+    res = sb.table("terapeutas").select("id").eq("email", body.email).limit(1).execute()
+    if not res.data:
+        raise HTTPException(status_code=400, detail="Código inválido ou expirado.")
+    terapeuta_id = res.data[0]["id"]
+
+    # 2. Validar código
+    auth_res = sb.table("portal_auth").select("codigo_recuperacao, codigo_expira_em").eq("terapeuta_id", terapeuta_id).limit(1).execute()
+    if not auth_res.data:
+        raise HTTPException(status_code=400, detail="Código inválido ou expirado.")
+
+    auth = auth_res.data[0]
+    codigo_salvo = auth.get("codigo_recuperacao")
+    expira_em = auth.get("codigo_expira_em")
+
+    if not codigo_salvo or codigo_salvo != body.codigo:
+        raise HTTPException(status_code=400, detail="Código inválido ou expirado.")
+
+    if expira_em:
+        expira_dt = datetime.fromisoformat(expira_em.replace("Z", "+00:00"))
+        if datetime.now(timezone.utc) > expira_dt:
+            raise HTTPException(status_code=400, detail="Código inválido ou expirado.")
+
+    # 3. Atualizar senha e limpar código
+    senha_hash = _hash_senha(body.nova_senha)
+    sb.table("portal_auth").update({
+        "senha_hash": senha_hash,
+        "codigo_recuperacao": None,
+        "codigo_expira_em": None,
+        "tentativas_falhas": 0,
+        "bloqueado_ate": None,
+    }).eq("terapeuta_id", terapeuta_id).execute()
+
+    logger.info(f"[PORTAL] Senha redefinida para terapeuta {terapeuta_id}")
+    return {"ok": True, "mensagem": "Senha redefinida com sucesso."}
+
+
 # ─── PACIENTES ───────────────────────────────────────────────────────────────
 
 async def _importar_pacientes_whatsapp(terapeuta_id: str) -> dict:
@@ -476,7 +600,7 @@ async def criar_paciente(body: PacienteIn, authorization: str = Header(...)):
 async def editar_paciente(paciente_id: str, body: PacienteUpdate, authorization: str = Header(...)):
     terapeuta_id = _get_terapeuta_id(authorization)
     sb = get_supabase()
-    data = {k: v for k, v in body.model_dump().items() if v is not None}
+    data = body.model_dump(exclude_unset=True)
     if not data:
         raise HTTPException(status_code=400, detail="Nenhum campo para atualizar.")
     data["atualizado_em"] = datetime.now(timezone.utc).isoformat()
@@ -683,7 +807,7 @@ async def criar_diagnostico(body: DiagnosticoIn, authorization: str = Header(...
 async def editar_diagnostico(diagnostico_id: str, body: DiagnosticoUpdate, authorization: str = Header(...)):
     terapeuta_id = _get_terapeuta_id(authorization)
     sb = get_supabase()
-    data = {k: v for k, v in body.model_dump().items() if v is not None}
+    data = body.model_dump(exclude_unset=True)
     if not data:
         raise HTTPException(status_code=400, detail="Nenhum campo para atualizar.")
     data["atualizado_em"] = datetime.now(timezone.utc).isoformat()
@@ -956,11 +1080,14 @@ async def listar_mapas(
     offset = (pagina - 1) * por_pagina
     res = sb.table("mapas_astrais").select("id, numero_telefone, nome, data_nascimento, hora_nascimento, cidade_nascimento, mapa_json, imagem_url, tipo_mapa, criado_em").in_("numero_telefone", numeros).order("criado_em", desc=True).range(offset, offset + por_pagina - 1).execute()
 
-    # Enriquecer com nome do paciente
+    # Enriquecer com nome do paciente — batch query para evitar N+1
     mapas = res.data or []
-    for m in mapas:
-        pac = sb.table("pacientes").select("nome").eq("numero_telefone", m["numero_telefone"]).eq("terapeuta_id", terapeuta_id).limit(1).execute()
-        m["nome_paciente"] = pac.data[0]["nome"] if pac.data else m["numero_telefone"]
+    if mapas:
+        numeros_mapas = list(set(m["numero_telefone"] for m in mapas if m.get("numero_telefone")))
+        pac_res = sb.table("pacientes").select("numero_telefone, nome").eq("terapeuta_id", terapeuta_id).in_("numero_telefone", numeros_mapas).execute()
+        nomes_por_numero = {p["numero_telefone"]: p["nome"] for p in (pac_res.data or [])}
+        for m in mapas:
+            m["nome_paciente"] = nomes_por_numero.get(m["numero_telefone"], m["numero_telefone"])
 
     return {"mapas": mapas, "pagina": pagina, "por_pagina": por_pagina}
 
@@ -1030,7 +1157,6 @@ async def relatorio_paciente(paciente_id: str, authorization: str = Header(...))
     todos_florais: list = []
     for d in (diag.data or []):
         todos_florais.extend(d.get("florais_prescritos") or [])
-    from collections import Counter
     florais_ranking = Counter(todos_florais).most_common(10)
 
     ter_res = sb.table("terapeutas").select("nome, especialidade").eq("id", terapeuta_id).limit(1).execute()
@@ -1060,7 +1186,6 @@ async def relatorio_diagnosticos(
 
     res = sb.table("diagnosticos_alquimicos").select("elemento_dominante, dna_comprometido, serpentes_ativas, florais_prescritos").eq("terapeuta_id", terapeuta_id).gte("sessao_data", desde).execute()
 
-    from collections import Counter
     elementos: list[str] = []
     dna: list[str] = []
     serpentes: list[str] = []
@@ -1105,7 +1230,9 @@ async def atualizar_configuracoes(
     authorization: str = Header(...),
 ):
     terapeuta_id = _get_terapeuta_id(authorization)
-    campos_permitidos = {"nome", "nome_agente", "tom_de_voz", "contato_agendamento", "horario_atendimento"}
+    campos_permitidos = {"nome", "nome_agente", "tom_de_voz", "contato_agendamento",
+                         "horario_atendimento", "telefone", "foto_url",
+                         "horario_inicio", "horario_fim", "mensagem_boas_vindas"}
     update_data = {k: v for k, v in body.items() if k in campos_permitidos and v is not None}
     if not update_data:
         raise HTTPException(status_code=400, detail="Nenhum campo válido para atualizar.")
@@ -1113,6 +1240,20 @@ async def atualizar_configuracoes(
     sb = get_supabase()
     sb.table("terapeutas").update(update_data).eq("id", terapeuta_id).execute()
     return {"ok": True}
+
+
+@router.get("/assinatura", summary="Informações da assinatura do terapeuta")
+async def obter_assinatura(authorization: str = Header(...)):
+    terapeuta_id = _get_terapeuta_id(authorization)
+    sb = get_supabase()
+    try:
+        res = sb.table("assinaturas").select("*").eq("terapeuta_id", terapeuta_id).limit(1).execute()
+        if res.data:
+            return res.data[0]
+    except Exception:
+        pass
+    # Fallback trial
+    return {"status": "trial", "valor": 297, "dias_restantes": 7, "pagamentos": []}
 
 
 @router.get("/documentos", summary="Lista documentos indexados do terapeuta")
@@ -1195,7 +1336,7 @@ async def analise_elementos(paciente_id: str, authorization: str = Header(...)):
         for chave in set(list(el_anterior.keys()) + list(el_atual.keys())):
             val_ant = el_anterior.get(chave, 0)
             val_atual = el_atual.get(chave, 0)
-            if val_ant and abs(val_atual - val_ant) / val_ant > 0.20:
+            if val_ant > 0 and abs(val_atual - val_ant) / val_ant > 0.20:
                 surto_detectado = True
                 if val_atual > val_ant:
                     alertas.append(f"Excesso de {chave} detectado (+{round(val_atual - val_ant)}%)")
