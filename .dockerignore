@@ -1,7 +1,15 @@
 __pycache__
 *.pyc
 .env
+.env.*
 .git
+.claude/
 docs/
 prompts/
+skills/
+portal-vercel/
+landing-site/
 *.md
+*.log
+.pytest_cache/
+.mypy_cache/

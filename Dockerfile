@@ -39,6 +39,11 @@ RUN python -c "import matplotlib; matplotlib.font_manager._load_fontmanager(try_
 # Copia o código
 COPY . .
 
+# SEGURANÇA: roda como usuario nao-root para minimizar superficie de ataque
+RUN groupadd -r appuser && useradd -r -g appuser -d /app -s /sbin/nologin appuser \
+    && chown -R appuser:appuser /app /tmp/matplotlib_cache
+USER appuser
+
 EXPOSE 8000
 
 # Comando padrão
