@@ -32,6 +32,10 @@ Endpoints:
   GET  /portal/api/relatorios/visao-geral
   GET  /portal/api/relatorios/paciente/{id}
   GET  /portal/api/relatorios/diagnosticos
+
+  GET  /portal/api/pacientes/{id}/analise-elementos
+  GET  /portal/api/pacientes/{id}/progresso
+  GET  /portal/api/financeiro/resumo
 """
 
 import logging
@@ -154,6 +158,21 @@ class DiagnosticoIn(BaseModel):
     protocolo_texto: Optional[str] = None
     sessao_data: Optional[str] = None
     status: Optional[str] = "rascunho"
+    # Substâncias alquímicas (Enxofre, Sal, Mercúrio)
+    substancias: Optional[dict] = {}  # {"enxofre": 45, "sal": 30, "mercurio": 25}
+    substancias_descricao: Optional[str] = None
+    # Níveis de florais (1=momentâneo, 2=espiritual+material, 3=espiritual urgente)
+    nivel_floral: Optional[int] = None
+    florais_nivel_descricao: Optional[str] = None
+    # Fluxo Contínuo
+    fluxo_continuo: Optional[bool] = None  # True=conectado, False=desconectado
+    fluxo_continuo_descricao: Optional[str] = None
+    # Matriz Alquímica
+    matriz_alquimica: Optional[dict] = {}
+    aliastrons: Optional[list[str]] = []
+    # Progresso
+    progresso_status: Optional[str] = None  # "progredindo", "estavel", "regredindo", "surto"
+    progresso_observacoes: Optional[str] = None
 
 
 class DiagnosticoUpdate(BaseModel):
@@ -170,6 +189,21 @@ class DiagnosticoUpdate(BaseModel):
     protocolo_texto: Optional[str] = None
     sessao_data: Optional[str] = None
     status: Optional[str] = None
+    # Substâncias alquímicas (Enxofre, Sal, Mercúrio)
+    substancias: Optional[dict] = None
+    substancias_descricao: Optional[str] = None
+    # Níveis de florais (1=momentâneo, 2=espiritual+material, 3=espiritual urgente)
+    nivel_floral: Optional[int] = None
+    florais_nivel_descricao: Optional[str] = None
+    # Fluxo Contínuo
+    fluxo_continuo: Optional[bool] = None
+    fluxo_continuo_descricao: Optional[str] = None
+    # Matriz Alquímica
+    matriz_alquimica: Optional[dict] = None
+    aliastrons: Optional[list[str]] = None
+    # Progresso
+    progresso_status: Optional[str] = None
+    progresso_observacoes: Optional[str] = None
 
 
 class AnotacaoIn(BaseModel):
@@ -1087,6 +1121,263 @@ async def listar_documentos(authorization: str = Header(...)):
     sb = get_supabase()
     res = sb.table("documentos").select("id, nome_arquivo, status, total_chunks, criado_em").eq("terapeuta_id", terapeuta_id).order("criado_em", desc=True).execute()
     return res.data or []
+
+
+# ─── ANÁLISE DE ELEMENTOS ────────────────────────────────────────────────────
+
+@router.get("/pacientes/{paciente_id}/analise-elementos", summary="Análise agregada de elementos do paciente")
+async def analise_elementos(paciente_id: str, authorization: str = Header(...)):
+    """Retorna análise agregada de elementos, substâncias, tendência e alertas
+    calculados a partir de todos os diagnósticos do paciente."""
+    terapeuta_id = _get_terapeuta_id(authorization)
+    sb = get_supabase()
+
+    # Verificar paciente pertence ao terapeuta
+    pac_res = sb.table("pacientes").select("id, nome").eq("id", paciente_id).eq("terapeuta_id", terapeuta_id).limit(1).execute()
+    if not pac_res.data:
+        raise HTTPException(status_code=404, detail="Paciente não encontrado.")
+
+    # Buscar todos os diagnósticos ordenados por data
+    diag_res = sb.table("diagnosticos_alquimicos").select("*").eq("paciente_id", paciente_id).eq("terapeuta_id", terapeuta_id).order("sessao_data").execute()
+    diagnosticos = diag_res.data or []
+
+    if not diagnosticos:
+        return {
+            "paciente_id": paciente_id,
+            "ultimo_diagnostico": None,
+            "elementos_atuais": {},
+            "substancias_atuais": {},
+            "tendencia": "sem_dados",
+            "alertas": [],
+            "historico_elementos": [],
+        }
+
+    ultimo = diagnosticos[-1]
+
+    # Elementos atuais (do último diagnóstico)
+    elementos_atuais = ultimo.get("elementos_detalhes") or {}
+
+    # Substâncias atuais — usar do diagnóstico se disponível, senão calcular
+    substancias_atuais = ultimo.get("substancias") or {}
+    if not substancias_atuais and elementos_atuais:
+        terra = elementos_atuais.get("Terra", elementos_atuais.get("terra", 0))
+        fogo = elementos_atuais.get("Fogo", elementos_atuais.get("fogo", 0))
+        ar = elementos_atuais.get("Ar", elementos_atuais.get("ar", 0))
+        agua = elementos_atuais.get("Água", elementos_atuais.get("agua", 0))
+        todos_vals = [terra, fogo, ar, agua]
+        avg_all = sum(todos_vals) / 4 if todos_vals else 0
+        substancias_atuais = {
+            "enxofre": round((terra + fogo) / 2, 1),
+            "sal": round(avg_all, 1),
+            "mercurio": round((ar + agua) / 2, 1),
+        }
+
+    # Histórico de elementos por data
+    historico_elementos = []
+    for d in diagnosticos:
+        detalhes = d.get("elementos_detalhes") or {}
+        if detalhes:
+            entry = {"data": d.get("sessao_data") or ""}
+            entry.update(detalhes)
+            historico_elementos.append(entry)
+
+    # Tendência — comparar último com penúltimo (ou primeiro se só 2)
+    alertas: list[str] = []
+    tendencia = "estavel"
+
+    if len(diagnosticos) >= 2:
+        anterior = diagnosticos[-2]
+        el_anterior = anterior.get("elementos_detalhes") or {}
+        el_atual = elementos_atuais
+
+        # Verificar variação > 20% entre consultas (surto)
+        surto_detectado = False
+        for chave in set(list(el_anterior.keys()) + list(el_atual.keys())):
+            val_ant = el_anterior.get(chave, 0)
+            val_atual = el_atual.get(chave, 0)
+            if val_ant and abs(val_atual - val_ant) / val_ant > 0.20:
+                surto_detectado = True
+                if val_atual > val_ant:
+                    alertas.append(f"Excesso de {chave} detectado (+{round(val_atual - val_ant)}%)")
+                else:
+                    alertas.append(f"Falta de {chave} crítica ({round(val_atual - val_ant)}%)")
+
+        # Usar progresso_status do último diagnóstico se disponível
+        if ultimo.get("progresso_status"):
+            tendencia = ultimo["progresso_status"]
+        elif surto_detectado:
+            tendencia = "surto"
+        else:
+            # Heurística: se elemento carente mudou para dominante, progresso
+            if (anterior.get("elemento_carente") and
+                anterior["elemento_carente"] != ultimo.get("elemento_carente")):
+                tendencia = "progredindo"
+
+    return {
+        "paciente_id": paciente_id,
+        "ultimo_diagnostico": ultimo,
+        "elementos_atuais": elementos_atuais,
+        "substancias_atuais": substancias_atuais,
+        "tendencia": tendencia,
+        "alertas": alertas,
+        "historico_elementos": historico_elementos,
+    }
+
+
+# ─── PROGRESSO ───────────────────────────────────────────────────────────────
+
+@router.get("/pacientes/{paciente_id}/progresso", summary="Progressão do paciente ao longo dos diagnósticos")
+async def progresso_paciente(paciente_id: str, authorization: str = Header(...)):
+    """Compara primeiro diagnóstico vs último e detecta padrões de regressão."""
+    terapeuta_id = _get_terapeuta_id(authorization)
+    sb = get_supabase()
+
+    # Verificar paciente
+    pac_res = sb.table("pacientes").select("id, nome").eq("id", paciente_id).eq("terapeuta_id", terapeuta_id).limit(1).execute()
+    if not pac_res.data:
+        raise HTTPException(status_code=404, detail="Paciente não encontrado.")
+
+    # Buscar diagnósticos ordenados por data
+    diag_res = sb.table("diagnosticos_alquimicos").select("*").eq("paciente_id", paciente_id).eq("terapeuta_id", terapeuta_id).order("sessao_data").execute()
+    diagnosticos = diag_res.data or []
+
+    if not diagnosticos:
+        return {
+            "paciente_id": paciente_id,
+            "total_diagnosticos": 0,
+            "primeiro": None,
+            "ultimo": None,
+            "evolucao_elementos": {},
+            "evolucao_serpentes": {},
+            "evolucao_dna": {},
+            "padroes_regressao": [],
+            "resumo": "Nenhum diagnóstico registrado.",
+        }
+
+    primeiro = diagnosticos[0]
+    ultimo = diagnosticos[-1]
+
+    # Evolução de elementos
+    el_primeiro = primeiro.get("elementos_detalhes") or {}
+    el_ultimo = ultimo.get("elementos_detalhes") or {}
+    evolucao_elementos = {}
+    for chave in set(list(el_primeiro.keys()) + list(el_ultimo.keys())):
+        val_ini = el_primeiro.get(chave, 0)
+        val_fim = el_ultimo.get(chave, 0)
+        evolucao_elementos[chave] = {
+            "inicial": val_ini,
+            "atual": val_fim,
+            "variacao": round(val_fim - val_ini, 1),
+        }
+
+    # Evolução de serpentes (ativas → resolvidas?)
+    serp_primeiro = set(primeiro.get("serpentes_ativas") or [])
+    serp_ultimo = set(ultimo.get("serpentes_ativas") or [])
+    evolucao_serpentes = {
+        "resolvidas": list(serp_primeiro - serp_ultimo),
+        "persistentes": list(serp_primeiro & serp_ultimo),
+        "novas": list(serp_ultimo - serp_primeiro),
+    }
+
+    # Evolução de DNA comprometido
+    dna_primeiro = set(primeiro.get("dna_comprometido") or [])
+    dna_ultimo = set(ultimo.get("dna_comprometido") or [])
+    evolucao_dna = {
+        "resolvidos": list(dna_primeiro - dna_ultimo),
+        "persistentes": list(dna_primeiro & dna_ultimo),
+        "novos": list(dna_ultimo - dna_primeiro),
+    }
+
+    # Detectar padrões de regressão
+    padroes_regressao: list[str] = []
+    if len(diagnosticos) >= 3:
+        # Verificar se serpentes que sumiram voltaram
+        for i in range(1, len(diagnosticos) - 1):
+            serp_meio = set(diagnosticos[i].get("serpentes_ativas") or [])
+            resolvidas_no_meio = serp_primeiro - serp_meio
+            retornaram = resolvidas_no_meio & serp_ultimo
+            if retornaram:
+                padroes_regressao.append(f"Serpentes retornaram após resolução: {', '.join(retornaram)}")
+
+        # Verificar se progresso_status indica regressão consecutiva
+        ultimos_status = [d.get("progresso_status") for d in diagnosticos[-3:] if d.get("progresso_status")]
+        if ultimos_status.count("regredindo") >= 2:
+            padroes_regressao.append("Regressão detectada em 2+ diagnósticos consecutivos recentes")
+
+    # Resumo textual
+    total = len(diagnosticos)
+    if total == 1:
+        resumo = "Apenas 1 diagnóstico registrado. Necessário mais dados para avaliar progressão."
+    elif evolucao_serpentes["resolvidas"] and not evolucao_serpentes["novas"]:
+        resumo = f"Progresso positivo: {len(evolucao_serpentes['resolvidas'])} serpente(s) resolvida(s), nenhuma nova."
+    elif evolucao_serpentes["novas"]:
+        resumo = f"Atenção: {len(evolucao_serpentes['novas'])} serpente(s) nova(s) desde o início."
+    else:
+        resumo = f"Acompanhamento com {total} diagnósticos. Padrão estável."
+
+    return {
+        "paciente_id": paciente_id,
+        "total_diagnosticos": total,
+        "primeiro": primeiro,
+        "ultimo": ultimo,
+        "evolucao_elementos": evolucao_elementos,
+        "evolucao_serpentes": evolucao_serpentes,
+        "evolucao_dna": evolucao_dna,
+        "padroes_regressao": padroes_regressao,
+        "resumo": resumo,
+    }
+
+
+# ─── FINANCEIRO ──────────────────────────────────────────────────────────────
+
+@router.get("/financeiro/resumo", summary="Resumo financeiro do terapeuta")
+async def financeiro_resumo(authorization: str = Header(...)):
+    """Retorna contagens de pacientes ativos, diagnósticos do mês e receita estimada."""
+    terapeuta_id = _get_terapeuta_id(authorization)
+    sb = get_supabase()
+    agora = datetime.now(timezone.utc)
+    inicio_mes = agora.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+    # Pacientes ativos
+    pac_res = sb.table("pacientes").select("id", count="exact").eq("terapeuta_id", terapeuta_id).eq("status", "ativo").execute()
+    pacientes_ativos = pac_res.count or 0
+
+    # Diagnósticos este mês
+    diag_res = sb.table("diagnosticos_alquimicos").select("id", count="exact").eq("terapeuta_id", terapeuta_id).gte("criado_em", inicio_mes.isoformat()).execute()
+    diagnosticos_mes = diag_res.count or 0
+
+    # Conversas este mês
+    conv_res = sb.table("conversas").select("id", count="exact").eq("terapeuta_id", terapeuta_id).gte("criado_em", inicio_mes.isoformat()).execute()
+    conversas_mes = conv_res.count or 0
+
+    # Informações de assinatura (se existir tabela)
+    assinatura = None
+    try:
+        assin_res = sb.table("assinaturas").select("*").eq("terapeuta_id", terapeuta_id).eq("status", "ativa").limit(1).execute()
+        if assin_res.data:
+            assinatura = assin_res.data[0]
+    except Exception:
+        pass  # Tabela pode não existir ainda
+
+    # Receita estimada (R$197-297 por terapeuta/mês — base do modelo de negócio)
+    valor_plano = 197.0
+    if assinatura:
+        valor_plano = assinatura.get("valor", 197.0)
+
+    return {
+        "terapeuta_id": terapeuta_id,
+        "periodo": {
+            "inicio": inicio_mes.date().isoformat(),
+            "fim": agora.date().isoformat(),
+        },
+        "pacientes_ativos": pacientes_ativos,
+        "diagnosticos_este_mes": diagnosticos_mes,
+        "conversas_este_mes": conversas_mes,
+        "assinatura": assinatura,
+        "receita_estimada": valor_plano,
+        "custo_estimado_ia": round(conversas_mes * 0.005, 2),  # ~R$0.005 por conversa
+        "margem_estimada": round(valor_plano - (conversas_mes * 0.005), 2),
+    }
 
 
 def agora_utc_str() -> str:
