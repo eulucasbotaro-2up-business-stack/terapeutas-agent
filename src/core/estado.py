@@ -356,6 +356,7 @@ class EstadoChat:
         self.onboarding_step: Optional[str] = _onboarding.get("step")
         self.onboarding_email: Optional[str] = _onboarding.get("email")
         self.onboarding_senha_temp: Optional[str] = _onboarding.get("senha_temp")
+        self.onboarding_nome_agente: Optional[str] = _onboarding.get("nome_agente")
 
     @property
     def is_pendente(self) -> bool:
@@ -382,24 +383,26 @@ class EstadoChat:
     @property
     def pipeline_step(self) -> int:
         """
-        Retorna em qual passo (1-14) do pipeline de onboarding o usuário está.
+        Retorna em qual passo (1-16) do pipeline de onboarding o usuário está.
 
         Pipeline completo:
-          1: BOAS_VINDAS       → Mensagens de boas-vindas (automático na 1ª mensagem)
-          2: PEDIR_CODIGO      → Pedir código de acesso
-          3: CODIGO_LIBERADO   → Código validado, informar desbloqueio
-          4: EXPLICAR_ACESSO   → Explicar o que foi liberado
-          5: PEDIR_NOME        → Perguntar nome
-          6: CONFIRMAR_NOME    → Confirmar nome digitado
-          7: EXPLICAR_PLATAFORMA → Explicar que existe portal
-          8: PEDIR_EMAIL       → Pedir e-mail para cadastro
-          9: CONFIRMAR_EMAIL   → Confirmar e-mail
-         10: PEDIR_SENHA       → Pedir senha
-         11: CONFIRMAR_SENHA   → Confirmar senha
-         12: CRIAR_ACESSO      → Criar acesso portal, enviar link
-         13: PERGUNTAR_INICIO  → Perguntar por onde quer começar
-         14: AGENTE_ATIVO      → Agente ativo (operação normal RAG)
-          0: BLOQUEADO         → Bloqueado
+          1: BOAS_VINDAS           → Mensagens de boas-vindas (automático na 1ª mensagem)
+          2: PEDIR_CODIGO          → Pedir código de acesso
+          3: CODIGO_LIBERADO       → Código validado, informar desbloqueio
+          4: EXPLICAR_ACESSO       → Explicar o que foi liberado
+          5: PEDIR_NOME            → Perguntar nome
+          6: CONFIRMAR_NOME        → Confirmar nome digitado
+          7: PEDIR_NOME_AGENTE     → Perguntar como quer chamar o agente
+          8: CONFIRMAR_NOME_AGENTE → Confirmar nome do agente
+          9: EXPLICAR_PLATAFORMA   → Explicar que existe portal
+         10: PEDIR_EMAIL           → Pedir e-mail para cadastro
+         11: CONFIRMAR_EMAIL       → Confirmar e-mail
+         12: PEDIR_SENHA           → Pedir senha
+         13: CONFIRMAR_SENHA       → Confirmar senha
+         14: CRIAR_ACESSO          → Criar acesso portal, enviar link
+         15: PERGUNTAR_INICIO      → Perguntar por onde quer começar
+         16: AGENTE_ATIVO          → Agente ativo (operação normal RAG)
+          0: BLOQUEADO             → Bloqueado
         """
         if self.is_bloqueado:
             return 0
@@ -413,16 +416,18 @@ class EstadoChat:
         # Tem nome — verificar onboarding de cadastro
         if self.onboarding_step:
             _step_map = {
-                "explicar_plataforma": 7,
-                "email": 8,
-                "confirmar_email": 9,
-                "senha": 10,
-                "confirmar_senha": 11,
-                "criar_acesso": 12,
-                "perguntar_inicio": 13,
+                "pedir_nome_agente": 7,
+                "confirmar_nome_agente": 8,
+                "explicar_plataforma": 9,
+                "email": 10,
+                "confirmar_email": 11,
+                "senha": 12,
+                "confirmar_senha": 13,
+                "criar_acesso": 14,
+                "perguntar_inicio": 15,
             }
-            return _step_map.get(self.onboarding_step, 14)
-        return 14  # Agente ativo
+            return _step_map.get(self.onboarding_step, 16)
+        return 16  # Agente ativo
 
 
 # =============================================================================
@@ -821,14 +826,32 @@ def atualizar_onboarding(
     step: str,
     email: Optional[str] = None,
     senha_temp: Optional[str] = None,
+    nome_agente: Optional[str] = None,
 ) -> None:
-    """Atualiza o estado do onboarding de cadastro no campo plano (JSON)."""
-    data: dict = {"step": step}
-    if email:
-        data["email"] = email
-    if senha_temp:
-        data["senha_temp"] = senha_temp
+    """Atualiza o estado do onboarding de cadastro no campo plano (JSON).
+
+    Faz merge com dados existentes para preservar campos como nome_agente, email, etc.
+    """
     supabase = get_supabase()
+    # Ler dados existentes para merge
+    existing = supabase.table("chat_estado").select("plano").eq(
+        "terapeuta_id", terapeuta_id
+    ).eq("numero_telefone", numero_telefone).limit(1).execute()
+    data: dict = {}
+    if existing.data and existing.data[0].get("plano"):
+        try:
+            raw = existing.data[0]["plano"]
+            data = json.loads(raw) if isinstance(raw, str) else (raw if isinstance(raw, dict) else {})
+        except (json.JSONDecodeError, TypeError):
+            data = {}
+    # Atualizar step e campos passados
+    data["step"] = step
+    if email is not None:
+        data["email"] = email
+    if senha_temp is not None:
+        data["senha_temp"] = senha_temp
+    if nome_agente is not None:
+        data["nome_agente"] = nome_agente
     supabase.table("chat_estado").update({
         "plano": json.dumps(data),
         "atualizado_em": datetime.now(timezone.utc).isoformat(),

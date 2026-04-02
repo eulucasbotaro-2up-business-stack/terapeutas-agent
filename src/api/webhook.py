@@ -483,7 +483,7 @@ def _extrair_audio_bytes(b64_data: str) -> bytes | None:
         return None
 
 
-def _criar_acesso_portal_sync(email: str, senha: str, nome: str, telefone: str, terapeuta_id_existente: str = None) -> str:
+def _criar_acesso_portal_sync(email: str, senha: str, nome: str, telefone: str, terapeuta_id_existente: str = None, nome_agente: str = None) -> str:
     """Cria portal_auth para terapeuta existente (ou cria novo se não houver).
 
     IMPORTANTE: Quando chamado do onboarding WhatsApp, SEMPRE passar terapeuta_id_existente
@@ -506,12 +506,15 @@ def _criar_acesso_portal_sync(email: str, senha: str, nome: str, telefone: str, 
             sb.table("terapeutas").delete().eq("id", orphan_id).execute()
             logger.info(f"[PORTAL] Removido terapeuta órfão {orphan_id} com email={email}")
 
-        sb.table("terapeutas").update({
+        update_data = {
             "nome": nome,
             "email": email,
             "telefone": telefone,
-        }).eq("id", t_id).execute()
-        logger.info(f"[PORTAL] Atualizado terapeuta existente {t_id} com email={email}")
+        }
+        if nome_agente:
+            update_data["nome_agente"] = nome_agente
+        sb.table("terapeutas").update(update_data).eq("id", t_id).execute()
+        logger.info(f"[PORTAL] Atualizado terapeuta existente {t_id} com email={email}, nome_agente={nome_agente}")
     else:
         # Fallback: buscar por email ou criar novo
         existing = sb.table("terapeutas").select("id").eq("email", email).limit(1).execute()
@@ -1180,17 +1183,14 @@ async def _processar_mensagem(payload: dict) -> None:
             nome_sugerido = estado.nome_sugerido or ""
 
             if confirmou:
-                # Confirmar nome e iniciar onboarding de cadastro (sem boas-vindas genérica)
+                # Confirmar nome e perguntar como quer chamar o agente
                 nome = await asyncio.to_thread(confirmar_nome_sugerido, terapeuta_id, numero_paciente, nome_sugerido)
-                await asyncio.to_thread(atualizar_onboarding, terapeuta_id, numero_paciente, "email")
-                msg_cadastro = f"Perfeito {nome}, agora vamos criar o acesso da sua plataforma, onde você vai poder acompanhar seus pacientes, diagnósticos e todo o histórico do atendimento."
-                await evolution.enviar_mensagem(instance=instance_name, numero=numero_paciente, texto=msg_cadastro)
-                await asyncio.sleep(1.5)
-                msg_email = "Qual o e-mail para cadastrar na plataforma?"
-                await evolution.enviar_mensagem(instance=instance_name, numero=numero_paciente, texto=msg_email)
+                await asyncio.to_thread(atualizar_onboarding, terapeuta_id, numero_paciente, "pedir_nome_agente")
+                msg_nome_agente = f"Ótimo, {nome}! 😊\n\nComo você gostaria de chamar o seu assistente de IA?\n\nPode ser um nome próprio (ex: *Sofia*, *Helena*, *Dr. Alquimia*) ou algo que represente a sua prática."
+                await evolution.enviar_mensagem(instance=instance_name, numero=numero_paciente, texto=msg_nome_agente)
                 await _salvar_conversa(
                     terapeuta_id=terapeuta_id, paciente_numero=numero_paciente,
-                    mensagem_paciente=texto_mensagem, resposta_agente=msg_cadastro, intencao="NOME_CONFIRMADO",
+                    mensagem_paciente=texto_mensagem, resposta_agente=msg_nome_agente, intencao="NOME_CONFIRMADO",
                 )
             elif rejeitou:
                 # Usuário rejeitou — pedir de novo
@@ -1235,7 +1235,47 @@ async def _processar_mensagem(payload: dict) -> None:
             texto_limpo = _extrair_texto_para_codigo(texto_mensagem).strip()
             step = estado.onboarding_step
 
-            if step == "email":
+            if step == "pedir_nome_agente":
+                # Capturar o nome que o terapeuta quer dar ao agente
+                nome_agente_escolhido = texto_limpo.strip()
+                # Limpar prefixos comuns
+                for prefixo in ["pode ser ", "quero ", "quero chamar de ", "chama de ", "pode chamar de "]:
+                    if nome_agente_escolhido.lower().startswith(prefixo):
+                        nome_agente_escolhido = nome_agente_escolhido[len(prefixo):]
+                nome_agente_escolhido = nome_agente_escolhido.strip().strip('"').strip("'")
+                # Capitalizar
+                nome_agente_escolhido = nome_agente_escolhido.title() if nome_agente_escolhido.islower() else nome_agente_escolhido
+                if not nome_agente_escolhido or len(nome_agente_escolhido) < 2:
+                    await evolution.enviar_mensagem(instance=instance_name, numero=numero_paciente, texto="Não identifiquei o nome. Por favor, digite o nome que deseja dar ao seu assistente de IA.")
+                    await _salvar_conversa(terapeuta_id=terapeuta_id, paciente_numero=numero_paciente, mensagem_paciente=texto_mensagem, resposta_agente="[ONBOARDING_NOME_AGENTE_INVALIDO]", intencao="ONBOARDING")
+                    return
+                await asyncio.to_thread(atualizar_onboarding, terapeuta_id, numero_paciente, "confirmar_nome_agente", nome_agente=nome_agente_escolhido)
+                msg = f"Seu assistente vai se chamar *{nome_agente_escolhido}*. Está correto?\n\nResponda *sim* ou *não*."
+                await evolution.enviar_mensagem(instance=instance_name, numero=numero_paciente, texto=msg)
+                await _salvar_conversa(terapeuta_id=terapeuta_id, paciente_numero=numero_paciente, mensagem_paciente=texto_mensagem, resposta_agente=msg, intencao="ONBOARDING")
+                return
+
+            elif step == "confirmar_nome_agente":
+                confirmou = any(p in texto_limpo.lower() for p in ["sim", "yes", "ok", "isso", "correto", "certo", "pode", "tá", "ta"])
+                if confirmou:
+                    nome_agente_final = estado.onboarding_nome_agente or "Assistente"
+                    nome = estado.nome_usuario
+                    await asyncio.to_thread(atualizar_onboarding, terapeuta_id, numero_paciente, "email")
+                    msg_cadastro = f"Perfeito! A partir de agora seu assistente se chama *{nome_agente_final}*. 🎉\n\n{nome}, agora vamos criar o acesso da sua plataforma, onde você vai poder acompanhar seus pacientes, diagnósticos e todo o histórico do atendimento."
+                    await evolution.enviar_mensagem(instance=instance_name, numero=numero_paciente, texto=msg_cadastro)
+                    await asyncio.sleep(1.5)
+                    msg_email = "Qual o e-mail para cadastrar na plataforma?"
+                    await evolution.enviar_mensagem(instance=instance_name, numero=numero_paciente, texto=msg_email)
+                    await _salvar_conversa(terapeuta_id=terapeuta_id, paciente_numero=numero_paciente, mensagem_paciente=texto_mensagem, resposta_agente=msg_cadastro, intencao="ONBOARDING")
+                else:
+                    # Voltar para pedir nome do agente
+                    await asyncio.to_thread(atualizar_onboarding, terapeuta_id, numero_paciente, "pedir_nome_agente")
+                    msg = "Sem problemas! Então, como você gostaria de chamar o seu assistente?"
+                    await evolution.enviar_mensagem(instance=instance_name, numero=numero_paciente, texto=msg)
+                    await _salvar_conversa(terapeuta_id=terapeuta_id, paciente_numero=numero_paciente, mensagem_paciente=texto_mensagem, resposta_agente=msg, intencao="ONBOARDING")
+                return
+
+            elif step == "email":
                 # Validar formato de email
                 import re as _re_email
                 email_match = _re_email.search(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', texto_limpo)
@@ -1280,6 +1320,7 @@ async def _processar_mensagem(payload: dict) -> None:
                     email = estado.onboarding_email
                     senha = estado.onboarding_senha_temp
                     nome = estado.nome_usuario
+                    nome_agente_onb = estado.onboarding_nome_agente
 
                     if not email or not senha:
                         logger.error(f"[ONBOARDING] email ou senha None — estado corrompido para {numero_paciente}")
@@ -1290,7 +1331,7 @@ async def _processar_mensagem(payload: dict) -> None:
                         return
 
                     try:
-                        t_id = await asyncio.to_thread(_criar_acesso_portal_sync, email, senha, nome, numero_paciente, terapeuta_id)
+                        t_id = await asyncio.to_thread(_criar_acesso_portal_sync, email, senha, nome, numero_paciente, terapeuta_id, nome_agente_onb)
                         # Step 12 → 13: NÃO limpar onboarding — ir para perguntar_inicio
                         await asyncio.to_thread(atualizar_onboarding, terapeuta_id, numero_paciente, "perguntar_inicio", email=email)
 
@@ -2798,15 +2839,12 @@ async def _processar_mensagem_meta(payload: dict) -> None:
 
             if confirmou:
                 nome = await asyncio.to_thread(confirmar_nome_sugerido, terapeuta_id, numero_paciente, nome_sugerido)
-                await asyncio.to_thread(atualizar_onboarding, terapeuta_id, numero_paciente, "email")
-                msg_cadastro = f"Perfeito {nome}, agora vamos criar o acesso da sua plataforma, onde você vai poder acompanhar seus pacientes, diagnósticos e todo o histórico do atendimento."
-                await meta_client.send_text_message(phone_number=numero_paciente, message=msg_cadastro)
-                await asyncio.sleep(1.5)
-                msg_email = "Qual o e-mail para cadastrar na plataforma?"
-                await meta_client.send_text_message(phone_number=numero_paciente, message=msg_email)
+                await asyncio.to_thread(atualizar_onboarding, terapeuta_id, numero_paciente, "pedir_nome_agente")
+                msg_nome_agente = f"Ótimo, {nome}! 😊\n\nComo você gostaria de chamar o seu assistente de IA?\n\nPode ser um nome próprio (ex: *Sofia*, *Helena*, *Dr. Alquimia*) ou algo que represente a sua prática."
+                await meta_client.send_text_message(phone_number=numero_paciente, message=msg_nome_agente)
                 await _salvar_conversa(
                     terapeuta_id=terapeuta_id, paciente_numero=numero_paciente,
-                    mensagem_paciente=texto_mensagem, resposta_agente=msg_cadastro, intencao="NOME_CONFIRMADO",
+                    mensagem_paciente=texto_mensagem, resposta_agente=msg_nome_agente, intencao="NOME_CONFIRMADO",
                 )
             elif rejeitou:
                 await asyncio.to_thread(rejeitar_nome_sugerido, terapeuta_id, numero_paciente)
@@ -2850,7 +2888,43 @@ async def _processar_mensagem_meta(payload: dict) -> None:
             texto_limpo = _extrair_texto_para_codigo(texto_mensagem).strip()
             step = estado.onboarding_step
 
-            if step == "email":
+            if step == "pedir_nome_agente":
+                nome_agente_escolhido = texto_limpo.strip()
+                for prefixo in ["pode ser ", "quero ", "quero chamar de ", "chama de ", "pode chamar de "]:
+                    if nome_agente_escolhido.lower().startswith(prefixo):
+                        nome_agente_escolhido = nome_agente_escolhido[len(prefixo):]
+                nome_agente_escolhido = nome_agente_escolhido.strip().strip('"').strip("'")
+                nome_agente_escolhido = nome_agente_escolhido.title() if nome_agente_escolhido.islower() else nome_agente_escolhido
+                if not nome_agente_escolhido or len(nome_agente_escolhido) < 2:
+                    await meta_client.send_text_message(phone_number=numero_paciente, message="Não identifiquei o nome. Por favor, digite o nome que deseja dar ao seu assistente de IA.")
+                    await _salvar_conversa(terapeuta_id=terapeuta_id, paciente_numero=numero_paciente, mensagem_paciente=texto_mensagem, resposta_agente="[ONBOARDING_NOME_AGENTE_INVALIDO]", intencao="ONBOARDING")
+                    return
+                await asyncio.to_thread(atualizar_onboarding, terapeuta_id, numero_paciente, "confirmar_nome_agente", nome_agente=nome_agente_escolhido)
+                msg = f"Seu assistente vai se chamar *{nome_agente_escolhido}*. Está correto?\n\nResponda *sim* ou *não*."
+                await meta_client.send_text_message(phone_number=numero_paciente, message=msg)
+                await _salvar_conversa(terapeuta_id=terapeuta_id, paciente_numero=numero_paciente, mensagem_paciente=texto_mensagem, resposta_agente=msg, intencao="ONBOARDING")
+                return
+
+            elif step == "confirmar_nome_agente":
+                confirmou = any(p in texto_limpo.lower() for p in ["sim", "yes", "ok", "isso", "correto", "certo", "pode", "tá", "ta"])
+                if confirmou:
+                    nome_agente_final = estado.onboarding_nome_agente or "Assistente"
+                    nome = estado.nome_usuario
+                    await asyncio.to_thread(atualizar_onboarding, terapeuta_id, numero_paciente, "email")
+                    msg_cadastro = f"Perfeito! A partir de agora seu assistente se chama *{nome_agente_final}*. 🎉\n\n{nome}, agora vamos criar o acesso da sua plataforma, onde você vai poder acompanhar seus pacientes, diagnósticos e todo o histórico do atendimento."
+                    await meta_client.send_text_message(phone_number=numero_paciente, message=msg_cadastro)
+                    await asyncio.sleep(1.5)
+                    msg_email = "Qual o e-mail para cadastrar na plataforma?"
+                    await meta_client.send_text_message(phone_number=numero_paciente, message=msg_email)
+                    await _salvar_conversa(terapeuta_id=terapeuta_id, paciente_numero=numero_paciente, mensagem_paciente=texto_mensagem, resposta_agente=msg_cadastro, intencao="ONBOARDING")
+                else:
+                    await asyncio.to_thread(atualizar_onboarding, terapeuta_id, numero_paciente, "pedir_nome_agente")
+                    msg = "Sem problemas! Então, como você gostaria de chamar o seu assistente?"
+                    await meta_client.send_text_message(phone_number=numero_paciente, message=msg)
+                    await _salvar_conversa(terapeuta_id=terapeuta_id, paciente_numero=numero_paciente, mensagem_paciente=texto_mensagem, resposta_agente=msg, intencao="ONBOARDING")
+                return
+
+            elif step == "email":
                 import re as _re_email
                 email_match = _re_email.search(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', texto_limpo)
                 if email_match:
@@ -2893,6 +2967,7 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                     email = estado.onboarding_email
                     senha = estado.onboarding_senha_temp
                     nome = estado.nome_usuario
+                    nome_agente_onb = estado.onboarding_nome_agente
 
                     if not email or not senha:
                         logger.error(f"[ONBOARDING] email ou senha None — estado corrompido para {numero_paciente}")
@@ -2903,7 +2978,7 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                         return
 
                     try:
-                        t_id = await asyncio.to_thread(_criar_acesso_portal_sync, email, senha, nome, numero_paciente, terapeuta_id)
+                        t_id = await asyncio.to_thread(_criar_acesso_portal_sync, email, senha, nome, numero_paciente, terapeuta_id, nome_agente_onb)
                         # Step 12 → 13: NÃO limpar onboarding — ir para perguntar_inicio
                         await asyncio.to_thread(atualizar_onboarding, terapeuta_id, numero_paciente, "perguntar_inicio", email=email)
 
