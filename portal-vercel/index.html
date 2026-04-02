@@ -297,6 +297,52 @@
             .touch-target { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
         }
 
+        /* ====== MOBILE-FIRST OVERRIDES (375px base) ====== */
+        @media (max-width: 480px) {
+            /* Prevent any horizontal overflow */
+            body, html { overflow-x: hidden; }
+            * { min-width: 0; }
+
+            /* Stat cards: stack 1 col on very small, 2 cols on 375+ */
+            .stat-grid-mobile { grid-template-columns: 1fr 1fr !important; gap: 8px !important; }
+            .stat-grid-mobile > *:last-child { grid-column: span 2; }
+
+            /* Tabs: smaller text, less padding */
+            .tab-mobile { font-size: 11px !important; padding: 8px 10px !important; }
+
+            /* Prontuário header: stack vertically */
+            .prontuario-header-mobile { flex-direction: column !important; align-items: flex-start !important; gap: 12px !important; }
+            .prontuario-header-mobile .prontuario-actions { width: 100%; display: flex; gap: 8px; }
+            .prontuario-header-mobile .prontuario-actions > * { flex: 1; justify-content: center; font-size: 12px !important; }
+
+            /* Tables: allow horizontal scroll with visible indicator */
+            .table-scroll-mobile { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0 -16px; padding: 0 16px; }
+            .table-scroll-mobile table { min-width: 480px; }
+
+            /* Chat: full width bubbles */
+            .chat-bubble-mobile { max-width: 88% !important; }
+
+            /* Buttons: full width on mobile */
+            .btn-full-mobile { width: 100% !important; justify-content: center !important; }
+
+            /* Config section: reduce padding */
+            .config-section-mobile { padding: 12px !important; }
+            .config-section-mobile .grid { grid-template-columns: 1fr !important; }
+
+            /* Patient list: compact */
+            .patient-row-mobile { padding: 10px 12px !important; }
+            .patient-row-mobile .text-sm { font-size: 13px !important; }
+
+            /* Reduce main content padding */
+            .main-content { padding: 12px !important; }
+
+            /* Modal: full screen on mobile */
+            .modal-box { border-radius: 0 !important; max-height: 100vh !important; }
+
+            /* Word break for long text */
+            .break-mobile { word-break: break-word; overflow-wrap: break-word; }
+        }
+
         /* Scrollbar hide */
         .overflow-x-auto::-webkit-scrollbar { height: 0; width: 0; }
         .overflow-x-auto { scrollbar-width: none; -ms-overflow-style: none; }
@@ -819,8 +865,8 @@
                         <button @click="abrirModalPaciente()" class="btn-primary text-xs min-h-[44px] px-4 flex items-center gap-1.5 justify-center"><i data-lucide="user-plus" class="w-3.5 h-3.5"></i> Novo Paciente</button>
                     </div>
                 </div>
-                <div class="overflow-x-auto">
-                <table x-show="pacientesFiltrados.length > 0" class="w-full min-w-[480px] table-modern">
+                <div class="overflow-x-auto table-scroll-mobile">
+                <table x-show="pacientesFiltrados.length > 0" class="w-full min-w-[380px] sm:min-w-[480px] table-modern">
                     <thead class="bg-warm-50 border-b border-gray-100">
                         <tr>
                             <th class="text-left">Paciente</th>
@@ -911,26 +957,26 @@
                 </div>
 
                 <!-- Stats clickable -->
-                <div class="grid grid-cols-3 gap-2 sm:gap-3 mb-5">
-                    <button @click="abaProntuario = 'conversas'" class="glass-card-static text-center py-4 px-2 cursor-pointer transition hover:shadow-md border-2" :class="abaProntuario === 'conversas' ? 'border-brand-400 bg-brand-50/50' : 'border-transparent hover:border-brand-100'">
-                        <p class="text-xl sm:text-2xl font-heading font-bold text-brand-500" x-text="(prontuario?.conversas || []).length"></p>
-                        <p class="text-xs text-gray-500 mt-0.5 font-medium">Mensagens</p>
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 mb-5 stat-grid-mobile">
+                    <button @click="abaProntuario = 'conversas'" class="glass-card-static text-center py-3 sm:py-4 px-2 cursor-pointer transition hover:shadow-md border-2" :class="abaProntuario === 'conversas' ? 'border-brand-400 bg-brand-50/50' : 'border-transparent hover:border-brand-100'">
+                        <p class="text-lg sm:text-2xl font-heading font-bold text-brand-500" x-text="(prontuario?.conversas || []).length"></p>
+                        <p class="text-[11px] sm:text-xs text-gray-500 mt-0.5 font-medium">Mensagens</p>
                     </button>
-                    <button @click="abaProntuario = 'diagnosticos'" class="glass-card-static text-center py-4 px-2 cursor-pointer transition hover:shadow-md border-2" :class="abaProntuario === 'diagnosticos' ? 'border-amber-400 bg-amber-50/50' : 'border-transparent hover:border-amber-100'">
-                        <p class="text-xl sm:text-2xl font-heading font-bold" style="color:#D4AF37" x-text="(prontuario?.diagnosticos || []).length"></p>
-                        <p class="text-xs text-gray-500 mt-0.5 font-medium">Diagnosticos</p>
+                    <button @click="abaProntuario = 'diagnosticos'" class="glass-card-static text-center py-3 sm:py-4 px-2 cursor-pointer transition hover:shadow-md border-2" :class="abaProntuario === 'diagnosticos' ? 'border-amber-400 bg-amber-50/50' : 'border-transparent hover:border-amber-100'">
+                        <p class="text-lg sm:text-2xl font-heading font-bold" style="color:#D4AF37" x-text="(prontuario?.diagnosticos || []).length"></p>
+                        <p class="text-[11px] sm:text-xs text-gray-500 mt-0.5 font-medium">Diagnosticos</p>
                     </button>
-                    <div class="glass-card-static text-center py-4 px-2 border-2 border-transparent">
-                        <p class="text-xl sm:text-2xl font-heading font-bold text-teal-500" x-text="(() => { const convs = prontuario?.conversas || []; if (!convs.length) return '—'; const last = convs.reduce((a,b) => new Date(a.criado_em) > new Date(b.criado_em) ? a : b); const diff = Math.floor((Date.now() - new Date(last.criado_em)) / 86400000); return diff === 0 ? 'hoje' : diff === 1 ? 'ontem' : diff + 'd'; })()"></p>
-                        <p class="text-xs text-gray-500 mt-0.5 font-medium">Ultima Interacao</p>
+                    <div class="glass-card-static text-center py-3 sm:py-4 px-2 border-2 border-transparent">
+                        <p class="text-lg sm:text-2xl font-heading font-bold text-teal-500" x-text="(() => { const convs = prontuario?.conversas || []; if (!convs.length) return '—'; const last = convs.reduce((a,b) => new Date(a.criado_em) > new Date(b.criado_em) ? a : b); const diff = Math.floor((Date.now() - new Date(last.criado_em)) / 86400000); return diff === 0 ? 'hoje' : diff === 1 ? 'ontem' : diff + 'd'; })()"></p>
+                        <p class="text-[11px] sm:text-xs text-gray-500 mt-0.5 font-medium">Ultima Interacao</p>
                     </div>
                 </div>
 
                 <!-- Tabs -->
-                <div class="flex flex-nowrap gap-1 mb-4 bg-warm-50 rounded-xl p-1 border border-gray-200/60 overflow-x-auto -mx-1 px-1">
+                <div class="flex flex-nowrap gap-1 mb-4 bg-warm-50 rounded-xl p-1 border border-gray-200/60 overflow-x-auto" style="-webkit-overflow-scrolling: touch;">
                     <template x-for="aba in abasProntuario" :key="aba.id">
                         <button @click="abaProntuario = aba.id"
-                            class="flex-shrink-0 sm:flex-1 py-2.5 text-xs font-semibold rounded-lg transition whitespace-nowrap px-4 min-h-[44px] flex items-center justify-center gap-1.5"
+                            class="flex-shrink-0 sm:flex-1 py-2 sm:py-2.5 text-[11px] sm:text-xs font-semibold rounded-lg transition whitespace-nowrap px-2.5 sm:px-4 min-h-[40px] sm:min-h-[44px] flex items-center justify-center gap-1 tab-mobile"
                             :class="abaProntuario === aba.id ? 'bg-white text-brand-600 shadow-sm border border-brand-100' : 'text-gray-400 hover:text-gray-600 hover:bg-white/50'">
                             <span x-text="aba.icon || ''"></span>
                             <span x-text="aba.label"></span>
@@ -1043,7 +1089,7 @@
                                 <div x-show="c.mensagem_paciente" class="flex items-end gap-2 justify-start">
                                     <div class="w-6 h-6 rounded-full bg-teal-500 flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0"
                                         x-text="(terapeuta?.nome || 'T').charAt(0)"></div>
-                                    <div class="max-w-[80%]">
+                                    <div class="max-w-[85%] sm:max-w-[80%]">
                                         <p class="text-[10px] font-bold text-teal-700 mb-0.5 ml-1" x-text="terapeuta?.nome || 'Terapeuta'"></p>
                                         <div class="bg-white rounded-2xl rounded-bl-md px-3.5 py-2.5 shadow-sm border border-gray-100/80" x-data="{ expanded: false }">
                                             <p class="text-sm text-gray-800 leading-relaxed whitespace-pre-line" x-text="expanded || (c.mensagem_paciente||'').length <= 200 ? c.mensagem_paciente : c.mensagem_paciente.substring(0, 200) + '...'"></p>
@@ -1054,7 +1100,7 @@
                                 </div>
                                 <!-- Sofia / Agente (direita) -->
                                 <div x-show="c.resposta_agente" class="flex items-end gap-2 justify-end">
-                                    <div class="max-w-[80%]">
+                                    <div class="max-w-[85%] sm:max-w-[80%]">
                                         <p class="text-[10px] font-bold text-brand-600 mb-0.5 mr-1 text-right" x-text="terapeuta?.nome_agente || 'Agente IA'"></p>
                                         <div class="rounded-2xl rounded-br-md px-3.5 py-2.5 shadow-sm" style="background: linear-gradient(135deg, #f3edff 0%, #ede5ff 100%); border: 1px solid rgba(123,47,190,0.12);" x-data="{ expanded: false }">
                                             <p class="text-sm text-gray-800 leading-relaxed whitespace-pre-line" x-text="expanded || (c.resposta_agente||'').length <= 200 ? c.resposta_agente : c.resposta_agente.substring(0, 200) + '...'"></p>
@@ -1471,7 +1517,7 @@
                             <div x-show="msg.mensagem_paciente" class="flex items-end gap-2 justify-start">
                                 <div class="w-7 h-7 rounded-full bg-teal-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 shadow-sm"
                                     x-text="(terapeuta?.nome || 'T').charAt(0)"></div>
-                                <div class="max-w-[80%] sm:max-w-[65%]">
+                                <div class="max-w-[88%] sm:max-w-[65%]">
                                     <p class="text-[11px] font-bold text-teal-700 mb-0.5 ml-1" x-text="terapeuta?.nome || 'Terapeuta'"></p>
                                     <div class="bg-white rounded-2xl rounded-bl-md px-4 py-3 shadow-sm border border-gray-100/80" x-data="{ expanded: false }">
                                         <p class="text-sm text-gray-800 leading-relaxed whitespace-pre-line" x-text="expanded || (msg.mensagem_paciente||'').length <= 250 ? msg.mensagem_paciente : msg.mensagem_paciente.substring(0, 250) + '...'"></p>
@@ -1482,7 +1528,7 @@
                             </div>
                             <!-- Resposta da Sofia / Agente IA (direita) -->
                             <div x-show="msg.resposta_agente" class="flex items-end gap-2 justify-end">
-                                <div class="max-w-[80%] sm:max-w-[65%]">
+                                <div class="max-w-[88%] sm:max-w-[65%]">
                                     <p class="text-[11px] font-bold text-brand-600 mb-0.5 mr-1 text-right" x-text="terapeuta?.nome_agente || 'Agente IA'"></p>
                                     <div class="rounded-2xl rounded-br-md px-4 py-3 shadow-sm" style="background: linear-gradient(135deg, #f3edff 0%, #ede5ff 100%); border: 1px solid rgba(123,47,190,0.12);" x-data="{ expanded: false }">
                                         <p class="text-sm text-gray-800 leading-relaxed whitespace-pre-line" x-text="expanded || (msg.resposta_agente||'').length <= 250 ? msg.resposta_agente : msg.resposta_agente.substring(0, 250) + '...'"></p>
@@ -2271,8 +2317,8 @@
                         <p class="text-gray-500 font-medium text-sm">Nenhum pagamento registrado</p>
                         <p class="text-gray-400 text-xs mt-1">Os pagamentos aparecerao aqui apos a primeira cobranca</p>
                     </div>
-                    <div x-show="(assinatura.pagamentos || []).length > 0" class="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0">
-                        <table class="w-full text-sm min-w-[420px] table-modern">
+                    <div x-show="(assinatura.pagamentos || []).length > 0" class="overflow-x-auto table-scroll-mobile">
+                        <table class="w-full text-sm min-w-[360px] sm:min-w-[420px] table-modern">
                             <thead class="border-b border-gray-100">
                                 <tr>
                                     <th class="text-left">Data</th>
