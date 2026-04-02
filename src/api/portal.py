@@ -731,38 +731,80 @@ async def get_timeline(paciente_id: str, authorization: str = Header(...)):
     numero = pac_res.data[0]["numero_telefone"]
 
     eventos = []
+    nome_paciente = ""
+    pac_full = sb.table("pacientes").select("nome").eq("id", paciente_id).limit(1).execute()
+    if pac_full.data:
+        nome_paciente = pac_full.data[0].get("nome", "")
 
-    # Conversas (diretas por número + vinculadas por segmentação)
-    conv = sb.table("conversas").select("id, mensagem_paciente, criado_em").eq("terapeuta_id", terapeuta_id).eq("paciente_numero", numero).order("criado_em", desc=True).limit(50).execute()
-    conv_ids = set()
-    for c in (conv.data or []):
-        conv_ids.add(c["id"])
-        eventos.append({"tipo": "conversa", "data": c["criado_em"], "resumo": (c.get("mensagem_paciente") or "")[:100], "id": c["id"]})
-    # Conversas vinculadas pelo sistema de segmentação
-    try:
-        conv2 = sb.table("conversas").select("id, mensagem_paciente, criado_em").eq("terapeuta_id", terapeuta_id).eq("paciente_vinculado_id", paciente_id).order("criado_em", desc=True).limit(50).execute()
-        for c in (conv2.data or []):
-            if c["id"] not in conv_ids:
-                eventos.append({"tipo": "conversa", "data": c["criado_em"], "resumo": (c.get("mensagem_paciente") or "")[:100], "id": c["id"]})
-    except Exception:
-        pass
+    # Conversas — agrupar em sessões (início/fim), não listar cada mensagem
+    all_convs = []
+    if numero and numero != "sem-numero":
+        r1 = sb.table("conversas").select("id, criado_em").eq("terapeuta_id", terapeuta_id).eq("paciente_numero", numero).order("criado_em").execute()
+        all_convs.extend(r1.data or [])
+    r2 = sb.table("conversas").select("id, criado_em").eq("terapeuta_id", terapeuta_id).eq("paciente_vinculado_id", paciente_id).order("criado_em").execute()
+    seen_cids = set()
+    for c in all_convs + (r2.data or []):
+        if c["id"] not in seen_cids:
+            seen_cids.add(c["id"])
+    # Agrupar conversas em sessões (gap > 30min = nova sessão)
+    conv_all = sorted([c for c in all_convs + (r2.data or []) if c["id"] in seen_cids], key=lambda x: x["criado_em"])
+    # Deduplicate
+    conv_dedup = []
+    conv_seen = set()
+    for c in conv_all:
+        if c["id"] not in conv_seen:
+            conv_seen.add(c["id"])
+            conv_dedup.append(c)
+    if conv_dedup:
+        from datetime import datetime as dt
+        sessions = []
+        sess_start = conv_dedup[0]["criado_em"]
+        sess_end = conv_dedup[0]["criado_em"]
+        sess_count = 1
+        for c in conv_dedup[1:]:
+            try:
+                t_prev = dt.fromisoformat(sess_end.replace("Z", "+00:00"))
+                t_curr = dt.fromisoformat(c["criado_em"].replace("Z", "+00:00"))
+                gap = (t_curr - t_prev).total_seconds()
+            except Exception:
+                gap = 0
+            if gap > 1800:  # 30 min gap = new session
+                sessions.append((sess_start, sess_end, sess_count))
+                sess_start = c["criado_em"]
+                sess_count = 0
+            sess_end = c["criado_em"]
+            sess_count += 1
+        sessions.append((sess_start, sess_end, sess_count))
+        for start, end, count in sessions:
+            eventos.append({"tipo": "conversa_inicio", "data": start, "resumo": f"Conversa iniciada ({count} mensagens)"})
+            eventos.append({"tipo": "conversa_fim", "data": end, "resumo": f"Conversa finalizada"})
 
     # Diagnósticos
-    diag = sb.table("diagnosticos_alquimicos").select("id, sessao_data, elemento_dominante, status").eq("paciente_id", paciente_id).execute()
+    diag = sb.table("diagnosticos_alquimicos").select("id, sessao_data, elemento_dominante, status, criado_em").eq("paciente_id", paciente_id).execute()
     for d in (diag.data or []):
-        eventos.append({"tipo": "diagnostico", "data": d["sessao_data"], "resumo": f"Diagnóstico — {d.get('elemento_dominante') or 'Sem elemento'}", "id": d["id"]})
+        eventos.append({"tipo": "diagnostico", "data": d.get("criado_em") or d["sessao_data"], "resumo": f"Diagnóstico — {d.get('elemento_dominante') or 'Sem elemento'}", "id": d["id"]})
 
     # Anotações
     anot = sb.table("anotacoes_prontuario").select("id, data_anotacao, tipo, titulo, conteudo").eq("paciente_id", paciente_id).execute()
     for a in (anot.data or []):
         eventos.append({"tipo": f"anotacao_{a['tipo']}", "data": a["data_anotacao"], "resumo": a.get("titulo") or (a.get("conteudo") or "")[:80], "id": a["id"]})
 
-    # Mapas
-    try:
-        mapas = sb.table("mapas_astrais").select("id, criado_em, data_nascimento, tipo_mapa").eq("numero_telefone", numero).execute()
-    except Exception:
-        mapas = sb.table("mapas_astrais").select("id, criado_em, data_nascimento").eq("numero_telefone", numero).execute()
-    for m in (mapas.data or []):
+    # Mapas — busca por numero e por nome do paciente
+    mapas_tl = []
+    if numero and numero != "sem-numero":
+        try:
+            r_m1 = sb.table("mapas_astrais").select("id, criado_em, data_nascimento, tipo_mapa").eq("terapeuta_id", terapeuta_id).eq("numero_telefone", numero).execute()
+            mapas_tl.extend(r_m1.data or [])
+        except Exception:
+            pass
+    if nome_paciente:
+        try:
+            r_m2 = sb.table("mapas_astrais").select("id, criado_em, data_nascimento, tipo_mapa").eq("terapeuta_id", terapeuta_id).eq("nome", nome_paciente).execute()
+            seen_m = {m["id"] for m in mapas_tl}
+            mapas_tl.extend([m for m in (r_m2.data or []) if m["id"] not in seen_m])
+        except Exception:
+            pass
+    for m in mapas_tl:
         tipo_label = m.get("tipo_mapa") or "Mapa Natal"
         eventos.append({"tipo": "mapa_natal", "data": m["criado_em"], "resumo": f"{tipo_label} — {m.get('data_nascimento') or ''}", "id": m["id"]})
 

@@ -941,18 +941,29 @@
                 <!-- Timeline -->
                 <div x-show="abaProntuario === 'timeline'" class="space-y-3">
                     <div x-show="(prontuario?.timeline || []).length === 0" class="text-center py-8 text-gray-400 text-sm">Sem registros na timeline</div>
-                    <template x-for="ev in (prontuario?.timeline || [])" :key="ev.id + ev.tipo">
+                    <template x-for="ev in (prontuario?.timeline || [])" :key="(ev.id || '') + ev.tipo + ev.data">
                         <div class="timeline-item glass-card ml-4 p-4">
                             <div class="flex items-start justify-between">
-                                <div>
-                                    <span class="badge text-xs mr-2"
-                                        :class="ev.tipo === 'conversa' ? 'bg-blue-100 text-blue-700' : ev.tipo === 'diagnostico' ? 'bg-brand-50 text-brand-600' : 'bg-gray-100 text-gray-600'"
-                                        x-text="ev.tipo"></span>
-                                    <span class="text-sm font-medium text-gray-800" x-text="ev.titulo || ev.resumo || (ev.conteudo ? ev.conteudo.substring(0, 60) + (ev.conteudo.length > 60 ? '...' : '') : '')"></span>
+                                <div class="flex items-center gap-2">
+                                    <span class="badge text-xs"
+                                        :class="ev.tipo === 'conversa_inicio' ? 'bg-green-100 text-green-700' :
+                                                ev.tipo === 'conversa_fim' ? 'bg-gray-100 text-gray-600' :
+                                                ev.tipo === 'diagnostico' ? 'bg-brand-50 text-brand-600' :
+                                                ev.tipo === 'mapa_natal' ? 'bg-amber-100 text-amber-700' :
+                                                ev.tipo.startsWith('anotacao_') ? 'bg-blue-100 text-blue-700' :
+                                                ev.tipo === 'resumo_sessao' ? 'bg-teal-100 text-teal-700' :
+                                                'bg-gray-100 text-gray-600'"
+                                        x-text="ev.tipo === 'conversa_inicio' ? 'inicio' :
+                                                ev.tipo === 'conversa_fim' ? 'fim' :
+                                                ev.tipo === 'diagnostico' ? 'diagnostico' :
+                                                ev.tipo === 'mapa_natal' ? 'mapa' :
+                                                ev.tipo.startsWith('anotacao_') ? ev.tipo.replace('anotacao_','') :
+                                                ev.tipo === 'resumo_sessao' ? 'sessao IA' :
+                                                ev.tipo"></span>
+                                    <span class="text-sm font-medium text-gray-800" x-text="ev.titulo || ev.resumo || ''"></span>
                                 </div>
                                 <span class="text-xs text-gray-400 flex-shrink-0 ml-2" x-text="formatarDataCurta(ev.data)"></span>
                             </div>
-                            <p x-show="ev.resumo" class="text-xs text-gray-500 mt-1.5" x-text="ev.resumo"></p>
                         </div>
                     </template>
                 </div>
