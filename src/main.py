@@ -28,6 +28,7 @@ from src.api.dashboard import router as dashboard_router
 from src.api.evolution import router as evolution_router
 from src.api.automation_router import router as automation_router
 from src.api.portal import router as portal_router
+from src.api.checkout import router as checkout_router
 
 
 @asynccontextmanager
@@ -137,6 +138,7 @@ app.include_router(dashboard_router)
 app.include_router(evolution_router)
 app.include_router(automation_router)
 app.include_router(portal_router)
+app.include_router(checkout_router)
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
@@ -157,6 +159,18 @@ async def dashboard_page():
 async def landing_page():
     """Serve a landing page de vendas."""
     return FileResponse(_PROJECT_ROOT / "landing.html")
+
+
+@app.get("/checkout", tags=["Checkout"])
+async def checkout_page():
+    """Serve a página de checkout."""
+    return FileResponse(_PROJECT_ROOT / "portal-vercel" / "checkout.html")
+
+
+@app.get("/obrigado", tags=["Checkout"])
+async def obrigado_page():
+    """Serve a página de obrigado pós-pagamento."""
+    return FileResponse(_PROJECT_ROOT / "portal-vercel" / "obrigado.html")
 
 
 @app.get("/portal", tags=["Portal"])
