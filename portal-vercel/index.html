@@ -1045,8 +1045,9 @@
                                         x-text="(terapeuta?.nome || 'T').charAt(0)"></div>
                                     <div class="max-w-[80%]">
                                         <p class="text-[10px] font-bold text-teal-700 mb-0.5 ml-1" x-text="terapeuta?.nome || 'Terapeuta'"></p>
-                                        <div class="bg-white rounded-2xl rounded-bl-md px-3.5 py-2.5 shadow-sm border border-gray-100/80">
-                                            <p class="text-sm text-gray-800 leading-relaxed" x-text="c.mensagem_paciente"></p>
+                                        <div class="bg-white rounded-2xl rounded-bl-md px-3.5 py-2.5 shadow-sm border border-gray-100/80" x-data="{ expanded: false }">
+                                            <p class="text-sm text-gray-800 leading-relaxed whitespace-pre-line" x-text="expanded || (c.mensagem_paciente||'').length <= 200 ? c.mensagem_paciente : c.mensagem_paciente.substring(0, 200) + '...'"></p>
+                                            <button x-show="(c.mensagem_paciente||'').length > 200" @click="expanded = !expanded" class="text-[11px] font-semibold mt-1 hover:underline" :class="expanded ? 'text-gray-400' : 'text-teal-600'" x-text="expanded ? 'ver menos' : 'ver mais'"></button>
                                             <p class="text-[10px] text-gray-400 text-right mt-1" x-text="new Date(c.criado_em).toLocaleString('pt-BR', {hour:'2-digit',minute:'2-digit'})"></p>
                                         </div>
                                     </div>
@@ -1055,8 +1056,9 @@
                                 <div x-show="c.resposta_agente" class="flex items-end gap-2 justify-end">
                                     <div class="max-w-[80%]">
                                         <p class="text-[10px] font-bold text-brand-600 mb-0.5 mr-1 text-right" x-text="terapeuta?.nome_agente || 'Agente IA'"></p>
-                                        <div class="rounded-2xl rounded-br-md px-3.5 py-2.5 shadow-sm" style="background: linear-gradient(135deg, #f3edff 0%, #ede5ff 100%); border: 1px solid rgba(123,47,190,0.12);">
-                                            <p class="text-sm text-gray-800 leading-relaxed" x-text="c.resposta_agente?.substring(0, 500)"></p>
+                                        <div class="rounded-2xl rounded-br-md px-3.5 py-2.5 shadow-sm" style="background: linear-gradient(135deg, #f3edff 0%, #ede5ff 100%); border: 1px solid rgba(123,47,190,0.12);" x-data="{ expanded: false }">
+                                            <p class="text-sm text-gray-800 leading-relaxed whitespace-pre-line" x-text="expanded || (c.resposta_agente||'').length <= 200 ? c.resposta_agente : c.resposta_agente.substring(0, 200) + '...'"></p>
+                                            <button x-show="(c.resposta_agente||'').length > 200" @click="expanded = !expanded" class="text-[11px] font-semibold mt-1 hover:underline" :class="expanded ? 'text-gray-400' : 'text-brand-600'" x-text="expanded ? 'ver menos' : 'ver mais'"></button>
                                             <div class="flex items-center justify-end gap-2 mt-1">
                                                 <span x-show="c.intencao" class="text-[10px] text-brand-400 font-semibold uppercase tracking-wide px-1.5 py-0.5 bg-brand-50 rounded" x-text="c.intencao"></span>
                                                 <p class="text-[10px] text-gray-400" x-text="new Date(c.criado_em).toLocaleString('pt-BR', {hour:'2-digit',minute:'2-digit'})"></p>
@@ -1471,8 +1473,9 @@
                                     x-text="(terapeuta?.nome || 'T').charAt(0)"></div>
                                 <div class="max-w-[80%] sm:max-w-[65%]">
                                     <p class="text-[11px] font-bold text-teal-700 mb-0.5 ml-1" x-text="terapeuta?.nome || 'Terapeuta'"></p>
-                                    <div class="bg-white rounded-2xl rounded-bl-md px-4 py-3 shadow-sm border border-gray-100/80">
-                                        <p class="text-sm text-gray-800 leading-relaxed whitespace-pre-line" x-text="msg.mensagem_paciente"></p>
+                                    <div class="bg-white rounded-2xl rounded-bl-md px-4 py-3 shadow-sm border border-gray-100/80" x-data="{ expanded: false }">
+                                        <p class="text-sm text-gray-800 leading-relaxed whitespace-pre-line" x-text="expanded || (msg.mensagem_paciente||'').length <= 250 ? msg.mensagem_paciente : msg.mensagem_paciente.substring(0, 250) + '...'"></p>
+                                        <button x-show="(msg.mensagem_paciente||'').length > 250" @click="expanded = !expanded" class="text-[11px] font-semibold mt-1 hover:underline" :class="expanded ? 'text-gray-400' : 'text-teal-600'" x-text="expanded ? 'ver menos' : 'ver mais'"></button>
                                         <p class="text-[10px] text-gray-400 text-right mt-1.5" x-text="new Date(msg.criado_em).toLocaleString('pt-BR', {hour:'2-digit',minute:'2-digit'})"></p>
                                     </div>
                                 </div>
@@ -1481,8 +1484,9 @@
                             <div x-show="msg.resposta_agente" class="flex items-end gap-2 justify-end">
                                 <div class="max-w-[80%] sm:max-w-[65%]">
                                     <p class="text-[11px] font-bold text-brand-600 mb-0.5 mr-1 text-right" x-text="terapeuta?.nome_agente || 'Agente IA'"></p>
-                                    <div class="rounded-2xl rounded-br-md px-4 py-3 shadow-sm" style="background: linear-gradient(135deg, #f3edff 0%, #ede5ff 100%); border: 1px solid rgba(123,47,190,0.12);">
-                                        <p class="text-sm text-gray-800 leading-relaxed whitespace-pre-line" x-text="msg.resposta_agente"></p>
+                                    <div class="rounded-2xl rounded-br-md px-4 py-3 shadow-sm" style="background: linear-gradient(135deg, #f3edff 0%, #ede5ff 100%); border: 1px solid rgba(123,47,190,0.12);" x-data="{ expanded: false }">
+                                        <p class="text-sm text-gray-800 leading-relaxed whitespace-pre-line" x-text="expanded || (msg.resposta_agente||'').length <= 250 ? msg.resposta_agente : msg.resposta_agente.substring(0, 250) + '...'"></p>
+                                        <button x-show="(msg.resposta_agente||'').length > 250" @click="expanded = !expanded" class="text-[11px] font-semibold mt-1 hover:underline" :class="expanded ? 'text-gray-400' : 'text-brand-600'" x-text="expanded ? 'ver menos' : 'ver mais'"></button>
                                         <div class="flex items-center justify-end gap-2 mt-1.5">
                                             <span x-show="msg.intencao" class="text-[10px] text-brand-400 font-semibold uppercase tracking-wide px-1.5 py-0.5 bg-brand-50 rounded" x-text="msg.intencao?.split('|')[0]"></span>
                                             <p class="text-[10px] text-gray-400" x-text="new Date(msg.criado_em).toLocaleString('pt-BR', {hour:'2-digit',minute:'2-digit'})"></p>
