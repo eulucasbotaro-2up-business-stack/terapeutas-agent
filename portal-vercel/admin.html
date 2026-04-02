@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin — TerapeutasAgent</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"></script>
+<style>
+[x-cloak]{display:none!important}
+*{box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;background:#0F0F13}
+.sidebar{width:220px;min-height:100vh;background:#18181F;border-right:1px solid #2a2a35;flex-shrink:0}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 16px;border-radius:8px;cursor:pointer;color:#9CA3AF;font-size:14px;font-weight:500;transition:all .2s;margin:2px 8px}
+.nav-item:hover{background:#23232e;color:#fff}
+.nav-item.active{background:linear-gradient(135deg,#7C3AED22,#0D948822);color:#fff;border:1px solid #7C3AED44}
+.nav-item .icon{width:18px;height:18px;flex-shrink:0}
+.card{background:#18181F;border:1px solid #2a2a35;border-radius:16px}
+.kpi-card{background:#18181F;border:1px solid #2a2a35;border-radius:14px;padding:20px;transition:border-color .2s}
+.kpi-card:hover{border-color:#7C3AED55}
+.badge{display:inline-flex;align-items:center;padding:2px 10px;border-radius:9999px;font-size:11px;font-weight:700;letter-spacing:.3px}
+.badge-ativo{background:#064e3b;color:#6ee7b7}
+.badge-disponivel{background:#78350f44;color:#fbbf24}
+.badge-pendente{background:#78350f44;color:#fbbf24}
+.badge-cancelado,.badge-suspenso_pagamento{background:#7f1d1d44;color:#fca5a5}
+.badge-expirado{background:#1f2937;color:#9ca3af}
+.badge-ATIVO{background:#064e3b;color:#6ee7b7}
+.badge-PENDENTE_CODIGO{background:#78350f44;color:#fbbf24}
+.badge-BLOQUEADO{background:#7f1d1d44;color:#fca5a5}
+.badge-Iniciante{background:#1e3a5f;color:#60a5fa}
+.badge-Essencial{background:#1a3a2a;color:#34d399}
+.badge-Profissional{background:#2d1b4e;color:#c084fc}
+.badge-Clínica{background:#4a1500;color:#fb923c}
+.badge-Desconhecido{background:#1f2937;color:#9ca3af}
+table{width:100%;border-collapse:collapse}
+th{padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #2a2a35}
+td{padding:11px 14px;font-size:13px;color:#D1D5DB;border-bottom:1px solid #1c1c26}
+tr:hover td{background:#1e1e2a}
+tr:last-child td{border-bottom:none}
+.input-dark{background:#23232e;border:1px solid #2a2a35;border-radius:8px;padding:8px 12px;color:#fff;font-size:13px;outline:none;width:100%}
+.input-dark:focus{border-color:#7C3AED}
+.input-dark::placeholder{color:#6B7280}
+.btn-primary{background:linear-gradient(135deg,#7C3AED,#6D28D9);color:#fff;padding:8px 18px;border-radius:8px;font-weight:600;font-size:13px;border:none;cursor:pointer;transition:opacity .2s}
+.btn-primary:hover{opacity:.85}
+.btn-ghost{background:transparent;border:1px solid #2a2a35;color:#9CA3AF;padding:8px 18px;border-radius:8px;font-weight:500;font-size:13px;cursor:pointer;transition:all .2s}
+.btn-ghost:hover{border-color:#7C3AED;color:#fff}
+.chart-wrap{position:relative;height:220px}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#2a2a35;border-radius:3px}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.fade-in{animation:fadeIn .35s ease}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spinner{border:2px solid #2a2a35;border-top-color:#7C3AED;border-radius:50%;width:20px;height:20px;animation:spin .6s linear infinite;display:inline-block}
+</style>
+</head>
+<body x-data="admin()" x-init="init()" x-cloak>
+
+<!-- LOGIN -->
+<div x-show="!auth" class="fixed inset-0 z-50 flex items-center justify-center" style="background:linear-gradient(135deg,#0F0F13 0%,#1a0d2e 100%)">
+  <div class="card p-8 w-full max-w-sm mx-4">
+    <div class="text-center mb-6">
+      <div class="w-14 h-14 mx-auto rounded-2xl flex items-center justify-center mb-3" style="background:linear-gradient(135deg,#7C3AED,#0D9488)">
+        <svg class="w-7 h-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+      </div>
+      <h1 class="text-xl font-bold text-white">Admin Panel</h1>
+      <p class="text-gray-500 text-sm mt-1">TerapeutasAgent</p>
+    </div>
+    <form @submit.prevent="login()">
+      <input type="password" class="input-dark mb-3" x-model="tokenInput" placeholder="Token de acesso..." autofocus>
+      <p x-show="loginErro" x-text="loginErro" class="text-red-400 text-xs mb-3"></p>
+      <button type="submit" class="btn-primary w-full">Entrar</button>
+    </form>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div x-show="auth" class="flex min-h-screen fade-in">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar flex flex-col py-5">
+    <div class="px-5 mb-6">
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style="background:linear-gradient(135deg,#7C3AED,#0D9488)">
+          <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+        </div>
+        <div>
+          <p class="text-white font-bold text-sm">TerapeutasAgent</p>
+          <p class="text-gray-500 text-xs">Admin Panel</p>
+        </div>
+      </div>
+    </div>
+
+    <nav class="flex-1 space-y-0.5">
+      <div class="nav-item" :class="secao==='overview'&&'active'" @click="secao='overview'">
+        <svg class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+        Overview
+      </div>
+      <div class="nav-item" :class="secao==='clientes'&&'active'" @click="irPara('clientes')">
+        <svg class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        Clientes
+      </div>
+      <div class="nav-item" :class="secao==='terapeutas'&&'active'" @click="irPara('terapeutas')">
+        <svg class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+        Terapeutas
+      </div>
+      <div class="nav-item" :class="secao==='financeiro'&&'active'" @click="irPara('financeiro')">
+        <svg class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        Financeiro
+      </div>
+      <div class="nav-item" :class="secao==='conversas'&&'active'" @click="irPara('conversas')">
+        <svg class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
+        Conversas
+      </div>
+    </nav>
+
+    <div class="px-4 mt-4 pt-4 border-t border-gray-800">
+      <p class="text-gray-600 text-xs text-center" x-text="'Atualizado ' + ultimaAtualizacao"></p>
+      <button @click="recarregarTudo()" class="w-full btn-ghost mt-2 text-xs py-1.5">Atualizar</button>
+    </div>
+  </div>
+
+  <!-- CONTENT -->
+  <div class="flex-1 overflow-auto p-6" style="background:#0F0F13">
+
+    <!-- ========== OVERVIEW ========== -->
+    <div x-show="secao==='overview'" class="fade-in">
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <h1 class="text-white text-xl font-bold">Overview</h1>
+          <p class="text-gray-500 text-sm mt-0.5">Visão geral do negócio</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <span x-show="loading" class="spinner"></span>
+        </div>
+      </div>
+
+      <!-- KPIs Row -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div class="kpi-card">
+          <p class="text-gray-500 text-xs font-semibold uppercase tracking-wider mb-2">MRR</p>
+          <p class="text-3xl font-bold text-white" x-text="'R$' + (fin?.mrr || 0).toLocaleString('pt-BR')"></p>
+          <p class="text-gray-600 text-xs mt-1" x-text="'ARR: R$' + (fin?.arr || 0).toLocaleString('pt-BR')"></p>
+        </div>
+        <div class="kpi-card">
+          <p class="text-gray-500 text-xs font-semibold uppercase tracking-wider mb-2">Assinantes Ativos</p>
+          <p class="text-3xl font-bold" style="color:#34d399" x-text="fin?.total_ativos || 0"></p>
+          <p class="text-gray-600 text-xs mt-1" x-text="(fin?.total_cancelados||0) + ' cancelados'"></p>
+        </div>
+        <div class="kpi-card">
+          <p class="text-gray-500 text-xs font-semibold uppercase tracking-wider mb-2">Novos Esta Semana</p>
+          <p class="text-3xl font-bold" style="color:#c084fc" x-text="fin?.novos_esta_semana || 0"></p>
+          <p class="text-gray-600 text-xs mt-1" x-text="(fin?.novos_este_mes||0) + ' este mês'"></p>
+        </div>
+        <div class="kpi-card">
+          <p class="text-gray-500 text-xs font-semibold uppercase tracking-wider mb-2">Terapeutas</p>
+          <p class="text-3xl font-bold" style="color:#fb923c" x-text="overview?.terapeutas_ativos || 0"></p>
+          <p class="text-gray-600 text-xs mt-1" x-text="(overview?.usuarios_ativos||0) + ' usuários ativos'"></p>
+        </div>
+      </div>
+
+      <!-- Charts row -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+        <div class="card p-5 lg:col-span-2">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-white font-semibold text-sm">Mensagens por Dia (30d)</h3>
+            <span class="text-gray-500 text-xs" x-text="(overview?.conversas_total||0) + ' total'"></span>
+          </div>
+          <div class="chart-wrap"><canvas id="chartEvolucao"></canvas></div>
+        </div>
+        <div class="card p-5">
+          <h3 class="text-white font-semibold text-sm mb-4">Receita por Plano</h3>
+          <div class="chart-wrap" style="height:180px"><canvas id="chartPlanos"></canvas></div>
+          <div class="mt-3 space-y-2">
+            <template x-for="p in (fin?.por_plano||[])" :key="p.plano">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span class="badge" :class="'badge-'+p.plano" x-text="p.plano"></span>
+                  <span class="text-gray-500 text-xs" x-text="p.count + ' assinantes'"></span>
+                </div>
+                <span class="text-white text-xs font-semibold" x-text="'R$' + p.valor.toLocaleString('pt-BR')"></span>
+              </div>
+            </template>
+            <div x-show="!(fin?.por_plano?.length)" class="text-gray-600 text-xs text-center py-2">Nenhum dado</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Secondary KPIs -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div class="card p-4">
+          <p class="text-gray-500 text-xs uppercase tracking-wider mb-1">Conversas Hoje</p>
+          <p class="text-2xl font-bold text-white" x-text="overview?.conversas_hoje||0"></p>
+        </div>
+        <div class="card p-4">
+          <p class="text-gray-500 text-xs uppercase tracking-wider mb-1">Conversas 7 dias</p>
+          <p class="text-2xl font-bold text-white" x-text="overview?.conversas_semana||0"></p>
+        </div>
+        <div class="card p-4">
+          <p class="text-gray-500 text-xs uppercase tracking-wider mb-1">Aguardando Código</p>
+          <p class="text-2xl font-bold" style="color:#fbbf24" x-text="overview?.usuarios_pendentes||0"></p>
+        </div>
+        <div class="card p-4">
+          <p class="text-gray-500 text-xs uppercase tracking-wider mb-1">Média Msgs/Dia</p>
+          <p class="text-2xl font-bold text-white" x-text="overview?.mensagem_media_dia||0"></p>
+        </div>
+      </div>
+
+      <!-- Recent signups -->
+      <div class="card p-5">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-white font-semibold text-sm">Cadastros Recentes</h3>
+          <button @click="irPara('clientes')" class="text-purple-400 hover:text-purple-300 text-xs">Ver todos →</button>
+        </div>
+        <div class="overflow-x-auto">
+          <table>
+            <thead>
+              <tr>
+                <th>Cliente</th>
+                <th>Plano</th>
+                <th>Status</th>
+                <th>Valor</th>
+                <th>Data</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template x-for="s in (assinaturas||[]).slice(0,8)" :key="s.id">
+                <tr>
+                  <td>
+                    <div>
+                      <p class="font-medium text-white" x-text="s.nome_cliente || s.nome_usuario || '—'"></p>
+                      <p class="text-gray-500 text-xs" x-text="s.email_cliente || s.terapeuta_nome"></p>
+                    </div>
+                  </td>
+                  <td><span class="badge" :class="'badge-'+s.plano" x-text="s.plano"></span></td>
+                  <td><span class="badge" :class="'badge-'+s.status_assinatura" x-text="s.status_assinatura"></span></td>
+                  <td class="text-green-400 font-semibold" x-text="s.valor_mensal ? 'R$'+s.valor_mensal : '—'"></td>
+                  <td class="text-gray-500" x-text="formatarData(s.criado_em)"></td>
+                </tr>
+              </template>
+              <tr x-show="!(assinaturas?.length)">
+                <td colspan="5" class="text-center text-gray-600 py-6">Nenhum cadastro</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== CLIENTES ========== -->
+    <div x-show="secao==='clientes'" class="fade-in">
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <h1 class="text-white text-xl font-bold">Clientes</h1>
+          <p class="text-gray-500 text-sm mt-0.5" x-text="(assinaturas||[]).length + ' cadastros'"></p>
+        </div>
+      </div>
+
+      <!-- Filtros -->
+      <div class="flex flex-wrap gap-3 mb-5">
+        <input class="input-dark" style="max-width:260px" x-model="buscaCliente" placeholder="Buscar nome, email, plano...">
+        <select class="input-dark" style="max-width:160px" x-model="filtroStatusCliente">
+          <option value="">Todos status</option>
+          <option value="ativo">Ativo</option>
+          <option value="disponivel">Aguardando</option>
+          <option value="cancelado">Cancelado</option>
+          <option value="suspenso_pagamento">Suspenso</option>
+        </select>
+        <select class="input-dark" style="max-width:160px" x-model="filtroPlano">
+          <option value="">Todos planos</option>
+          <option value="Iniciante">Iniciante</option>
+          <option value="Essencial">Essencial</option>
+          <option value="Profissional">Profissional</option>
+          <option value="Clínica">Clínica</option>
+        </select>
+      </div>
+
+      <!-- Stats rápidas -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+        <div class="card p-4 text-center">
+          <p class="text-2xl font-bold" style="color:#34d399" x-text="assinaturas.filter(a=>a.status_assinatura==='ativo').length"></p>
+          <p class="text-gray-500 text-xs mt-0.5">Ativos</p>
+        </div>
+        <div class="card p-4 text-center">
+          <p class="text-2xl font-bold" style="color:#fbbf24" x-text="assinaturas.filter(a=>a.status_assinatura==='disponivel').length"></p>
+          <p class="text-gray-500 text-xs mt-0.5">Aguardando</p>
+        </div>
+        <div class="card p-4 text-center">
+          <p class="text-2xl font-bold" style="color:#f87171" x-text="assinaturas.filter(a=>['cancelado','suspenso_pagamento'].includes(a.status_assinatura)).length"></p>
+          <p class="text-gray-500 text-xs mt-0.5">Cancelados</p>
+        </div>
+        <div class="card p-4 text-center">
+          <p class="text-2xl font-bold text-white" x-text="assinaturas.filter(a=>a.status_assinatura==='ativo'&&a.valor_mensal).reduce((s,a)=>s+a.valor_mensal,0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})"></p>
+          <p class="text-gray-500 text-xs mt-0.5">MRR filtrado</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="overflow-x-auto">
+          <table>
+            <thead>
+              <tr>
+                <th>Cliente</th>
+                <th>Email</th>
+                <th>Plano</th>
+                <th>Status</th>
+                <th>Valor/mês</th>
+                <th>Ativado em</th>
+                <th>Expira</th>
+                <th>Terapeuta</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template x-for="s in clientesFiltrados" :key="s.id">
+                <tr>
+                  <td>
+                    <div>
+                      <p class="font-medium text-white" x-text="s.nome_cliente || s.nome_usuario || '—'"></p>
+                      <p class="text-gray-600 text-xs" x-text="s.numero_ativo || ''"></p>
+                    </div>
+                  </td>
+                  <td class="text-gray-400" x-text="s.email_cliente || '—'"></td>
+                  <td><span class="badge" :class="'badge-'+s.plano" x-text="s.plano"></span></td>
+                  <td><span class="badge" :class="'badge-'+s.status_assinatura" x-text="s.status_assinatura"></span></td>
+                  <td class="font-semibold" :class="s.valor_mensal ? 'text-green-400' : 'text-gray-600'" x-text="s.valor_mensal ? 'R$'+s.valor_mensal : '—'"></td>
+                  <td class="text-gray-500 text-xs" x-text="formatarData(s.usado_em || s.criado_em)"></td>
+                  <td class="text-xs" :class="expirado(s.data_expiracao) ? 'text-red-400' : 'text-gray-400'" x-text="s.data_expiracao ? formatarData(s.data_expiracao) : '—'"></td>
+                  <td class="text-gray-500 text-xs" x-text="s.terapeuta_nome"></td>
+                </tr>
+              </template>
+              <tr x-show="!clientesFiltrados.length">
+                <td colspan="8" class="text-center text-gray-600 py-8">Nenhum cliente encontrado</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== TERAPEUTAS ========== -->
+    <div x-show="secao==='terapeutas'" class="fade-in">
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <h1 class="text-white text-xl font-bold">Terapeutas</h1>
+          <p class="text-gray-500 text-sm mt-0.5" x-text="(terapeutas||[]).length + ' registrados'"></p>
+        </div>
+      </div>
+
+      <div class="flex gap-3 mb-5">
+        <input class="input-dark" style="max-width:280px" x-model="buscaTerapeuta" placeholder="Buscar terapeuta...">
+      </div>
+
+      <div class="card">
+        <div class="overflow-x-auto">
+          <table>
+            <thead>
+              <tr>
+                <th>Terapeuta</th>
+                <th>Email</th>
+                <th>Pacientes</th>
+                <th>Conversas (7d)</th>
+                <th>Conversas Total</th>
+                <th>Documentos</th>
+                <th>Última atividade</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template x-for="t in terapeutasFiltrados" :key="t.id">
+                <tr>
+                  <td>
+                    <div class="flex items-center gap-2.5">
+                      <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0" style="background:linear-gradient(135deg,#7C3AED,#0D9488)" x-text="(t.nome||'?').charAt(0)"></div>
+                      <span class="font-medium text-white" x-text="t.nome||'—'"></span>
+                    </div>
+                  </td>
+                  <td class="text-gray-400" x-text="t.email||'—'"></td>
+                  <td>
+                    <div class="flex items-center gap-1.5">
+                      <span class="text-white font-semibold" x-text="t.total_usuarios||0"></span>
+                      <span class="text-gray-600 text-xs" x-text="'(' + (t.usuarios_ativos||0) + ' ativos)'"></span>
+                    </div>
+                  </td>
+                  <td class="font-semibold" :class="(t.conversas_semana||0)>0?'text-green-400':'text-gray-600'" x-text="t.conversas_semana||0"></td>
+                  <td class="text-gray-300" x-text="t.conversas_total||0"></td>
+                  <td class="text-gray-400" x-text="t.documentos_indexados||0"></td>
+                  <td class="text-gray-500 text-xs" x-text="t.ultima_conversa ? formatarDataRelativa(t.ultima_conversa) : '—'"></td>
+                </tr>
+              </template>
+              <tr x-show="!terapeutasFiltrados.length">
+                <td colspan="7" class="text-center text-gray-600 py-8">Nenhum terapeuta encontrado</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== FINANCEIRO ========== -->
+    <div x-show="secao==='financeiro'" class="fade-in">
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <h1 class="text-white text-xl font-bold">Financeiro</h1>
+          <p class="text-gray-500 text-sm mt-0.5">MRR, receita e crescimento</p>
+        </div>
+      </div>
+
+      <!-- KPIs financeiros -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div class="kpi-card" style="border-color:#34d39955">
+          <p class="text-xs font-semibold uppercase tracking-wider mb-2" style="color:#34d399">MRR</p>
+          <p class="text-3xl font-bold text-white" x-text="'R$' + (fin?.mrr||0).toLocaleString('pt-BR')"></p>
+          <p class="text-gray-600 text-xs mt-1">Receita Mensal Recorrente</p>
+        </div>
+        <div class="kpi-card" style="border-color:#c084fc55">
+          <p class="text-xs font-semibold uppercase tracking-wider mb-2" style="color:#c084fc">ARR</p>
+          <p class="text-3xl font-bold text-white" x-text="'R$' + (fin?.arr||0).toLocaleString('pt-BR')"></p>
+          <p class="text-gray-600 text-xs mt-1">Receita Anual Recorrente</p>
+        </div>
+        <div class="kpi-card">
+          <p class="text-gray-500 text-xs font-semibold uppercase tracking-wider mb-2">Ticket Médio</p>
+          <p class="text-3xl font-bold text-white" x-text="fin?.total_ativos ? 'R$' + Math.round((fin?.mrr||0)/(fin?.total_ativos||1)).toLocaleString('pt-BR') : '—'"></p>
+          <p class="text-gray-600 text-xs mt-1" x-text="(fin?.total_ativos||0) + ' assinantes ativos'"></p>
+        </div>
+        <div class="kpi-card">
+          <p class="text-gray-500 text-xs font-semibold uppercase tracking-wider mb-2">Novos Este Mês</p>
+          <p class="text-3xl font-bold" style="color:#fb923c" x-text="fin?.novos_este_mes||0"></p>
+          <p class="text-gray-600 text-xs mt-1" x-text="(fin?.novos_esta_semana||0) + ' esta semana'"></p>
+        </div>
+      </div>
+
+      <!-- Charts financeiros -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+        <div class="card p-5">
+          <h3 class="text-white font-semibold text-sm mb-4">Novos Cadastros por Mês</h3>
+          <div class="chart-wrap"><canvas id="chartCrescimento"></canvas></div>
+        </div>
+        <div class="card p-5">
+          <h3 class="text-white font-semibold text-sm mb-4">Distribuição por Plano</h3>
+          <div class="chart-wrap"><canvas id="chartPlanosFinanceiro"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Tabela por plano -->
+      <div class="card p-5">
+        <h3 class="text-white font-semibold text-sm mb-4">Receita por Plano</h3>
+        <div class="space-y-3">
+          <template x-for="p in (fin?.por_plano||[])" :key="p.plano">
+            <div class="flex items-center gap-4">
+              <span class="badge w-24 justify-center" :class="'badge-'+p.plano" x-text="p.plano"></span>
+              <div class="flex-1">
+                <div class="flex items-center justify-between mb-1">
+                  <span class="text-gray-400 text-xs" x-text="p.count + ' assinantes'"></span>
+                  <span class="text-white text-xs font-semibold" x-text="'R$' + p.valor.toLocaleString('pt-BR') + '/mês'"></span>
+                </div>
+                <div class="h-2 rounded-full bg-gray-800 overflow-hidden">
+                  <div class="h-full rounded-full" style="background:linear-gradient(135deg,#7C3AED,#0D9488)" :style="'width:' + Math.min(100, (p.valor / (fin?.mrr||1)) * 100) + '%'"></div>
+                </div>
+              </div>
+              <span class="text-gray-500 text-xs w-12 text-right" x-text="fin?.mrr ? Math.round((p.valor/(fin?.mrr||1))*100) + '%' : '0%'"></span>
+            </div>
+          </template>
+          <div x-show="!(fin?.por_plano?.length)" class="text-gray-600 text-sm text-center py-4">Nenhum assinante ativo</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== CONVERSAS ========== -->
+    <div x-show="secao==='conversas'" class="fade-in">
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <h1 class="text-white text-xl font-bold">Conversas</h1>
+          <p class="text-gray-500 text-sm mt-0.5" x-text="(overview?.conversas_total||0).toLocaleString('pt-BR') + ' mensagens total'"></p>
+        </div>
+      </div>
+
+      <!-- Chart -->
+      <div class="card p-5 mb-6">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-white font-semibold text-sm">Volume de Mensagens (30 dias)</h3>
+          <div class="flex gap-2 text-xs text-gray-500">
+            <span>Hoje: <span class="text-white font-semibold" x-text="overview?.conversas_hoje||0"></span></span>
+            <span>•</span>
+            <span>Média/dia: <span class="text-white font-semibold" x-text="overview?.mensagem_media_dia||0"></span></span>
+          </div>
+        </div>
+        <div class="chart-wrap" style="height:200px"><canvas id="chartConversas"></canvas></div>
+      </div>
+
+      <!-- Busca e filtros -->
+      <div class="flex gap-3 mb-4">
+        <input class="input-dark" style="max-width:300px" x-model="buscaConversa" placeholder="Buscar mensagem...">
+      </div>
+
+      <div class="card">
+        <div class="overflow-x-auto">
+          <table>
+            <thead>
+              <tr>
+                <th>Paciente</th>
+                <th>Terapeuta</th>
+                <th>Mensagem</th>
+                <th>Intenção</th>
+                <th>Data</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template x-for="c in conversasFiltradas.slice(0,50)" :key="c.id">
+                <tr>
+                  <td>
+                    <div>
+                      <p class="font-medium text-white" x-text="c.paciente_nome || c.paciente_numero"></p>
+                      <p class="text-gray-600 text-xs" x-text="c.paciente_nome ? c.paciente_numero : ''"></p>
+                    </div>
+                  </td>
+                  <td class="text-gray-400 text-xs" x-text="c.terapeuta_nome"></td>
+                  <td style="max-width:280px">
+                    <p class="text-gray-300 text-xs truncate" x-text="c.mensagem_paciente"></p>
+                  </td>
+                  <td><span x-show="c.modo" class="badge bg-gray-800 text-gray-400" x-text="c.modo"></span></td>
+                  <td class="text-gray-500 text-xs whitespace-nowrap" x-text="formatarDataHora(c.criado_em)"></td>
+                </tr>
+              </template>
+              <tr x-show="!conversasFiltradas.length">
+                <td colspan="5" class="text-center text-gray-600 py-8">Nenhuma conversa</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div x-show="conversasFiltradas.length > 50" class="p-4 text-center text-gray-600 text-xs">
+          Mostrando 50 de <span x-text="conversasFiltradas.length"></span> conversas
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const API = '';
+
+function admin() {
+  return {
+    auth: false,
+    tokenInput: '',
+    loginErro: '',
+    loading: false,
+    secao: 'overview',
+    ultimaAtualizacao: '—',
+
+    // Data
+    overview: null,
+    fin: null,
+    assinaturas: [],
+    terapeutas: [],
+    conversas: [],
+    evolucao: [],
+
+    // Filters
+    buscaCliente: '',
+    filtroStatusCliente: '',
+    filtroPlano: '',
+    buscaTerapeuta: '',
+    buscaConversa: '',
+
+    // Charts
+    charts: {},
+
+    async init() {
+      const tk = localStorage.getItem('admin_token');
+      if (tk) { this.tokenInput = tk; await this.carregarTudo(); }
+    },
+
+    async login() {
+      this.loginErro = '';
+      if (!this.tokenInput) return;
+      try {
+        const r = await fetch(`${API}/dashboard/api/overview?token=${this.tokenInput}`);
+        if (!r.ok) { this.loginErro = 'Token inválido'; return; }
+        localStorage.setItem('admin_token', this.tokenInput);
+        await this.carregarTudo();
+      } catch(e) {
+        this.loginErro = 'Erro de conexão';
+      }
+    },
+
+    get token() { return this.tokenInput || localStorage.getItem('admin_token') || ''; },
+
+    async api(path) {
+      const sep = path.includes('?') ? '&' : '?';
+      const r = await fetch(`${API}${path}${sep}token=${this.token}`);
+      if (r.status === 401) { this.auth = false; return null; }
+      if (!r.ok) return null;
+      return r.json();
+    },
+
+    async carregarTudo() {
+      this.loading = true;
+      try {
+        const [ov, finData, subs, teraps, convs, evol] = await Promise.all([
+          this.api('/dashboard/api/overview'),
+          this.api('/dashboard/api/financeiro'),
+          this.api('/dashboard/api/assinaturas'),
+          this.api('/dashboard/api/terapeutas'),
+          this.api('/dashboard/api/conversas?limite=200'),
+          this.api('/dashboard/api/evolucao?dias=30'),
+        ]);
+        if (ov) { this.overview = ov; this.auth = true; }
+        if (finData) this.fin = finData;
+        if (subs) this.assinaturas = subs.assinaturas || [];
+        if (teraps) this.terapeutas = teraps.terapeutas || [];
+        if (convs) this.conversas = convs.conversas || [];
+        if (evol) this.evolucao = evol.evolucao || [];
+        this.ultimaAtualizacao = new Date().toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
+        this.$nextTick(() => this.renderCharts());
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async recarregarTudo() { await this.carregarTudo(); },
+
+    async irPara(s) {
+      this.secao = s;
+      await this.$nextTick();
+      this.renderCharts();
+    },
+
+    renderCharts() {
+      const destroir = (id) => { if(this.charts[id]) { this.charts[id].destroy(); delete this.charts[id]; } };
+
+      // Evolução mensagens (overview + conversas)
+      if (document.getElementById('chartEvolucao') || document.getElementById('chartConversas')) {
+        const labels = this.evolucao.map(d => d.data.slice(5));
+        const vals = this.evolucao.map(d => d.total);
+        const cfg = (id) => {
+          const el = document.getElementById(id);
+          if (!el) return;
+          destroir(id);
+          this.charts[id] = new Chart(el, {
+            type: 'line',
+            data: {
+              labels,
+              datasets: [{
+                data: vals,
+                borderColor: '#7C3AED',
+                backgroundColor: 'rgba(124,58,237,0.08)',
+                fill: true,
+                tension: 0.4,
+                pointRadius: 0,
+                borderWidth: 2,
+              }]
+            },
+            options: {
+              responsive: true, maintainAspectRatio: false,
+              plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ctx.parsed.y + ' msgs' } } },
+              scales: {
+                x: { grid: { color: '#2a2a35' }, ticks: { color: '#6B7280', font: { size: 10 } } },
+                y: { grid: { color: '#2a2a35' }, ticks: { color: '#6B7280', font: { size: 10 } }, beginAtZero: true },
+              }
+            }
+          });
+        };
+        cfg('chartEvolucao');
+        cfg('chartConversas');
+      }
+
+      // Planos donut (overview)
+      if (document.getElementById('chartPlanos') && this.fin?.por_plano?.length) {
+        destroir('chartPlanos');
+        const COLORS = { 'Iniciante': '#60a5fa', 'Essencial': '#34d399', 'Profissional': '#c084fc', 'Clínica': '#fb923c', 'Desconhecido': '#6b7280' };
+        this.charts['chartPlanos'] = new Chart(document.getElementById('chartPlanos'), {
+          type: 'doughnut',
+          data: {
+            labels: this.fin.por_plano.map(p => p.plano),
+            datasets: [{ data: this.fin.por_plano.map(p => p.valor), backgroundColor: this.fin.por_plano.map(p => COLORS[p.plano]||'#6b7280'), borderWidth: 0, hoverOffset: 6 }]
+          },
+          options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, cutout: '70%' }
+        });
+      }
+
+      // Crescimento mensal (financeiro)
+      if (document.getElementById('chartCrescimento') && this.fin?.evolucao?.length) {
+        destroir('chartCrescimento');
+        const evo = this.fin.evolucao;
+        this.charts['chartCrescimento'] = new Chart(document.getElementById('chartCrescimento'), {
+          type: 'bar',
+          data: {
+            labels: evo.map(e => e.mes),
+            datasets: [{ label: 'Novos cadastros', data: evo.map(e => e.novos), backgroundColor: 'rgba(124,58,237,0.7)', borderRadius: 4 }]
+          },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              x: { grid: { color: '#2a2a35' }, ticks: { color: '#6B7280', font: { size: 10 } } },
+              y: { grid: { color: '#2a2a35' }, ticks: { color: '#6B7280', font: { size: 10 } }, beginAtZero: true },
+            }
+          }
+        });
+      }
+
+      // Planos bar (financeiro)
+      if (document.getElementById('chartPlanosFinanceiro') && this.fin?.por_plano?.length) {
+        destroir('chartPlanosFinanceiro');
+        const COLORS = { 'Iniciante': '#60a5fa', 'Essencial': '#34d399', 'Profissional': '#c084fc', 'Clínica': '#fb923c', 'Desconhecido': '#6b7280' };
+        this.charts['chartPlanosFinanceiro'] = new Chart(document.getElementById('chartPlanosFinanceiro'), {
+          type: 'bar',
+          data: {
+            labels: this.fin.por_plano.map(p => p.plano),
+            datasets: [
+              { label: 'Assinantes', data: this.fin.por_plano.map(p => p.count), backgroundColor: this.fin.por_plano.map(p => COLORS[p.plano]||'#6b7280'), borderRadius: 4 }
+            ]
+          },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              x: { grid: { display: false }, ticks: { color: '#6B7280', font: { size: 11 } } },
+              y: { grid: { color: '#2a2a35' }, ticks: { color: '#6B7280', font: { size: 10 } }, beginAtZero: true },
+            }
+          }
+        });
+      }
+    },
+
+    // Computed
+    get clientesFiltrados() {
+      let list = this.assinaturas;
+      if (this.buscaCliente) {
+        const b = this.buscaCliente.toLowerCase();
+        list = list.filter(s =>
+          (s.nome_cliente||'').toLowerCase().includes(b) ||
+          (s.email_cliente||'').toLowerCase().includes(b) ||
+          (s.nome_usuario||'').toLowerCase().includes(b) ||
+          (s.plano||'').toLowerCase().includes(b)
+        );
+      }
+      if (this.filtroStatusCliente) list = list.filter(s => s.status_assinatura === this.filtroStatusCliente);
+      if (this.filtroPlano) list = list.filter(s => s.plano === this.filtroPlano);
+      return list;
+    },
+
+    get terapeutasFiltrados() {
+      if (!this.buscaTerapeuta) return this.terapeutas;
+      const b = this.buscaTerapeuta.toLowerCase();
+      return this.terapeutas.filter(t =>
+        (t.nome||'').toLowerCase().includes(b) ||
+        (t.email||'').toLowerCase().includes(b)
+      );
+    },
+
+    get conversasFiltradas() {
+      if (!this.buscaConversa) return this.conversas;
+      const b = this.buscaConversa.toLowerCase();
+      return this.conversas.filter(c =>
+        (c.mensagem_paciente||'').toLowerCase().includes(b) ||
+        (c.paciente_nome||'').toLowerCase().includes(b)
+      );
+    },
+
+    // Helpers
+    formatarData(iso) {
+      if (!iso) return '—';
+      return new Date(iso).toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit',year:'numeric'});
+    },
+    formatarDataHora(iso) {
+      if (!iso) return '—';
+      const d = new Date(iso);
+      return d.toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit'}) + ' ' + d.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
+    },
+    formatarDataRelativa(iso) {
+      if (!iso) return '—';
+      const diff = Math.floor((Date.now() - new Date(iso)) / 86400000);
+      if (diff === 0) return 'hoje';
+      if (diff === 1) return 'ontem';
+      if (diff < 7) return diff + 'd atrás';
+      if (diff < 30) return Math.floor(diff/7) + 'sem atrás';
+      return Math.floor(diff/30) + 'meses atrás';
+    },
+    expirado(iso) {
+      if (!iso) return false;
+      return new Date(iso) < new Date();
+    },
+  };
+}
+</script>
+</body>
+</html>

@@ -3,6 +3,10 @@
     {
       "source": "/portal/api/:path*",
       "destination": "https://modest-respect-production.up.railway.app/portal/api/:path*"
+    },
+    {
+      "source": "/dashboard/api/:path*",
+      "destination": "https://modest-respect-production.up.railway.app/dashboard/api/:path*"
     }
   ]
 }
