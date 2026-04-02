@@ -1611,36 +1611,9 @@ async def _processar_mensagem(payload: dict) -> None:
                         )
                         chunks_texto = mapa_prefixo + chunks_texto
 
-                        # Enviar imagens do cache APENAS se dados de nascimento foram
-                        # enviados NESTA mensagem (pedido explícito de mapa).
-                        # _dados_vieram_da_msg_atual é True SOMENTE se a msg atual tem data/hora/cidade.
-                        if _mapa_img_urls and _dados_vieram_da_msg_atual:
-                            _cache_imagem_enviada = False
-                            _caption_base = (
-                                f"{dados_nasc.get('nome', 'Paciente')}\n"
-                                f"{dados_nasc['data']} {dados_nasc['hora']} | {dados_nasc.get('cidade', '')}"
-                            )
-                            for _img_url in _mapa_img_urls:
-                                try:
-                                    _img_label = "Mapa Alquimico" if "alquimico" in _img_url.lower() else "Mapa Natal"
-                                    await evolution.enviar_imagem_url(
-                                        instance=instance_name,
-                                        numero=numero_paciente,
-                                        url=_img_url,
-                                        caption=f"{_img_label} — {_caption_base}",
-                                    )
-                                    _cache_imagem_enviada = True
-                                    logger.info(f"[Evolution] Imagem do cache enviada: {_img_url[:60]}")
-                                except Exception as img_url_err:
-                                    logger.warning(f"[Evolution] Falha imagem cache: {img_url_err}")
-                            if _cache_imagem_enviada:
-                                _nota_imagem_sp = (
-                                    "\n\nINSTRUCAO INTERNA — nao reproduza este aviso na resposta: "
-                                    "A imagem do mapa alquimico ja foi enviada como arquivo separado. "
-                                    "NAO mencione a imagem, NAO diga que foi enviada. "
-                                    "Entregue a leitura do campo astrologico do mapa (elementos, posicoes, ascendente). NAO entregue diagnostico, protocolo ou posologia ainda. Termine com UMA pergunta investigativa sobre o comportamento do paciente na consulta."
-                                )
-                        # Se tem cache mas não enviou imagem (contexto apenas), não mencionar imagem
+                        # REGRA ABSOLUTA: cache de mapa NUNCA envia imagens.
+                        # Imagens só são enviadas na GERAÇÃO de mapa novo (mais abaixo).
+                        # Cache é usado APENAS para injetar JSON no contexto do RAG.
                         if not _nota_imagem_sp and _mapa_json_cache:
                             _nota_imagem_sp = (
                                 "\n\nINSTRUCAO INTERNA — nao reproduza este aviso na resposta: "
