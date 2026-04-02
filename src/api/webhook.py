@@ -1484,21 +1484,29 @@ async def _processar_mensagem(payload: dict) -> None:
             )
 
             # --- Injeção de Mapa Natal (Swiss Ephemeris via Kerykeion) ---
-            # Verifica se a mensagem atual ou o histórico contém dados de nascimento.
-            # REGRA: imagens só são enviadas quando dados vêm da mensagem ATUAL.
+            # PRE-CHECK com regex: só chama LLM se a mensagem tem padrão de data/nascimento.
+            # Previne alucinação do LLM em mensagens curtas como "Olá", "Expansivo", etc.
+            import re as _re_nasc
             _dados_vieram_da_msg_atual = False
             if modo == ModoOperacao.CONSULTA:
-                # 1. Tentar extrair dados APENAS da mensagem atual
-                dados_nasc = await extrair_dados_nascimento_llm(texto_para_processar)
-                _dados_vieram_da_msg_atual = bool(dados_nasc and dados_nasc.get("data") and not dados_nasc.get("falta_ano"))
+                _tem_padrao_data = bool(_re_nasc.search(
+                    r'\d{1,2}[/\-\.]\d{1,2}[/\-\.]\d{2,4}|\d{1,2}\s+de\s+\w+\s+de\s+\d{4}|nasceu|nascimento|nascido|nascida|data de nasc',
+                    texto_para_processar, _re_nasc.IGNORECASE
+                ))
 
-                # 2. Se não encontrou na msg atual, buscar no histórico (contexto RAG, SEM reenviar imagens)
-                if not _dados_vieram_da_msg_atual and historico:
-                    msgs_historico = " ".join(
+                dados_nasc = None
+                if _tem_padrao_data:
+                    dados_nasc = await extrair_dados_nascimento_llm(texto_para_processar)
+                    _dados_vieram_da_msg_atual = bool(dados_nasc and dados_nasc.get("data") and not dados_nasc.get("falta_ano"))
+
+                # Buscar no histórico para contexto RAG (SEM gerar/enviar mapa)
+                if not dados_nasc and historico:
+                    msgs_hist = " ".join(
                         m.get("content", "") or m.get("conteudo", "") or m.get("mensagem", "") or ""
                         for m in historico[-10:]
                     )
-                    dados_nasc = await extrair_dados_nascimento_llm(f"{texto_para_processar}\n{msgs_historico}")
+                    if _re_nasc.search(r'\d{1,2}[/\-\.]\d{1,2}[/\-\.]\d{2,4}', msgs_hist):
+                        dados_nasc = await extrair_dados_nascimento_llm(f"{texto_para_processar}\n{msgs_hist}")
 
                 # Interceptor: "refazer mapa" — busca dados do histórico e regera
                 if _eh_pedido_refazer_mapa(texto_para_processar):
@@ -3111,20 +3119,28 @@ async def _processar_mensagem_meta(payload: dict) -> None:
             )
 
             # --- Injeção de Mapa Natal (Swiss Ephemeris via Kerykeion) ---
-            # REGRA: imagens só são enviadas quando dados vêm da mensagem ATUAL.
+            # PRE-CHECK com regex: só chama LLM se a mensagem tem padrão de data/nascimento.
+            import re as _re_nasc_m
             _dados_vieram_da_msg_atual = False
             if modo == ModoOperacao.CONSULTA:
-                # 1. Tentar extrair dados APENAS da mensagem atual
-                dados_nasc = await extrair_dados_nascimento_llm(texto_para_processar)
-                _dados_vieram_da_msg_atual = bool(dados_nasc and dados_nasc.get("data") and not dados_nasc.get("falta_ano"))
+                _tem_padrao_data = bool(_re_nasc_m.search(
+                    r'\d{1,2}[/\-\.]\d{1,2}[/\-\.]\d{2,4}|\d{1,2}\s+de\s+\w+\s+de\s+\d{4}|nasceu|nascimento|nascido|nascida|data de nasc',
+                    texto_para_processar, _re_nasc_m.IGNORECASE
+                ))
 
-                # 2. Se não encontrou na msg atual, buscar no histórico (contexto RAG, SEM reenviar imagens)
-                if not _dados_vieram_da_msg_atual and historico:
+                dados_nasc = None
+                if _tem_padrao_data:
+                    dados_nasc = await extrair_dados_nascimento_llm(texto_para_processar)
+                    _dados_vieram_da_msg_atual = bool(dados_nasc and dados_nasc.get("data") and not dados_nasc.get("falta_ano"))
+
+                # Buscar no histórico para contexto RAG (SEM gerar/enviar mapa)
+                if not dados_nasc and historico:
                     msgs_historico = " ".join(
                         m.get("content", "") or m.get("conteudo", "") or m.get("mensagem", "") or ""
                         for m in historico[-10:]
                     )
-                    dados_nasc = await extrair_dados_nascimento_llm(f"{texto_para_processar}\n{msgs_historico}")
+                    if _re_nasc_m.search(r'\d{1,2}[/\-\.]\d{1,2}[/\-\.]\d{2,4}', msgs_historico):
+                        dados_nasc = await extrair_dados_nascimento_llm(f"{texto_para_processar}\n{msgs_historico}")
                 if dados_nasc:
                     logger.info(f"[META-NASC] dados_nasc={dados_nasc} | da_msg_atual={_dados_vieram_da_msg_atual} | msg='{texto_para_processar[:80]}'")
 
