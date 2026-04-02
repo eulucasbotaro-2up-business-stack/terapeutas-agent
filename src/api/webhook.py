@@ -1260,15 +1260,19 @@ async def _processar_mensagem(payload: dict) -> None:
                 if confirmou:
                     nome_agente_final = estado.onboarding_nome_agente or "Assistente"
                     nome = estado.nome_usuario
+                    # Step 8 → 9: Confirma nome do agente e explica a plataforma
+                    msg_confirm = f"Perfeito! A partir de agora seu assistente se chama *{nome_agente_final}*. 🎉"
+                    await evolution.enviar_mensagem(instance=instance_name, numero=numero_paciente, texto=msg_confirm)
+                    await asyncio.sleep(1.5)
+                    # Step 9: Explicar plataforma + pedir email (step 10)
                     await asyncio.to_thread(atualizar_onboarding, terapeuta_id, numero_paciente, "email")
-                    msg_cadastro = f"Perfeito! A partir de agora seu assistente se chama *{nome_agente_final}*. 🎉\n\n{nome}, agora vamos criar o acesso da sua plataforma, onde você vai poder acompanhar seus pacientes, diagnósticos e todo o histórico do atendimento."
-                    await evolution.enviar_mensagem(instance=instance_name, numero=numero_paciente, texto=msg_cadastro)
+                    msg_plataforma = f"{nome}, agora vamos criar o acesso da sua plataforma, onde você vai poder acompanhar seus pacientes, diagnósticos, mapas natais e todo o histórico do atendimento."
+                    await evolution.enviar_mensagem(instance=instance_name, numero=numero_paciente, texto=msg_plataforma)
                     await asyncio.sleep(1.5)
                     msg_email = "Qual o e-mail para cadastrar na plataforma?"
                     await evolution.enviar_mensagem(instance=instance_name, numero=numero_paciente, texto=msg_email)
-                    await _salvar_conversa(terapeuta_id=terapeuta_id, paciente_numero=numero_paciente, mensagem_paciente=texto_mensagem, resposta_agente=msg_cadastro, intencao="ONBOARDING")
+                    await _salvar_conversa(terapeuta_id=terapeuta_id, paciente_numero=numero_paciente, mensagem_paciente=texto_mensagem, resposta_agente=msg_confirm + " " + msg_plataforma, intencao="ONBOARDING")
                 else:
-                    # Voltar para pedir nome do agente
                     await asyncio.to_thread(atualizar_onboarding, terapeuta_id, numero_paciente, "pedir_nome_agente")
                     msg = "Sem problemas! Então, como você gostaria de chamar o seu assistente?"
                     await evolution.enviar_mensagem(instance=instance_name, numero=numero_paciente, texto=msg)
@@ -2910,13 +2914,16 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                 if confirmou:
                     nome_agente_final = estado.onboarding_nome_agente or "Assistente"
                     nome = estado.nome_usuario
+                    msg_confirm = f"Perfeito! A partir de agora seu assistente se chama *{nome_agente_final}*. 🎉"
+                    await meta_client.send_text_message(phone_number=numero_paciente, message=msg_confirm)
+                    await asyncio.sleep(1.5)
                     await asyncio.to_thread(atualizar_onboarding, terapeuta_id, numero_paciente, "email")
-                    msg_cadastro = f"Perfeito! A partir de agora seu assistente se chama *{nome_agente_final}*. 🎉\n\n{nome}, agora vamos criar o acesso da sua plataforma, onde você vai poder acompanhar seus pacientes, diagnósticos e todo o histórico do atendimento."
-                    await meta_client.send_text_message(phone_number=numero_paciente, message=msg_cadastro)
+                    msg_plataforma = f"{nome}, agora vamos criar o acesso da sua plataforma, onde você vai poder acompanhar seus pacientes, diagnósticos, mapas natais e todo o histórico do atendimento."
+                    await meta_client.send_text_message(phone_number=numero_paciente, message=msg_plataforma)
                     await asyncio.sleep(1.5)
                     msg_email = "Qual o e-mail para cadastrar na plataforma?"
                     await meta_client.send_text_message(phone_number=numero_paciente, message=msg_email)
-                    await _salvar_conversa(terapeuta_id=terapeuta_id, paciente_numero=numero_paciente, mensagem_paciente=texto_mensagem, resposta_agente=msg_cadastro, intencao="ONBOARDING")
+                    await _salvar_conversa(terapeuta_id=terapeuta_id, paciente_numero=numero_paciente, mensagem_paciente=texto_mensagem, resposta_agente=msg_confirm + " " + msg_plataforma, intencao="ONBOARDING")
                 else:
                     await asyncio.to_thread(atualizar_onboarding, terapeuta_id, numero_paciente, "pedir_nome_agente")
                     msg = "Sem problemas! Então, como você gostaria de chamar o seu assistente?"
