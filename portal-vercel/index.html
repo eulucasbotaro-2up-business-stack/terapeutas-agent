@@ -920,10 +920,10 @@
                         <p class="text-xl sm:text-2xl font-heading font-bold" style="color:#D4AF37" x-text="(prontuario?.diagnosticos || []).length"></p>
                         <p class="text-xs text-gray-500 mt-0.5 font-medium">Diagnosticos</p>
                     </button>
-                    <button @click="abaProntuario = 'mapas'" class="glass-card-static text-center py-4 px-2 cursor-pointer transition hover:shadow-md border-2" :class="abaProntuario === 'mapas' ? 'border-teal-400 bg-teal-50/50' : 'border-transparent hover:border-teal-100'">
-                        <p class="text-xl sm:text-2xl font-heading font-bold text-teal-500" x-text="(prontuario?.mapas_natais || []).length"></p>
-                        <p class="text-xs text-gray-500 mt-0.5 font-medium">Mapas Natais</p>
-                    </button>
+                    <div class="glass-card-static text-center py-4 px-2 border-2 border-transparent">
+                        <p class="text-xl sm:text-2xl font-heading font-bold text-teal-500" x-text="(() => { const convs = prontuario?.conversas || []; if (!convs.length) return '—'; const last = convs.reduce((a,b) => new Date(a.criado_em) > new Date(b.criado_em) ? a : b); const diff = Math.floor((Date.now() - new Date(last.criado_em)) / 86400000); return diff === 0 ? 'hoje' : diff === 1 ? 'ontem' : diff + 'd'; })()"></p>
+                        <p class="text-xs text-gray-500 mt-0.5 font-medium">Ultima Interacao</p>
+                    </div>
                 </div>
 
                 <!-- Tabs -->
@@ -1401,9 +1401,9 @@
                                                 <div>
                                                     <div class="text-[9px] text-gray-400 text-center mb-0.5" x-text="el.label"></div>
                                                     <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
-                                                        <div class="h-full rounded-full" :style="'width:' + (d.elementos_detalhes?.[el.key] || 0) + '%;background-color:' + el.cor"></div>
+                                                        <div class="h-full rounded-full" :style="'width:' + (_getElVal(d.elementos_detalhes, el.key) || 0) + '%;background-color:' + el.cor"></div>
                                                     </div>
-                                                    <div class="text-[9px] text-gray-500 text-center mt-0.5" x-text="(d.elementos_detalhes?.[el.key] || 0) + '%'"></div>
+                                                    <div class="text-[9px] text-gray-500 text-center mt-0.5" x-text="(_getElVal(d.elementos_detalhes, el.key) || 0) + '%'"></div>
                                                 </div>
                                             </template>
                                         </div>
