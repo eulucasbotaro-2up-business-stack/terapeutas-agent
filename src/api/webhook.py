@@ -1640,8 +1640,8 @@ async def _processar_mensagem(payload: dict) -> None:
                                 "NAO mencione que enviou imagem. NAO reenvie o mapa. Use os dados do mapa para enriquecer o diagnostico."
                             )
 
-                if not _mapa_json_cache and dados_nasc and not dados_nasc.get("falta_ano") and not dados_nasc.get("falta_cidade"):
-                    # Pré-mensagem: avisa que está gerando (melhora UX)
+                if not _mapa_json_cache and dados_nasc and _dados_vieram_da_msg_atual and not dados_nasc.get("falta_ano") and not dados_nasc.get("falta_cidade"):
+                    # Gerar mapa SOMENTE se dados vieram da mensagem atual (pedido explícito)
                     nome_nasc_pre = dados_nasc.get("nome", "")
                     msg_gerando = (
                         f"Calculando o mapa alquímico de {nome_nasc_pre} agora."
@@ -3259,8 +3259,8 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                                 "Se o terapeuta pedir para reenviar a imagem, diga que ele deve digitar 'refazer mapa'."
                             )
 
-                if not _mapa_json_cache and dados_nasc and not dados_nasc.get("falta_ano") and not dados_nasc.get("falta_cidade"):
-                    # Pré-mensagem: avisa que está gerando (melhora UX)
+                if not _mapa_json_cache and dados_nasc and _dados_vieram_da_msg_atual and not dados_nasc.get("falta_ano") and not dados_nasc.get("falta_cidade"):
+                    # Gerar mapa SOMENTE se dados vieram da mensagem atual
                     nome_nasc_pre = dados_nasc.get("nome", "")
                     msg_gerando = (
                         f"Calculando o mapa alquímico de {nome_nasc_pre} agora."
