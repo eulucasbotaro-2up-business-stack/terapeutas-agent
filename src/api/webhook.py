@@ -1602,39 +1602,45 @@ async def _processar_mensagem(payload: dict) -> None:
                         )
                         chunks_texto = mapa_prefixo + chunks_texto
 
-                        # Enviar imagens do cache via URL (BUG FIX: antes, cache
-                        # não enviava imagens — só injetava texto)
-                        _cache_imagem_enviada = False
-                        _caption_base = (
-                            f"{dados_nasc.get('nome', 'Paciente')}\n"
-                            f"{dados_nasc['data']} {dados_nasc['hora']} | {dados_nasc.get('cidade', '')}"
+                        # Enviar imagens do cache APENAS se dados de nascimento foram
+                        # enviados NESTA mensagem (pedido explícito de mapa).
+                        # Não reenviar imagens quando o cache é usado só para contexto.
+                        _dados_na_mensagem_atual = bool(
+                            dados_nasc and dados_nasc.get("nome")
+                            and dados_nasc["nome"] != "Paciente"
                         )
-                        for _img_url in _mapa_img_urls:
-                            try:
-                                _img_label = "Mapa Alquimico" if "alquimico" in _img_url.lower() else "Mapa Natal"
-                                await evolution.enviar_imagem_url(
-                                    instance=instance_name,
-                                    numero=numero_paciente,
-                                    url=_img_url,
-                                    caption=f"{_img_label} — {_caption_base}",
-                                )
-                                _cache_imagem_enviada = True
-                                logger.info(f"[Evolution] Imagem do cache enviada por URL para {numero_paciente}: {_img_url[:60]}")
-                            except Exception as img_url_err:
-                                logger.warning(f"[Evolution] Falha ao enviar imagem do cache por URL: {img_url_err}")
-                        if _cache_imagem_enviada:
-                            _nota_imagem_sp = (
-                                "\n\nINSTRUCAO INTERNA — nao reproduza este aviso na resposta: "
-                                "A imagem do mapa alquimico ja foi enviada como arquivo separado. "
-                                "NAO mencione a imagem, NAO diga que foi enviada, NAO diga que houve instabilidade. "
-                                "Va direto para a leitura alquimica completa — comece pela primeira linha."
+                        if _mapa_img_urls and _dados_na_mensagem_atual:
+                            _cache_imagem_enviada = False
+                            _caption_base = (
+                                f"{dados_nasc.get('nome', 'Paciente')}\n"
+                                f"{dados_nasc['data']} {dados_nasc['hora']} | {dados_nasc.get('cidade', '')}"
                             )
-                        else:
+                            for _img_url in _mapa_img_urls:
+                                try:
+                                    _img_label = "Mapa Alquimico" if "alquimico" in _img_url.lower() else "Mapa Natal"
+                                    await evolution.enviar_imagem_url(
+                                        instance=instance_name,
+                                        numero=numero_paciente,
+                                        url=_img_url,
+                                        caption=f"{_img_label} — {_caption_base}",
+                                    )
+                                    _cache_imagem_enviada = True
+                                    logger.info(f"[Evolution] Imagem do cache enviada: {_img_url[:60]}")
+                                except Exception as img_url_err:
+                                    logger.warning(f"[Evolution] Falha imagem cache: {img_url_err}")
+                            if _cache_imagem_enviada:
+                                _nota_imagem_sp = (
+                                    "\n\nINSTRUCAO INTERNA — nao reproduza este aviso na resposta: "
+                                    "A imagem do mapa alquimico ja foi enviada como arquivo separado. "
+                                    "NAO mencione a imagem, NAO diga que foi enviada. "
+                                    "Va direto para a leitura alquimica completa."
+                                )
+                        # Se tem cache mas não enviou imagem (contexto apenas), não mencionar imagem
+                        if not _nota_imagem_sp and _mapa_json_cache:
                             _nota_imagem_sp = (
                                 "\n\nINSTRUCAO INTERNA — nao reproduza este aviso na resposta: "
-                                "A imagem do mapa NAO foi enviada desta vez por instabilidade tecnica. "
-                                "ENTREGUE A LEITURA ALQUIMICA COMPLETA AGORA — nao peca permissao, nao pergunte se deve continuar, nao mencione a imagem. "
-                                "Se o terapeuta pedir para reenviar a imagem, diga que ele deve digitar 'refazer mapa'."
+                                "O mapa natal deste paciente ja foi calculado anteriormente e esta sendo usado como contexto. "
+                                "NAO mencione que enviou imagem. NAO reenvie o mapa. Use os dados do mapa para enriquecer o diagnostico."
                             )
 
                 if not _mapa_json_cache and dados_nasc and not dados_nasc.get("falta_ano") and not dados_nasc.get("falta_cidade"):
