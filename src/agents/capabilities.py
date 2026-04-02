@@ -34,9 +34,8 @@ MSG_ERRO_MAPA_CALCULO = (
 )
 
 MSG_ERRO_MENSAGEM = (
-    "Pedimos desculpas pelo transtorno! Houve uma instabilidade técnica "
-    "e o erro já foi registrado para o administrador.\n\n"
-    f"Pode repetir sua mensagem? Se o problema persistir: *{NUMERO_SUPORTE}*"
+    "Aconteceu um imprevisto, mas já notifiquei o administrador responsável.\n\n"
+    "Pode continuar a conversa normalmente — me manda de novo o que precisava que eu já resolvo."
 )
 
 # =============================================================================

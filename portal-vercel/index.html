@@ -593,14 +593,14 @@
                 </div>
                 <div>
                     <span class="text-base font-heading font-bold" x-text="terapeuta?.nome_agente || 'Portal'"></span>
-                    <p class="text-purple-300/70 text-[11px] truncate max-w-[160px]" x-text="terapeuta?.email || ''"></p>
+                    <p class="text-purple-300/70 text-xs truncate max-w-[160px]" x-text="terapeuta?.email || ''"></p>
                 </div>
             </div>
         </div>
 
         <!-- Navigation -->
         <nav class="flex-1 p-3 space-y-0.5 overflow-y-auto">
-            <p class="text-[10px] font-semibold uppercase tracking-widest text-purple-400/50 px-3 pt-2 pb-1.5">Menu</p>
+            <p class="text-xs font-semibold uppercase tracking-widest text-purple-400/50 px-3 pt-2 pb-1.5">Menu</p>
             <template x-for="item in menuItems" :key="item.id">
                 <button @click="navegar(item.id); sidebarOpen = false"
                     :id="'tour-menu-' + item.id"
@@ -636,7 +636,7 @@
                 </button>
                 <div>
                     <h2 class="font-heading font-semibold text-gray-900 text-base" x-text="tituloSecao"></h2>
-                    <p class="text-[11px] text-gray-400" x-text="new Date().toLocaleDateString('pt-BR', {weekday:'long', day:'numeric', month:'long'})"></p>
+                    <p class="text-xs text-gray-400 hidden sm:block" x-text="new Date().toLocaleDateString('pt-BR', {weekday:'long', day:'numeric', month:'long'})"></p>
                 </div>
             </div>
             <div class="flex items-center gap-2">
@@ -674,49 +674,49 @@
             <div id="tour-dashboard-stats" class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
                 <div class="glass-card-static p-4 sm:p-5 stat-card stat-purple">
                     <div class="flex items-center justify-between mb-2">
-                        <p class="text-[10px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wide">Pacientes Ativos</p>
+                        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Pacientes Ativos</p>
                         <div class="w-8 h-8 rounded-lg bg-brand-50 flex items-center justify-center">
                             <i data-lucide="users" class="w-4 h-4 text-brand-500"></i>
                         </div>
                     </div>
                     <p class="text-2xl sm:text-3xl font-heading font-bold text-gray-900" x-text="stats.pacientes_ativos ?? '—'"></p>
-                    <p class="text-[10px] sm:text-xs text-gray-400 mt-1">total cadastrados</p>
+                    <p class="text-xs text-gray-400 mt-1">total cadastrados</p>
                 </div>
                 <div class="glass-card-static p-4 sm:p-5 stat-card stat-teal">
                     <div class="flex items-center justify-between mb-2">
-                        <p class="text-[10px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wide">Sessoes Hoje</p>
+                        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Sessoes Hoje</p>
                         <div class="w-8 h-8 rounded-lg bg-teal-50 flex items-center justify-center">
                             <i data-lucide="calendar-check" class="w-4 h-4 text-teal-500"></i>
                         </div>
                     </div>
                     <p class="text-2xl sm:text-3xl font-heading font-bold text-teal-600" x-text="stats.sessoes_hoje ?? '—'"></p>
-                    <p class="text-[10px] sm:text-xs text-gray-400 mt-1">acompanhamentos</p>
+                    <p class="text-xs text-gray-400 mt-1">acompanhamentos</p>
                 </div>
                 <div class="glass-card-static p-4 sm:p-5 stat-card stat-amber">
                     <div class="flex items-center justify-between mb-2">
-                        <p class="text-[10px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wide">Pendencias</p>
+                        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Pendencias</p>
                         <div class="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center">
                             <i data-lucide="clock" class="w-4 h-4 text-amber-500"></i>
                         </div>
                     </div>
                     <p class="text-2xl sm:text-3xl font-heading font-bold text-amber-500" x-text="stats.pendencias ?? '—'"></p>
-                    <p class="text-[10px] sm:text-xs text-gray-400 mt-1">follow-ups abertos</p>
+                    <p class="text-xs text-gray-400 mt-1">follow-ups abertos</p>
                 </div>
                 <div class="glass-card-static p-4 sm:p-5 stat-card stat-rose">
                     <div class="flex items-center justify-between mb-2">
-                        <p class="text-[10px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wide">Diagnosticos</p>
+                        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Diagnosticos</p>
                         <div class="w-8 h-8 rounded-lg bg-rose-50 flex items-center justify-center">
                             <i data-lucide="clipboard-list" class="w-4 h-4 text-rose-500"></i>
                         </div>
                     </div>
                     <p class="text-2xl sm:text-3xl font-heading font-bold text-rose-500" x-text="stats.diagnosticos ?? '—'"></p>
-                    <p class="text-[10px] sm:text-xs text-gray-400 mt-1">registros clinicos</p>
+                    <p class="text-xs text-gray-400 mt-1">registros clinicos</p>
                 </div>
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                 <!-- Agenda do dia -->
-                <div id="tour-agenda" class="glass-card-static p-5">
+                <div id="tour-agenda" class="glass-card-static p-4 sm:p-5">
                     <h3 class="font-heading font-semibold text-gray-800 mb-4 flex items-center gap-2">
                         <i data-lucide="calendar" class="w-5 h-5 text-brand-500"></i> Agenda de Hoje
                     </h3>
@@ -745,7 +745,7 @@
                 </div>
 
                 <!-- Proximos retornos -->
-                <div class="glass-card-static p-5">
+                <div class="glass-card-static p-4 sm:p-5">
                     <h3 class="font-heading font-semibold text-gray-800 mb-4 flex items-center gap-2">
                         <i data-lucide="message-circle" class="w-5 h-5 text-teal-500"></i> Proximos Retornos
                     </h3>
@@ -838,9 +838,9 @@
                                         <div class="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0 shadow-sm"
                                             style="background: linear-gradient(135deg, #7C3AED, #0D9488);"
                                             x-text="p.nome.charAt(0)"></div>
-                                        <div>
-                                            <p class="text-sm font-medium text-gray-800" x-text="p.nome"></p>
-                                            <p class="text-xs text-gray-400" x-text="p.email || ''"></p>
+                                        <div class="min-w-0">
+                                            <p class="text-sm font-medium text-gray-800 truncate" x-text="p.nome"></p>
+                                            <p class="text-xs text-gray-400 truncate" x-text="p.email || ''"></p>
                                         </div>
                                     </div>
                                 </td>
@@ -869,28 +869,28 @@
 
             <!-- PRONTUARIO INLINE -->
             <div x-show="prontuario && pacienteContexto" class="mt-5 fade-in">
-                <div class="flex items-center gap-3 mb-4">
-                    <button @click="prontuario = null; pacienteContexto = null;" class="btn-ghost text-xs flex items-center gap-1.5 min-h-[44px]">
+                <div class="flex items-center gap-2 sm:gap-3 mb-4 flex-wrap">
+                    <button @click="prontuario = null; pacienteContexto = null;" class="btn-ghost text-xs flex items-center gap-1.5 min-h-[44px] flex-shrink-0">
                         <i data-lucide="arrow-left" class="w-4 h-4"></i> Voltar
                     </button>
-                    <div class="flex items-center gap-2.5">
+                    <div class="flex items-center gap-2.5 min-w-0">
                         <div class="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0 shadow-md"
                             style="background: linear-gradient(135deg, #7C3AED, #0D9488);"
                             x-text="pacienteContexto?.nome?.charAt(0) || '?'"></div>
-                        <h2 class="text-lg font-heading font-bold text-gray-800" x-text="'Prontuario de ' + (pacienteContexto?.nome || '')"></h2>
+                        <h2 class="text-base sm:text-lg font-heading font-bold text-gray-800 truncate" x-text="'Prontuario de ' + (pacienteContexto?.nome || '')"></h2>
                     </div>
                 </div>
 
             <div x-show="prontuario">
                 <!-- Patient header card -->
-                <div class="glass-card-static p-5 mb-5">
-                    <div class="flex flex-col sm:flex-row items-start justify-between gap-4">
-                        <div class="flex items-start gap-4">
-                            <div class="w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-bold text-white flex-shrink-0 shadow-lg"
+                <div class="glass-card-static p-4 sm:p-5 mb-5">
+                    <div class="flex flex-col sm:flex-row items-start justify-between gap-3 sm:gap-4">
+                        <div class="flex items-start gap-3 sm:gap-4 min-w-0">
+                            <div class="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center text-lg sm:text-xl font-bold text-white flex-shrink-0 shadow-lg"
                                 style="background: linear-gradient(135deg, #7C3AED, #0D9488);"
                                 x-text="prontuario?.paciente?.nome?.charAt(0) || '?'"></div>
-                            <div>
-                                <h3 class="text-lg font-heading font-bold text-gray-900" x-text="prontuario?.paciente?.nome"></h3>
+                            <div class="min-w-0">
+                                <h3 class="text-base sm:text-lg font-heading font-bold text-gray-900 truncate" x-text="prontuario?.paciente?.nome"></h3>
                                 <p class="text-sm text-gray-500 flex items-center gap-1">
                                     <i data-lucide="phone" class="w-3.5 h-3.5"></i>
                                     <span x-text="prontuario?.paciente?.numero_telefone"></span>
@@ -914,20 +914,20 @@
                 <div class="grid grid-cols-3 gap-2 sm:gap-3 mb-5">
                     <button @click="abaProntuario = 'conversas'" class="glass-card-static text-center py-4 px-2 cursor-pointer transition hover:shadow-md border-2" :class="abaProntuario === 'conversas' ? 'border-brand-400 bg-brand-50/50' : 'border-transparent hover:border-brand-100'">
                         <p class="text-xl sm:text-2xl font-heading font-bold text-brand-500" x-text="(prontuario?.conversas || []).length"></p>
-                        <p class="text-[10px] sm:text-xs text-gray-500 mt-0.5 font-medium">Mensagens</p>
+                        <p class="text-xs text-gray-500 mt-0.5 font-medium">Mensagens</p>
                     </button>
                     <button @click="abaProntuario = 'diagnosticos'" class="glass-card-static text-center py-4 px-2 cursor-pointer transition hover:shadow-md border-2" :class="abaProntuario === 'diagnosticos' ? 'border-amber-400 bg-amber-50/50' : 'border-transparent hover:border-amber-100'">
                         <p class="text-xl sm:text-2xl font-heading font-bold" style="color:#D4AF37" x-text="(prontuario?.diagnosticos || []).length"></p>
-                        <p class="text-[10px] sm:text-xs text-gray-500 mt-0.5 font-medium">Diagnosticos</p>
+                        <p class="text-xs text-gray-500 mt-0.5 font-medium">Diagnosticos</p>
                     </button>
                     <button @click="abaProntuario = 'mapas'" class="glass-card-static text-center py-4 px-2 cursor-pointer transition hover:shadow-md border-2" :class="abaProntuario === 'mapas' ? 'border-teal-400 bg-teal-50/50' : 'border-transparent hover:border-teal-100'">
                         <p class="text-xl sm:text-2xl font-heading font-bold text-teal-500" x-text="(prontuario?.mapas_natais || []).length"></p>
-                        <p class="text-[10px] sm:text-xs text-gray-500 mt-0.5 font-medium">Mapas Natais</p>
+                        <p class="text-xs text-gray-500 mt-0.5 font-medium">Mapas Natais</p>
                     </button>
                 </div>
 
                 <!-- Tabs -->
-                <div class="flex gap-1 mb-4 bg-warm-50 rounded-xl p-1 border border-gray-200/60 overflow-x-auto -mx-1 px-1">
+                <div class="flex flex-nowrap gap-1 mb-4 bg-warm-50 rounded-xl p-1 border border-gray-200/60 overflow-x-auto -mx-1 px-1">
                     <template x-for="aba in abasProntuario" :key="aba.id">
                         <button @click="abaProntuario = aba.id"
                             class="flex-shrink-0 sm:flex-1 py-2.5 text-xs font-semibold rounded-lg transition whitespace-nowrap px-4 min-h-[44px] flex items-center justify-center gap-1.5"
@@ -1029,15 +1029,15 @@
                                 <div x-show="c.mensagem_paciente" class="flex justify-start">
                                     <div class="bg-white rounded-xl rounded-tl-sm px-3.5 py-2.5 max-w-[80%] shadow-sm border border-gray-100">
                                         <p class="text-sm text-gray-800 leading-relaxed" x-text="c.mensagem_paciente"></p>
-                                        <p class="text-[10px] text-gray-400 text-right mt-1">Paciente</p>
+                                        <p class="text-xs text-gray-400 text-right mt-1">Paciente</p>
                                     </div>
                                 </div>
                                 <div x-show="c.resposta_agente" class="flex justify-end">
                                     <div class="rounded-xl rounded-tr-sm px-3.5 py-2.5 max-w-[80%] shadow-sm bg-brand-50 border border-brand-100">
                                         <p class="text-sm text-gray-800 leading-relaxed" x-text="c.resposta_agente?.substring(0, 300)"></p>
                                         <div class="flex items-center justify-end gap-2 mt-1">
-                                            <span x-show="c.intencao" class="text-[9px] text-brand-400 font-medium" x-text="c.intencao"></span>
-                                            <p class="text-[10px] text-brand-400">Agente</p>
+                                            <span x-show="c.intencao" class="text-xs text-brand-400 font-medium" x-text="c.intencao"></span>
+                                            <p class="text-xs text-brand-400">Agente</p>
                                         </div>
                                     </div>
                                 </div>
@@ -1048,11 +1048,11 @@
 
                 <!-- Maps -->
                 <div x-show="abaProntuario === 'mapas'" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div x-show="(prontuario?.mapas_natais || []).length === 0" class="col-span-2 text-center py-8 text-gray-400 text-sm">Nenhum mapa natal gerado</div>
+                    <div x-show="(prontuario?.mapas_natais || []).length === 0" class="col-span-full text-center py-8 text-gray-400 text-sm">Nenhum mapa natal gerado</div>
                     <template x-for="mapa in (prontuario?.mapas_natais || [])" :key="mapa.id">
                         <div class="glass-card cursor-pointer hover:shadow-lg transition relative p-4" @click="verMapa(mapa)">
                             <div class="relative">
-                                <img x-show="mapa.imagem_url" :src="mapa.imagem_url" class="w-full rounded-lg mb-2 object-cover" style="max-height:200px">
+                                <img x-show="mapa.imagem_url" :src="mapa.imagem_url" class="w-full max-w-full rounded-lg mb-2 object-cover" style="max-height:200px">
                                 <span class="absolute top-2 right-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold shadow-sm"
                                     :class="isAlquimico(mapa) ? 'bg-amber-100 text-amber-800 border border-amber-300' : 'bg-brand-50 text-brand-700 border border-brand-200'"
                                     x-text="mapa.tipo_mapa || mapa.mapa_json?.tipo || 'Natal'"></span>
@@ -1105,7 +1105,7 @@
                                         </div>
                                         <!-- Cross-reference com mapa astral -->
                                         <template x-if="(prontuario?.mapas_natais || []).length > 0">
-                                            <p class="text-[10px] text-gray-400 mt-2 flex items-center gap-1">
+                                            <p class="text-xs text-gray-400 mt-2 flex items-center gap-1">
                                                 <span>⭐</span>
                                                 <span>Mapa astral disponível para cruzamento</span>
                                             </p>
@@ -1114,7 +1114,7 @@
                                 </template>
                             </div>
 
-                            <p class="text-[10px] text-gray-400 mt-3 text-right" x-text="'Baseado no diagnostico de ' + formatarDataCurta(getLatestDiag()?.sessao_data)"></p>
+                            <p class="text-xs text-gray-400 mt-3 text-right" x-text="'Baseado no diagnostico de ' + formatarDataCurta(getLatestDiag()?.sessao_data)"></p>
 
                             <!-- Cross-reference com Mapa Natal -->
                             <div class="glass-card p-3 mt-4 border border-indigo-100 bg-indigo-50/50">
@@ -1155,17 +1155,17 @@
                     </template>
                     <template x-if="getLatestDiag()">
                         <div>
-                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                                 <!-- Enxofre (Sulfur) -->
                                 <div class="glass-card p-4 border border-orange-200">
                                     <div class="flex items-center gap-2 mb-1">
                                         <span class="text-xl">🔥</span>
                                         <div>
                                             <p class="text-sm font-semibold text-gray-800">Enxofre</p>
-                                            <p class="text-[10px] text-gray-400">Terra + Fogo</p>
+                                            <p class="text-xs text-gray-400">Terra + Fogo</p>
                                         </div>
                                     </div>
-                                    <p class="text-[10px] text-gray-500 mb-3">Agressivo, possessivo, impulsivo</p>
+                                    <p class="text-xs text-gray-500 mb-3">Agressivo, possessivo, impulsivo</p>
                                     <div class="flex items-center gap-2 mb-1">
                                         <div class="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden">
                                             <div class="h-full rounded-full transition-all duration-500 bg-orange-500" :style="'width:' + getSubstanciaPercentage('enxofre') + '%'"></div>
@@ -1183,10 +1183,10 @@
                                         <span class="text-xl">💎</span>
                                         <div>
                                             <p class="text-sm font-semibold text-gray-800">Sal</p>
-                                            <p class="text-[10px] text-gray-400">Ponte entre elementos</p>
+                                            <p class="text-xs text-gray-400">Ponte entre elementos</p>
                                         </div>
                                     </div>
-                                    <p class="text-[10px] text-gray-500 mb-3">Melancólico, sem identidade, neutro</p>
+                                    <p class="text-xs text-gray-500 mb-3">Melancólico, sem identidade, neutro</p>
                                     <div class="flex items-center gap-2 mb-1">
                                         <div class="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden">
                                             <div class="h-full rounded-full transition-all duration-500 bg-gray-500" :style="'width:' + getSubstanciaPercentage('sal') + '%'"></div>
@@ -1204,10 +1204,10 @@
                                         <span class="text-xl">🌊</span>
                                         <div>
                                             <p class="text-sm font-semibold text-gray-800">Mercúrio</p>
-                                            <p class="text-[10px] text-gray-400">Ar + Água</p>
+                                            <p class="text-xs text-gray-400">Ar + Água</p>
                                         </div>
                                     </div>
-                                    <p class="text-[10px] text-gray-500 mb-3">Fluído, comunicativo, adaptativo</p>
+                                    <p class="text-xs text-gray-500 mb-3">Fluído, comunicativo, adaptativo</p>
                                     <div class="flex items-center gap-2 mb-1">
                                         <div class="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden">
                                             <div class="h-full rounded-full transition-all duration-500 bg-cyan-500" :style="'width:' + getSubstanciaPercentage('mercurio') + '%'"></div>
@@ -1224,10 +1224,10 @@
                                 <p class="text-xs text-gray-500">
                                     <span class="font-semibold text-gray-700">Como ler:</span> As substâncias são combinações dos 4 elementos. Quando uma substância está predominante, indica o padrão comportamental dominante do paciente.
                                 </p>
-                                <p x-show="!getLatestDiag()?.substancias" class="text-[10px] text-amber-600 mt-1">&#x26A0;&#xFE0F; Valores estimados a partir dos elementos (sem dados diretos de substâncias)</p>
+                                <p x-show="!getLatestDiag()?.substancias" class="text-xs text-amber-600 mt-1">&#x26A0;&#xFE0F; Valores estimados a partir dos elementos (sem dados diretos de substâncias)</p>
                             </div>
 
-                            <p class="text-[10px] text-gray-400 mt-3 text-right" x-text="'Baseado no diagnostico de ' + formatarDataCurta(getLatestDiag()?.sessao_data)"></p>
+                            <p class="text-xs text-gray-400 mt-3 text-right" x-text="'Baseado no diagnostico de ' + formatarDataCurta(getLatestDiag()?.sessao_data)"></p>
                         </div>
                     </template>
                 </div>
@@ -1267,7 +1267,7 @@
                                         <span class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-sm">🐍</span>
                                         <div>
                                             <p class="text-sm font-semibold text-gray-800">Serpente do Pai</p>
-                                            <p class="text-[10px] text-gray-400">Herança paterna</p>
+                                            <p class="text-xs text-gray-400">Herança paterna</p>
                                         </div>
                                     </div>
                                     <div x-show="(getLatestDiag()?.dna_comprometido || []).length > 0">
@@ -1293,7 +1293,7 @@
                                         <span class="w-8 h-8 rounded-full bg-pink-100 flex items-center justify-center text-sm">🐍</span>
                                         <div>
                                             <p class="text-sm font-semibold text-gray-800">Serpente da Mãe</p>
-                                            <p class="text-[10px] text-gray-400">Herança materna</p>
+                                            <p class="text-xs text-gray-400">Herança materna</p>
                                         </div>
                                     </div>
                                     <div x-show="(getLatestDiag()?.serpentes_ativas || []).length > 0">
@@ -1314,7 +1314,7 @@
                                 </div>
                             </div>
 
-                            <p class="text-[10px] text-gray-400 mt-3 text-right" x-text="'Baseado no diagnostico de ' + formatarDataCurta(getLatestDiag()?.sessao_data)"></p>
+                            <p class="text-xs text-gray-400 mt-3 text-right" x-text="'Baseado no diagnostico de ' + formatarDataCurta(getLatestDiag()?.sessao_data)"></p>
                         </div>
                     </template>
                 </div>
@@ -1351,7 +1351,7 @@
                                     <span class="text-sm">🚨</span>
                                     <div>
                                         <p class="text-xs font-semibold text-red-700">Alerta de Surto</p>
-                                        <p class="text-[10px] text-red-600">Variações bruscas nos elementos entre consultas detectadas</p>
+                                        <p class="text-xs text-red-600">Variações bruscas nos elementos entre consultas detectadas</p>
                                     </div>
                                 </div>
                             </div>
@@ -1380,7 +1380,7 @@
                                                 </div>
                                             </template>
                                         </div>
-                                        <p x-show="d.elemento_dominante && !d.elementos_detalhes" class="text-[10px] text-gray-500 mt-1">
+                                        <p x-show="d.elemento_dominante && !d.elementos_detalhes" class="text-xs text-gray-500 mt-1">
                                             Elemento dominante: <span class="font-semibold" x-text="d.elemento_dominante"></span>
                                         </p>
                                     </div>
@@ -1396,12 +1396,12 @@
         <!-- ---- CONVERSAS WHATSAPP ---- -->
         <div x-show="secao === 'conversas_whats'" class="fade-in">
             <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
-                <div class="flex items-center gap-3">
+                <div class="flex items-center gap-3 min-w-0">
                     <div class="w-10 h-10 rounded-xl flex items-center justify-center text-lg font-bold text-white flex-shrink-0 shadow-lg"
                         style="background: linear-gradient(135deg, #7C3AED, #0D9488);">&#9883;</div>
-                    <div>
-                        <h3 class="text-sm font-heading font-bold text-gray-800" x-text="(terapeuta?.nome_agente || 'Agente IA') + ' — Historico WhatsApp'"></h3>
-                        <p class="text-[10px] text-gray-400" x-text="conversasWhats.length + ' mensagens no total'"></p>
+                    <div class="min-w-0">
+                        <h3 class="text-sm font-heading font-bold text-gray-800 truncate" x-text="(terapeuta?.nome_agente || 'Agente IA') + ' — Historico WhatsApp'"></h3>
+                        <p class="text-xs text-gray-400" x-text="conversasWhats.length + ' mensagens no total'"></p>
                     </div>
                 </div>
                 <div class="w-full sm:max-w-xs relative">
@@ -1428,7 +1428,7 @@
                         <div class="space-y-1.5 mb-2">
                             <div x-show="idx === 0 || new Date(msg.criado_em).toLocaleDateString('pt-BR') !== new Date(conversasMensagensIA[idx-1]?.criado_em).toLocaleDateString('pt-BR')"
                                 class="flex justify-center my-3">
-                                <span class="bg-white/90 backdrop-blur text-[11px] text-gray-500 px-3 py-1 rounded-lg shadow-sm font-medium"
+                                <span class="bg-white/90 backdrop-blur text-xs text-gray-500 px-3 py-1 rounded-lg shadow-sm font-medium"
                                     x-text="new Date(msg.criado_em).toLocaleDateString('pt-BR', {day:'2-digit', month:'long', year:'numeric'})"></span>
                             </div>
                             <div x-show="idx === 0 || msg.paciente_nome !== conversasMensagensIA[idx-1]?.paciente_nome"
@@ -1446,7 +1446,7 @@
                                 <div class="rounded-xl rounded-tr-sm px-3.5 py-2.5 max-w-[85%] sm:max-w-[70%] shadow-sm bg-brand-50" style="border-right: 3px solid #6D28D9;">
                                     <p class="text-sm text-gray-800 leading-relaxed whitespace-pre-line" x-text="msg.resposta_agente"></p>
                                     <div class="flex items-center justify-end gap-2 mt-1">
-                                        <span x-show="msg.intencao" class="text-[9px] text-brand-400 font-medium uppercase" x-text="msg.intencao?.split('|')[0]"></span>
+                                        <span x-show="msg.intencao" class="text-xs text-brand-400 font-medium uppercase" x-text="msg.intencao?.split('|')[0]"></span>
                                         <p class="text-[10px] text-gray-500" x-text="new Date(msg.criado_em).toLocaleString('pt-BR', {hour:'2-digit',minute:'2-digit'})"></p>
                                         <span class="text-[10px] text-teal-500">&#10003;&#10003;</span>
                                     </div>
@@ -1488,7 +1488,7 @@
                     <button @click="abrirModalDiagnostico()" class="btn-primary mt-4 text-sm min-h-[44px] px-4 inline-flex items-center gap-1.5"><i data-lucide="plus" class="w-4 h-4"></i> Novo Diagnostico</button>
                 </div>
                 <template x-for="d in diagnosticos" :key="d.id">
-                    <div class="glass-card hover:shadow-md transition p-5">
+                    <div class="glass-card hover:shadow-md transition p-4 sm:p-5">
                         <div class="flex flex-col sm:flex-row items-start justify-between gap-3">
                             <div class="flex-1 min-w-0">
                                 <div class="flex items-center gap-2 mb-2 flex-wrap">
@@ -1496,7 +1496,7 @@
                                     <span class="text-sm font-semibold text-gray-800" x-text="d.pacientes?.nome || 'Paciente'"></span>
                                     <span class="text-xs text-gray-400" x-text="formatarDataCurta(d.sessao_data)"></span>
                                 </div>
-                                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2 text-xs mt-2">
+                                <div class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-2 text-xs mt-2">
                                     <div x-show="d.elemento_dominante" class="bg-orange-50 rounded-lg px-3 py-2">
                                         <span class="text-gray-400">Elemento</span>
                                         <p class="font-semibold text-orange-700" x-text="d.elemento_dominante"></p>
@@ -1532,7 +1532,7 @@
         <!-- ---- ACOMPANHAMENTOS ---- -->
         <div x-show="secao === 'acompanhamentos'" class="fade-in">
             <!-- Stats summary -->
-            <div class="glass-card-static px-4 sm:px-5 py-3.5 mb-5 flex items-center gap-3 sm:gap-6 text-xs sm:text-sm flex-wrap">
+            <div class="glass-card-static px-3 sm:px-5 py-3 sm:py-3.5 mb-5 flex items-center gap-2 sm:gap-6 text-xs sm:text-sm flex-wrap">
                 <span class="font-semibold text-gray-700" x-show="agenda7dias.filter(g => g.data < new Date().toISOString().split('T')[0]).reduce((a, g) => a + g.itens.length, 0) > 0">
                     <span class="text-red-500 font-bold" x-text="agenda7dias.filter(g => g.data < new Date().toISOString().split('T')[0]).reduce((a, g) => a + g.itens.length, 0)"></span>
                     <span class="text-red-400">atrasados</span>
@@ -1776,7 +1776,7 @@
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                 <template x-for="grupo in getMapasAgrupados()" :key="grupo.tel">
-                    <div class="glass-card p-5 hover:shadow-lg transition">
+                    <div class="glass-card p-4 sm:p-5 hover:shadow-lg transition">
                         <div class="mb-3">
                             <h3 class="text-base font-heading font-bold text-gray-800 truncate" x-text="grupo.nome"></h3>
                             <p class="text-xs text-gray-400 mt-0.5">
@@ -1816,7 +1816,7 @@
         <!-- ---- RELATORIOS ---- -->
         <div x-show="secao === 'relatorios'" class="fade-in">
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 mb-6">
-                <div class="lg:col-span-2 glass-card-static p-5">
+                <div class="lg:col-span-2 glass-card-static p-4 sm:p-5">
                     <h3 class="font-heading font-semibold text-gray-800 mb-4 flex items-center gap-2">
                         <i data-lucide="bar-chart-3" class="w-5 h-5 text-brand-500"></i> Visao Geral da Pratica
                     </h3>
@@ -1825,25 +1825,25 @@
                     </div>
                     <div x-show="relatorioGeral" class="grid grid-cols-2 gap-3 sm:gap-4">
                         <div class="bg-brand-50 rounded-xl p-4">
-                            <p class="text-[10px] sm:text-xs text-brand-500 font-semibold">Pacientes Ativos</p>
+                            <p class="text-xs text-brand-500 font-semibold">Pacientes Ativos</p>
                             <p class="text-2xl sm:text-3xl font-heading font-bold text-brand-600 mt-1" x-text="relatorioGeral?.pacientes_ativos ?? 0"></p>
                         </div>
                         <div class="bg-amber-50 rounded-xl p-4">
-                            <p class="text-[10px] sm:text-xs text-amber-600 font-semibold">Diagnosticos (este mes)</p>
+                            <p class="text-xs text-amber-600 font-semibold">Diagnosticos (este mes)</p>
                             <p class="text-2xl sm:text-3xl font-heading font-bold text-amber-700 mt-1" x-text="relatorioGeral?.diagnosticos_este_mes ?? 0"></p>
                         </div>
                         <div class="bg-teal-50 rounded-xl p-4">
-                            <p class="text-[10px] sm:text-xs text-teal-500 font-semibold">Mensagens Total</p>
+                            <p class="text-xs text-teal-500 font-semibold">Mensagens Total</p>
                             <p class="text-2xl sm:text-3xl font-heading font-bold text-teal-600 mt-1" x-text="relatorioGeral?.total_conversas ?? 0"></p>
                         </div>
                         <div class="bg-blue-50 rounded-xl p-4">
-                            <p class="text-[10px] sm:text-xs text-blue-500 font-semibold">Mensagens (este mes)</p>
+                            <p class="text-xs text-blue-500 font-semibold">Mensagens (este mes)</p>
                             <p class="text-2xl sm:text-3xl font-heading font-bold text-blue-600 mt-1" x-text="relatorioGeral?.conversas_este_mes ?? 0"></p>
                         </div>
                     </div>
                 </div>
 
-                <div class="glass-card-static p-5">
+                <div class="glass-card-static p-4 sm:p-5">
                     <h3 class="font-heading font-semibold text-gray-800 mb-4 flex items-center gap-2">
                         <i data-lucide="flame" class="w-5 h-5 text-amber-500"></i> Top Elementos
                     </h3>
@@ -1910,11 +1910,11 @@
                     <h3 class="text-lg font-heading font-bold text-gray-900">Financeiro</h3>
                     <p class="text-sm text-gray-500">Visão geral das receitas e métricas</p>
                 </div>
-                <div class="flex gap-2">
-                    <button class="btn-ghost text-xs flex items-center gap-1.5" @click="window.print()">
+                <div class="flex gap-2 w-full sm:w-auto">
+                    <button class="btn-ghost text-xs flex items-center gap-1.5 flex-1 sm:flex-initial justify-center" @click="window.print()">
                         <i data-lucide="download" class="w-4 h-4"></i> Exportar
                     </button>
-                    <button class="btn-primary text-xs flex items-center gap-1.5" onclick="window.open('https://www.asaas.com', '_blank')">
+                    <button class="btn-primary text-xs flex items-center gap-1.5 flex-1 sm:flex-initial justify-center" onclick="window.open('https://www.asaas.com', '_blank')">
                         <i data-lucide="external-link" class="w-4 h-4"></i> Abrir Asaas
                     </button>
                 </div>
@@ -1933,7 +1933,7 @@
                             <p class="text-xl font-heading font-bold text-gray-900" x-text="'R$ ' + ((financeiroData?.pacientes_ativos || stats?.pacientes_ativos || 0) * 297).toLocaleString('pt-BR')"></p>
                         </div>
                     </div>
-                    <div class="flex items-center gap-1 text-[11px] text-green-600">
+                    <div class="flex items-center gap-1 text-xs text-green-600">
                         <i data-lucide="trending-up" class="w-3.5 h-3.5"></i>
                         <span>Estimativa baseada em pacientes ativos</span>
                     </div>
@@ -1950,7 +1950,7 @@
                             <p class="text-xl font-heading font-bold text-gray-900" x-text="financeiroData?.pacientes_ativos || stats?.pacientes_ativos || 0"></p>
                         </div>
                     </div>
-                    <div class="flex items-center gap-1 text-[11px] text-brand-600">
+                    <div class="flex items-center gap-1 text-xs text-brand-600">
                         <i data-lucide="user-check" class="w-3.5 h-3.5"></i>
                         <span>Total de pacientes cadastrados</span>
                     </div>
@@ -1967,7 +1967,7 @@
                             <p class="text-xl font-heading font-bold text-gray-900">R$ 297</p>
                         </div>
                     </div>
-                    <div class="flex items-center gap-1 text-[11px] text-teal-600">
+                    <div class="flex items-center gap-1 text-xs text-teal-600">
                         <i data-lucide="bar-chart-3" class="w-3.5 h-3.5"></i>
                         <span>Valor médio por paciente/mês</span>
                     </div>
@@ -1984,7 +1984,7 @@
                             <p class="text-xl font-heading font-bold text-gray-900" x-text="((financeiroData?.pacientes_ativos || stats?.pacientes_ativos || 0) > 0 ? Math.min(100, Math.round(((financeiroData?.diagnosticos_mes || 0) / (financeiroData?.pacientes_ativos || stats?.pacientes_ativos || 1)) * 100)) : 0) + '%'"></p>
                         </div>
                     </div>
-                    <div class="flex items-center gap-1 text-[11px] text-amber-600">
+                    <div class="flex items-center gap-1 text-xs text-amber-600">
                         <i data-lucide="pie-chart" class="w-3.5 h-3.5"></i>
                         <span>Diagnósticos / pacientes este mês</span>
                     </div>
@@ -1992,19 +1992,41 @@
             </div>
 
             <!-- Tabela de receita por paciente -->
-            <div class="glass-card p-5 mb-6">
+            <div class="glass-card p-4 sm:p-5 mb-6">
                 <div class="flex items-center justify-between mb-4">
                     <h4 class="text-sm font-heading font-semibold text-gray-800">Detalhamento de Receita</h4>
                     <span class="badge bg-brand-50 text-brand-700 text-xs px-2.5 py-1" x-text="(pacientes?.filter(p => p.ativo !== false)?.length || 0) + ' ativos'"></span>
                 </div>
-                <div class="overflow-x-auto">
+                <!-- Mobile card layout -->
+                <div class="sm:hidden space-y-2">
+                    <template x-for="pac in (pacientes || []).filter(p => p.ativo !== false).slice(0, 10)" :key="pac.id || pac.nome">
+                        <div class="flex items-center justify-between p-3 bg-warm-50 rounded-xl border border-gray-100">
+                            <div class="flex items-center gap-2.5 min-w-0">
+                                <div class="w-8 h-8 rounded-full bg-brand-100 flex items-center justify-center text-xs font-bold text-brand-700 flex-shrink-0" x-text="(pac.nome || 'P').charAt(0).toUpperCase()"></div>
+                                <div class="min-w-0">
+                                    <p class="text-sm font-medium text-gray-800 truncate" x-text="pac.nome || 'Paciente'"></p>
+                                    <span class="inline-flex items-center gap-1 text-xs font-medium text-green-700">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span> Ativo
+                                    </span>
+                                </div>
+                            </div>
+                            <span class="text-sm font-semibold text-gray-800 flex-shrink-0 ml-2">R$ 297</span>
+                        </div>
+                    </template>
+                    <div class="flex items-center justify-between p-3 bg-brand-50 rounded-xl border-2 border-brand-200">
+                        <span class="font-heading font-bold text-gray-900">Total</span>
+                        <span class="font-heading font-bold text-gray-900" x-text="'R$ ' + ((pacientes || []).filter(p => p.ativo !== false).length * 297).toLocaleString('pt-BR')"></span>
+                    </div>
+                </div>
+                <!-- Desktop table layout -->
+                <div class="hidden sm:block overflow-x-auto">
                     <table class="w-full text-sm">
                         <thead>
                             <tr class="border-b border-gray-200">
                                 <th class="text-left py-2.5 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Paciente</th>
                                 <th class="text-left py-2.5 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
                                 <th class="text-right py-2.5 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Valor</th>
-                                <th class="text-right py-2.5 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden sm:table-cell">Última conversa</th>
+                                <th class="text-right py-2.5 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Última conversa</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -2023,7 +2045,7 @@
                                         </span>
                                     </td>
                                     <td class="py-3 px-3 text-right font-semibold text-gray-800">R$ 297</td>
-                                    <td class="py-3 px-3 text-right text-gray-500 hidden sm:table-cell" x-text="pac.ultima_conversa ? new Date(pac.ultima_conversa).toLocaleDateString('pt-BR') : '—'"></td>
+                                    <td class="py-3 px-3 text-right text-gray-500" x-text="pac.ultima_conversa ? new Date(pac.ultima_conversa).toLocaleDateString('pt-BR') : '—'"></td>
                                 </tr>
                             </template>
                         </tbody>
@@ -2031,7 +2053,7 @@
                             <tr class="border-t-2 border-gray-200">
                                 <td class="py-3 px-3 font-heading font-bold text-gray-900" colspan="2">Total</td>
                                 <td class="py-3 px-3 text-right font-heading font-bold text-gray-900" x-text="'R$ ' + ((pacientes || []).filter(p => p.ativo !== false).length * 297).toLocaleString('pt-BR')"></td>
-                                <td class="hidden sm:table-cell"></td>
+                                <td></td>
                             </tr>
                         </tfoot>
                     </table>
@@ -2084,7 +2106,7 @@
             </div>
 
             <!-- CTA Integração Asaas -->
-            <div class="glass-card p-6 border border-brand-100 bg-gradient-to-br from-brand-50/30 to-teal-50/20">
+            <div class="glass-card p-4 sm:p-6 border border-brand-100 bg-gradient-to-br from-brand-50/30 to-teal-50/20">
                 <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4">
                     <div class="w-14 h-14 rounded-2xl bg-white shadow-sm flex items-center justify-center flex-shrink-0">
                         <i data-lucide="wallet" class="w-7 h-7 text-brand-600"></i>
@@ -2119,7 +2141,7 @@
             </div>
 
             <div x-show="!assinaturaLoading">
-                <div class="glass-card-static p-6 mb-6">
+                <div class="glass-card-static p-4 sm:p-6 mb-5 sm:mb-6">
                     <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                         <div class="flex items-start gap-4">
                             <div class="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl"
@@ -2160,7 +2182,7 @@
                     </div>
                 </div>
 
-                <div class="glass-card-static p-6 mb-6">
+                <div class="glass-card-static p-4 sm:p-6 mb-5 sm:mb-6">
                     <h3 class="font-heading font-semibold text-gray-800 mb-4 flex items-center gap-2">
                         <i data-lucide="sparkles" class="w-5 h-5 text-brand-500"></i> O que esta incluso
                     </h3>
@@ -2192,7 +2214,7 @@
                     </div>
                 </div>
 
-                <div class="glass-card-static p-6">
+                <div class="glass-card-static p-4 sm:p-6">
                     <h3 class="font-heading font-semibold text-gray-800 mb-4 flex items-center gap-2">
                         <i data-lucide="receipt" class="w-5 h-5 text-gray-500"></i> Historico de Pagamentos
                     </h3>
@@ -2233,7 +2255,7 @@
 
         <!-- ---- CONFIGURACOES ---- -->
         <div x-show="secao === 'configuracoes'" class="fade-in max-w-2xl">
-            <div class="glass-card-static p-6 mb-6">
+            <div class="glass-card-static p-4 sm:p-6 mb-5 sm:mb-6">
                 <h3 class="font-heading font-semibold text-gray-800 mb-5 flex items-center gap-2">
                     <i data-lucide="user-circle" class="w-5 h-5 text-brand-500"></i> Perfil do Terapeuta
                 </h3>
@@ -2270,7 +2292,7 @@
                 </div>
             </div>
 
-            <div class="glass-card-static p-6 mb-6">
+            <div class="glass-card-static p-4 sm:p-6 mb-5 sm:mb-6">
                 <h3 class="font-heading font-semibold text-gray-800 mb-5 flex items-center gap-2">
                     <i data-lucide="bot" class="w-5 h-5 text-brand-500"></i> Preferencias do Agente
                 </h3>
@@ -2307,7 +2329,7 @@
                 </div>
             </div>
 
-            <div class="glass-card-static p-6 mb-6">
+            <div class="glass-card-static p-4 sm:p-6 mb-5 sm:mb-6">
                 <h3 class="font-heading font-semibold text-gray-800 mb-5 flex items-center gap-2">
                     <i data-lucide="file-text" class="w-5 h-5 text-brand-500"></i> Documentos da Base de Conhecimento
                 </h3>
@@ -2342,7 +2364,7 @@
                 </button>
             </div>
 
-            <div class="glass-card-static p-6">
+            <div class="glass-card-static p-4 sm:p-6">
                 <h3 class="font-heading font-semibold text-gray-800 mb-5 flex items-center gap-2">
                     <i data-lucide="lock" class="w-5 h-5 text-gray-500"></i> Alterar Senha
                 </h3>
@@ -2375,7 +2397,7 @@
     <div id="tour-backdrop" style="position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9998;transition:all 0.3s;pointer-events:none;"></div>
 
     <!-- Tooltip -->
-    <div id="tour-tooltip" style="position:fixed;z-index:9999;width:340px;max-width:90vw;background:white;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.2);padding:24px;transition:all 0.3s ease;">
+    <div id="tour-tooltip" style="position:fixed;z-index:9999;width:340px;max-width:calc(100vw - 32px);background:white;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.2);padding:20px;transition:all 0.3s ease;">
         <!-- Progress dots -->
         <div style="display:flex;gap:6px;margin-bottom:16px;">
             <template x-for="(s, i) in tourSteps" :key="i">
@@ -2393,14 +2415,14 @@
 
         <!-- Actions -->
         <div style="display:flex;justify-content:space-between;align-items:center;">
-            <button @click="skipTour()" style="background:none;border:none;color:#9CA3AF;font-size:0.8rem;cursor:pointer;">Pular tour</button>
+            <button @click="skipTour()" style="background:none;border:none;color:#9CA3AF;font-size:0.8rem;cursor:pointer;min-height:44px;padding:8px 12px;">Pular tour</button>
             <div style="display:flex;gap:8px;">
                 <button x-show="tourStep > 0" @click="prevTourStep()"
-                    style="background:none;border:1.5px solid #E5E7EB;border-radius:8px;padding:8px 16px;cursor:pointer;font-size:0.85rem;color:#374151;">
+                    style="background:none;border:1.5px solid #E5E7EB;border-radius:8px;padding:8px 16px;cursor:pointer;font-size:0.85rem;color:#374151;min-height:44px;">
                     Anterior
                 </button>
                 <button @click="nextTourStep()"
-                    style="background:linear-gradient(135deg,#7C3AED,#6D28D9);color:white;border:none;border-radius:8px;padding:8px 20px;cursor:pointer;font-size:0.85rem;font-weight:600;min-height:40px;">
+                    style="background:linear-gradient(135deg,#7C3AED,#6D28D9);color:white;border:none;border-radius:8px;padding:8px 20px;cursor:pointer;font-size:0.85rem;font-weight:600;min-height:44px;">
                     <span x-text="tourStep === tourSteps.length - 1 ? 'Começar!' : 'Próximo'"></span>
                 </button>
             </div>
@@ -2414,7 +2436,7 @@
 
 <!-- Modal Paciente -->
 <div x-show="modalAberto === 'paciente'" class="modal-backdrop" @click.self="fecharModal()">
-    <div class="modal-box p-6">
+    <div class="modal-box p-4 sm:p-6">
         <div class="flex items-center gap-3 mb-5">
             <div class="w-10 h-10 rounded-xl bg-brand-50 flex items-center justify-center">
                 <i data-lucide="user" class="w-5 h-5 text-brand-500"></i>
@@ -2459,7 +2481,7 @@
 
 <!-- Modal Diagnostico -->
 <div x-show="modalAberto === 'diagnostico'" class="modal-backdrop" @click.self="fecharModal()">
-    <div class="modal-box p-6">
+    <div class="modal-box p-4 sm:p-6">
         <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-5">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-xl bg-brand-50 flex items-center justify-center">
@@ -2519,7 +2541,7 @@
 
 <!-- Modal Anotacao -->
 <div x-show="modalAberto === 'nota'" class="modal-backdrop" @click.self="fecharModal()">
-    <div class="modal-box p-6">
+    <div class="modal-box p-4 sm:p-6">
         <div class="flex items-center gap-3 mb-5">
             <div class="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center">
                 <i data-lucide="file-edit" class="w-5 h-5 text-teal-500"></i>
@@ -2567,7 +2589,7 @@
 
 <!-- Modal Acompanhamento -->
 <div x-show="modalAberto === 'acomp'" class="modal-backdrop" @click.self="fecharModal()">
-    <div class="modal-box p-6">
+    <div class="modal-box p-4 sm:p-6">
         <div class="flex items-center gap-3 mb-5">
             <div class="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center">
                 <i data-lucide="calendar-plus" class="w-5 h-5 text-amber-500"></i>
@@ -2645,7 +2667,7 @@
                 <h4 class="font-heading font-semibold text-brand-800 mb-3 flex items-center gap-2">
                     <i data-lucide="star" class="w-4 h-4 text-brand-500"></i> Dados de Nascimento
                 </h4>
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     <div class="bg-white rounded-lg p-3">
                         <p class="text-xs text-gray-500 mb-0.5">Data de Nascimento</p>
                         <p class="font-semibold text-gray-800 text-sm" x-text="formatarDataBR(mapaVendo?.data_nascimento)"></p>
@@ -2676,7 +2698,7 @@
                     </div>
 
                     <div class="p-4 space-y-4">
-                        <img x-show="mp.imagem_url" :src="mp.imagem_url" class="w-full rounded-xl shadow-sm">
+                        <img x-show="mp.imagem_url" :src="mp.imagem_url" class="w-full max-w-full rounded-xl shadow-sm">
 
                         <!-- Natal map data -->
                         <div x-show="mp.mapa_json && !isAlquimico(mp)" class="space-y-3">
@@ -2697,7 +2719,7 @@
                                         <!-- Aspectos Positivos -->
                                         <template x-if="mp.mapa_json.aspectos.filter(a => (a.aspecto||a.tipo||'').match(/Tr[íi]gono|trine|Sextil|sextile/i)).length > 0">
                                             <div class="mb-3">
-                                                <p class="text-[10px] font-semibold text-green-600 uppercase tracking-wider mb-1 flex items-center gap-1">
+                                                <p class="text-xs font-semibold text-green-600 uppercase tracking-wider mb-1 flex items-center gap-1">
                                                     <span class="w-2 h-2 rounded-full bg-green-400 inline-block"></span> Aspectos Positivos
                                                 </p>
                                                 <div class="flex flex-wrap gap-1.5">
@@ -2713,7 +2735,7 @@
                                         <!-- Aspectos Desafiadores -->
                                         <template x-if="mp.mapa_json.aspectos.filter(a => (a.aspecto||a.tipo||'').match(/Quadratura|square|Oposi/i)).length > 0">
                                             <div class="mb-3">
-                                                <p class="text-[10px] font-semibold text-red-600 uppercase tracking-wider mb-1 flex items-center gap-1">
+                                                <p class="text-xs font-semibold text-red-600 uppercase tracking-wider mb-1 flex items-center gap-1">
                                                     <span class="w-2 h-2 rounded-full bg-red-400 inline-block"></span> Aspectos Desafiadores
                                                 </p>
                                                 <div class="flex flex-wrap gap-1.5">
@@ -2729,7 +2751,7 @@
                                         <!-- Outros aspectos (nem positivo nem desafiador) -->
                                         <template x-if="mp.mapa_json.aspectos.filter(a => !(a.aspecto||a.tipo||'').match(/Tr[íi]gono|trine|Sextil|sextile|Quadratura|square|Oposi/i)).length > 0">
                                             <div>
-                                                <p class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1 flex items-center gap-1">
+                                                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 flex items-center gap-1">
                                                     <span class="w-2 h-2 rounded-full bg-gray-400 inline-block"></span> Outros
                                                 </p>
                                                 <div class="flex flex-wrap gap-1.5">
@@ -3154,6 +3176,14 @@ function portalApp() {
                     return;
                 }
 
+                // On mobile, open sidebar if tour targets a sidebar menu item
+                const isMobileDevice = window.innerWidth < 768;
+                if (isMobileDevice && step.target && step.target.startsWith('#tour-menu-')) {
+                    this.sidebarOpen = true;
+                } else if (isMobileDevice && step.target && !step.target.startsWith('#tour-menu-')) {
+                    this.sidebarOpen = false;
+                }
+
                 const el = document.querySelector(step.target);
                 if (!el) {
                     tooltip.style.top = '50%';
@@ -3177,7 +3207,13 @@ function portalApp() {
                     const r = Math.max(rect.width, rect.height) * 0.8 + 20;
                     backdrop.style.background = 'radial-gradient(ellipse ' + r + 'px ' + (r * 0.7) + 'px at ' + cx + 'px ' + cy + 'px, transparent 80%, rgba(0,0,0,0.65) 100%)';
 
-                    if (step.position === 'bottom') {
+                    const isMobile = window.innerWidth < 640;
+                    if (isMobile) {
+                        // On mobile, always position tooltip centered near bottom
+                        tooltip.style.left = Math.max(8, (window.innerWidth - W) / 2) + 'px';
+                        const tooltipTop = Math.min(rect.bottom + GAP, window.innerHeight - 260);
+                        tooltip.style.top = Math.max(8, tooltipTop) + 'px';
+                    } else if (step.position === 'bottom') {
                         tooltip.style.top = (rect.bottom + GAP) + 'px';
                         tooltip.style.left = Math.max(8, Math.min(rect.left + rect.width/2 - W/2, window.innerWidth - W - 8)) + 'px';
                     } else if (step.position === 'right') {

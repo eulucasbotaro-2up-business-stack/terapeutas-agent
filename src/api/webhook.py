@@ -1812,7 +1812,16 @@ async def _processar_mensagem(payload: dict) -> None:
             if _nota_imagem_sp:
                 system_prompt_especialista = (system_prompt_especialista or "") + _nota_imagem_sp
 
-            # Enviar indicador de "digitando" se a resposta demorar > 6s
+            # Enviar indicador de "digitando" contextual se a resposta demorar > 6s
+            _typing_msg_contextual = {
+                ModoOperacao.CONSULTA: "A análise do caso está sendo preparada, só um momento que já envio...",
+                ModoOperacao.PESQUISA: "Consultando os materiais da escola, já te respondo...",
+                ModoOperacao.CRIACAO_CONTEUDO: "Criando o conteúdo pra você, só um instante...",
+            }
+            _msg_typing_escolhida = _typing_msg_contextual.get(modo, "Preparando sua resposta, só um momento...")
+            if _nota_imagem_sp and "mapa" in _nota_imagem_sp.lower():
+                _msg_typing_escolhida = "A descrição do mapa está sendo gerada, só um momento que já envio..."
+
             async def _gerar_com_typing():
                 _typing_enviado = False
                 async def _enviar_typing_depois():
@@ -1821,15 +1830,9 @@ async def _processar_mensagem(payload: dict) -> None:
                     if not _typing_enviado:
                         _typing_enviado = True
                         try:
-                            _msgs_typing = [
-                                "Analisando seu caso com profundidade...",
-                                "Consultando a base de conhecimento...",
-                                "Preparando uma análise completa...",
-                            ]
-                            import random
                             await evolution.enviar_mensagem(
                                 instance=instance_name, numero=numero_paciente,
-                                texto=random.choice(_msgs_typing),
+                                texto=_msg_typing_escolhida,
                             )
                         except Exception:
                             pass
@@ -1865,7 +1868,7 @@ async def _processar_mensagem(payload: dict) -> None:
             contexto_chunks = await buscar_contexto(
                 pergunta=texto_para_processar, terapeuta_id=terapeuta_id,
             )
-            # Typing indicator para fallback também
+            # Typing indicator para fallback
             async def _gerar_fallback_com_typing():
                 _typing_sent = False
                 async def _send_typing():
@@ -1876,7 +1879,7 @@ async def _processar_mensagem(payload: dict) -> None:
                         try:
                             await evolution.enviar_mensagem(
                                 instance=instance_name, numero=numero_paciente,
-                                texto="Preparando sua resposta...",
+                                texto="Preparando sua resposta, só um momento...",
                             )
                         except Exception:
                             pass
@@ -3434,7 +3437,16 @@ async def _processar_mensagem_meta(payload: dict) -> None:
             if _nota_imagem_sp:
                 system_prompt_especialista = (system_prompt_especialista or "") + _nota_imagem_sp
 
-            # Typing indicator Meta — envia mensagem se >6s
+            # Typing indicator Meta — contextual se >6s
+            _typing_meta = {
+                ModoOperacao.CONSULTA: "A análise do caso está sendo preparada, só um momento que já envio...",
+                ModoOperacao.PESQUISA: "Consultando os materiais da escola, já te respondo...",
+                ModoOperacao.CRIACAO_CONTEUDO: "Criando o conteúdo pra você, só um instante...",
+            }
+            _msg_meta_typing = _typing_meta.get(modo, "Preparando sua resposta, só um momento...")
+            if _nota_imagem_sp and "mapa" in _nota_imagem_sp.lower():
+                _msg_meta_typing = "A descrição do mapa está sendo gerada, só um momento que já envio..."
+
             async def _gerar_meta_com_typing():
                 _t_sent = False
                 async def _send_t():
@@ -3443,9 +3455,7 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                     if not _t_sent:
                         _t_sent = True
                         try:
-                            _msgs = ["Analisando seu caso com profundidade...", "Consultando a base de conhecimento...", "Preparando uma análise completa..."]
-                            import random
-                            await meta_client.send_text_message(phone_number=numero_paciente, message=random.choice(_msgs))
+                            await meta_client.send_text_message(phone_number=numero_paciente, message=_msg_meta_typing)
                         except Exception:
                             pass
                 _tt = asyncio.create_task(_send_t())
@@ -3481,7 +3491,7 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                     if not _t2:
                         _t2 = True
                         try:
-                            await meta_client.send_text_message(phone_number=numero_paciente, message="Preparando sua resposta...")
+                            await meta_client.send_text_message(phone_number=numero_paciente, message="Preparando sua resposta, só um momento...")
                         except Exception:
                             pass
                 _tt2 = asyncio.create_task(_st())
