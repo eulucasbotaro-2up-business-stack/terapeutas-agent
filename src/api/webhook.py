@@ -1812,18 +1812,48 @@ async def _processar_mensagem(payload: dict) -> None:
             if _nota_imagem_sp:
                 system_prompt_especialista = (system_prompt_especialista or "") + _nota_imagem_sp
 
+            # Enviar indicador de "digitando" se a resposta demorar > 6s
+            async def _gerar_com_typing():
+                _typing_enviado = False
+                async def _enviar_typing_depois():
+                    nonlocal _typing_enviado
+                    await asyncio.sleep(6)
+                    if not _typing_enviado:
+                        _typing_enviado = True
+                        try:
+                            _msgs_typing = [
+                                "Analisando seu caso com profundidade...",
+                                "Consultando a base de conhecimento...",
+                                "Preparando uma análise completa...",
+                            ]
+                            import random
+                            await evolution.enviar_mensagem(
+                                instance=instance_name, numero=numero_paciente,
+                                texto=random.choice(_msgs_typing),
+                            )
+                        except Exception:
+                            pass
+                _typing_task = asyncio.create_task(_enviar_typing_depois())
+                try:
+                    result = await gerar_resposta(
+                        pergunta=texto_para_processar,
+                        terapeuta_id=terapeuta_id,
+                        contexto_chunks=contexto_chunks,
+                        config_terapeuta=config_terapeuta,
+                        historico_mensagens=historico if historico else None,
+                        contexto_personalizado=ctx_formatado,
+                        memoria_usuario=memoria_fmt,
+                        modo_override=modo,
+                        system_prompt_override=system_prompt_especialista,
+                    )
+                    _typing_task.cancel()
+                    return result
+                except Exception:
+                    _typing_task.cancel()
+                    raise
+
             try:
-                resposta_texto = await gerar_resposta(
-                    pergunta=texto_para_processar,
-                    terapeuta_id=terapeuta_id,
-                    contexto_chunks=contexto_chunks,
-                    config_terapeuta=config_terapeuta,
-                    historico_mensagens=historico if historico else None,
-                    contexto_personalizado=ctx_formatado,
-                    memoria_usuario=memoria_fmt,
-                    modo_override=modo,
-                    system_prompt_override=system_prompt_especialista,
-                )
+                resposta_texto = await _gerar_com_typing()
             except Exception as e:
                 logger.error(f"Falha ao gerar resposta Claude (Evolution): {e}", exc_info=True)
                 await evolution.enviar_mensagem(
@@ -1835,14 +1865,38 @@ async def _processar_mensagem(payload: dict) -> None:
             contexto_chunks = await buscar_contexto(
                 pergunta=texto_para_processar, terapeuta_id=terapeuta_id,
             )
+            # Typing indicator para fallback também
+            async def _gerar_fallback_com_typing():
+                _typing_sent = False
+                async def _send_typing():
+                    nonlocal _typing_sent
+                    await asyncio.sleep(6)
+                    if not _typing_sent:
+                        _typing_sent = True
+                        try:
+                            await evolution.enviar_mensagem(
+                                instance=instance_name, numero=numero_paciente,
+                                texto="Preparando sua resposta...",
+                            )
+                        except Exception:
+                            pass
+                _tt = asyncio.create_task(_send_typing())
+                try:
+                    r = await gerar_resposta(
+                        pergunta=texto_para_processar,
+                        terapeuta_id=terapeuta_id,
+                        contexto_chunks=contexto_chunks,
+                        config_terapeuta=config_terapeuta,
+                        memoria_usuario=memoria_fmt,
+                    )
+                    _tt.cancel()
+                    return r
+                except Exception:
+                    _tt.cancel()
+                    raise
+
             try:
-                resposta_texto = await gerar_resposta(
-                    pergunta=texto_para_processar,
-                    terapeuta_id=terapeuta_id,
-                    contexto_chunks=contexto_chunks,
-                    config_terapeuta=config_terapeuta,
-                    memoria_usuario=memoria_fmt,
-                )
+                resposta_texto = await _gerar_fallback_com_typing()
             except Exception as e:
                 logger.error(f"Falha ao gerar resposta Claude (Evolution, fallback): {e}", exc_info=True)
                 await evolution.enviar_mensagem(
@@ -3380,43 +3434,74 @@ async def _processar_mensagem_meta(payload: dict) -> None:
             if _nota_imagem_sp:
                 system_prompt_especialista = (system_prompt_especialista or "") + _nota_imagem_sp
 
+            # Typing indicator Meta — envia mensagem se >6s
+            async def _gerar_meta_com_typing():
+                _t_sent = False
+                async def _send_t():
+                    nonlocal _t_sent
+                    await asyncio.sleep(6)
+                    if not _t_sent:
+                        _t_sent = True
+                        try:
+                            _msgs = ["Analisando seu caso com profundidade...", "Consultando a base de conhecimento...", "Preparando uma análise completa..."]
+                            import random
+                            await meta_client.send_text_message(phone_number=numero_paciente, message=random.choice(_msgs))
+                        except Exception:
+                            pass
+                _tt = asyncio.create_task(_send_t())
+                try:
+                    r = await gerar_resposta(
+                        pergunta=texto_para_processar, terapeuta_id=terapeuta_id,
+                        contexto_chunks=contexto_chunks, config_terapeuta=config_terapeuta,
+                        historico_mensagens=historico if historico else None,
+                        contexto_personalizado=ctx_formatado, memoria_usuario=memoria_fmt,
+                        modo_override=modo, system_prompt_override=system_prompt_especialista,
+                    )
+                    _tt.cancel()
+                    return r
+                except Exception:
+                    _tt.cancel()
+                    raise
+
             try:
-                resposta_texto = await gerar_resposta(
-                    pergunta=texto_para_processar,
-                    terapeuta_id=terapeuta_id,
-                    contexto_chunks=contexto_chunks,
-                    config_terapeuta=config_terapeuta,
-                    historico_mensagens=historico if historico else None,
-                    contexto_personalizado=ctx_formatado,
-                    memoria_usuario=memoria_fmt,
-                    modo_override=modo,
-                    system_prompt_override=system_prompt_especialista,
-                )
+                resposta_texto = await _gerar_meta_com_typing()
             except Exception as e:
                 logger.error(f"Falha ao gerar resposta Claude (Meta): {e}", exc_info=True)
-                await meta_client.send_text_message(
-                    phone_number=numero_paciente,
-                    message=MSG_ERRO_MENSAGEM,
-                )
+                await meta_client.send_text_message(phone_number=numero_paciente, message=MSG_ERRO_MENSAGEM)
                 return
         else:
             contexto_chunks = await buscar_contexto(
                 pergunta=texto_para_processar, terapeuta_id=terapeuta_id,
             )
+            async def _gerar_meta_fb_typing():
+                _t2 = False
+                async def _st():
+                    nonlocal _t2
+                    await asyncio.sleep(6)
+                    if not _t2:
+                        _t2 = True
+                        try:
+                            await meta_client.send_text_message(phone_number=numero_paciente, message="Preparando sua resposta...")
+                        except Exception:
+                            pass
+                _tt2 = asyncio.create_task(_st())
+                try:
+                    r = await gerar_resposta(
+                        pergunta=texto_para_processar, terapeuta_id=terapeuta_id,
+                        contexto_chunks=contexto_chunks, config_terapeuta=config_terapeuta,
+                        memoria_usuario=memoria_fmt,
+                    )
+                    _tt2.cancel()
+                    return r
+                except Exception:
+                    _tt2.cancel()
+                    raise
+
             try:
-                resposta_texto = await gerar_resposta(
-                    pergunta=texto_para_processar,
-                    terapeuta_id=terapeuta_id,
-                    contexto_chunks=contexto_chunks,
-                    config_terapeuta=config_terapeuta,
-                    memoria_usuario=memoria_fmt,
-                )
+                resposta_texto = await _gerar_meta_fb_typing()
             except Exception as e:
                 logger.error(f"Falha ao gerar resposta Claude (Meta, fallback): {e}", exc_info=True)
-                await meta_client.send_text_message(
-                    phone_number=numero_paciente,
-                    message=MSG_ERRO_MENSAGEM,
-                )
+                await meta_client.send_text_message(phone_number=numero_paciente, message=MSG_ERRO_MENSAGEM)
                 return
 
         # 11. Enviar resposta (com rate limiting anti-ban)
