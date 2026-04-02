@@ -1499,14 +1499,10 @@ async def _processar_mensagem(payload: dict) -> None:
                     dados_nasc = await extrair_dados_nascimento_llm(texto_para_processar)
                     _dados_vieram_da_msg_atual = bool(dados_nasc and dados_nasc.get("data") and not dados_nasc.get("falta_ano"))
 
-                # Buscar no histórico para contexto RAG (SEM gerar/enviar mapa)
-                if not dados_nasc and historico:
-                    msgs_hist = " ".join(
-                        m.get("content", "") or m.get("conteudo", "") or m.get("mensagem", "") or ""
-                        for m in historico[-10:]
-                    )
-                    if _re_nasc.search(r'\d{1,2}[/\-\.]\d{1,2}[/\-\.]\d{2,4}', msgs_hist):
-                        dados_nasc = await extrair_dados_nascimento_llm(f"{texto_para_processar}\n{msgs_hist}")
+                # DESABILITADO: extração de dados de nascimento do histórico.
+                # Causava reenvio de mapa em TODA mensagem subsequente.
+                # O mapa já fica salvo no banco e o JSON é injetado via _buscar_mapa_salvo.
+                # dados_nasc permanece None se não veio da mensagem atual.
 
                 # Interceptor: "refazer mapa" — busca dados do histórico e regera
                 if _eh_pedido_refazer_mapa(texto_para_processar):
@@ -3106,14 +3102,7 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                     dados_nasc = await extrair_dados_nascimento_llm(texto_para_processar)
                     _dados_vieram_da_msg_atual = bool(dados_nasc and dados_nasc.get("data") and not dados_nasc.get("falta_ano"))
 
-                # Buscar no histórico para contexto RAG (SEM gerar/enviar mapa)
-                if not dados_nasc and historico:
-                    msgs_historico = " ".join(
-                        m.get("content", "") or m.get("conteudo", "") or m.get("mensagem", "") or ""
-                        for m in historico[-10:]
-                    )
-                    if _re_nasc_m.search(r'\d{1,2}[/\-\.]\d{1,2}[/\-\.]\d{2,4}', msgs_historico):
-                        dados_nasc = await extrair_dados_nascimento_llm(f"{texto_para_processar}\n{msgs_historico}")
+                # DESABILITADO: extração do histórico (causava reenvio de mapa).
                 if dados_nasc:
                     logger.info(f"[META-NASC] dados_nasc={dados_nasc} | da_msg_atual={_dados_vieram_da_msg_atual} | msg='{texto_para_processar[:80]}'")
 
