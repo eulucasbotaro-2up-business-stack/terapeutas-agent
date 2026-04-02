@@ -688,11 +688,11 @@ async def get_prontuario(paciente_id: str, authorization: str = Header(...)):
     nome_paciente = paciente.get("nome", "")
     mapas_by_num = []
     if numero and numero != "sem-numero":
-        r2 = sb.table("mapas_astrais").select("id, nome, data_nascimento, hora_nascimento, cidade_nascimento, imagem_url, mapa_json, tipo_mapa, criado_em").eq("terapeuta_id", terapeuta_id).eq("numero_telefone", numero).order("criado_em", desc=True).execute()
+        r2 = sb.table("mapas_astrais").select("id, numero_telefone, nome, data_nascimento, hora_nascimento, cidade_nascimento, imagem_url, mapa_json, tipo_mapa, criado_em").eq("terapeuta_id", terapeuta_id).eq("numero_telefone", numero).order("criado_em", desc=True).execute()
         mapas_by_num = r2.data or []
     mapas_by_name = []
     if nome_paciente:
-        r3 = sb.table("mapas_astrais").select("id, nome, data_nascimento, hora_nascimento, cidade_nascimento, imagem_url, mapa_json, tipo_mapa, criado_em").eq("terapeuta_id", terapeuta_id).eq("nome", nome_paciente).order("criado_em", desc=True).execute()
+        r3 = sb.table("mapas_astrais").select("id, numero_telefone, nome, data_nascimento, hora_nascimento, cidade_nascimento, imagem_url, mapa_json, tipo_mapa, criado_em").eq("terapeuta_id", terapeuta_id).eq("nome", nome_paciente).order("criado_em", desc=True).execute()
         mapas_by_name = r3.data or []
     seen_mids = set()
     all_mapas = []

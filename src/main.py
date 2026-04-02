@@ -176,10 +176,10 @@ async def obrigado_page():
 @app.get("/portal", tags=["Portal"])
 async def portal_page_root():
     """Serve o portal do terapeuta (SPA)."""
-    return FileResponse(_PROJECT_ROOT / "portal.html")
+    return FileResponse(_PROJECT_ROOT / "portal-vercel" / "index.html")
 
 
 @app.get("/portal/{path:path}", tags=["Portal"])
 async def portal_page(path: str = ""):
     """Serve o portal do terapeuta para todas as rotas de navegação SPA."""
-    return FileResponse(_PROJECT_ROOT / "portal.html")
+    return FileResponse(_PROJECT_ROOT / "portal-vercel" / "index.html")
