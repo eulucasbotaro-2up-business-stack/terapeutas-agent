@@ -155,6 +155,12 @@ async def dashboard_page():
     return FileResponse(_PROJECT_ROOT / "dashboard.html")
 
 
+@app.get("/admin", tags=["Admin"])
+async def admin_page():
+    """Serve o painel administrativo do CEO."""
+    return FileResponse(_PROJECT_ROOT / "admin.html")
+
+
 @app.get("/landing", tags=["Marketing"])
 async def landing_page():
     """Serve a landing page de vendas."""

@@ -453,10 +453,17 @@ async def listar_assinaturas(
         numero_ativo = c.get("numero_ativo", "")
         nome_usuario = nomes_map.get(numero_ativo, "") if numero_ativo else ""
 
+        descricao = c.get("descricao", "")
+        plano_nome, plano_valor, email_cliente, nome_cliente = _parse_descricao(descricao)
+
         resultado.append({
             "id": c.get("id"),
             "codigo": codigo_mascarado,
-            "descricao": c.get("descricao", ""),
+            "descricao": descricao,
+            "nome_cliente": nome_cliente or nome_usuario,
+            "email_cliente": email_cliente,
+            "plano": plano_nome,
+            "valor_mensal": plano_valor,
             "numero_ativo": _mascarar_telefone(numero_ativo) if numero_ativo else "",
             "nome_usuario": nome_usuario,
             "status_assinatura": c.get("status_assinatura", "disponivel"),
@@ -464,9 +471,133 @@ async def listar_assinaturas(
             "meses_contratados": c.get("meses_contratados"),
             "terapeuta_nome": terapeutas_map.get(c.get("terapeuta_id"), "Desconhecido"),
             "terapeuta_id": c.get("terapeuta_id"),
+            "asaas_subscription_id": c.get("asaas_subscription_id", ""),
+            "asaas_customer_id": c.get("asaas_customer_id", ""),
             "reutilizavel": c.get("reutilizavel", False),
             "ativo": c.get("ativo", False),
+            "usado": c.get("usado", False),
+            "usado_em": c.get("usado_em"),
             "criado_em": c.get("criado_em"),
         })
 
     return {"assinaturas": resultado}
+
+
+# =============================================
+# FINANCEIRO / MRR
+# =============================================
+
+def _parse_descricao(descricao: str) -> tuple:
+    """Extrai nome, plano, valor, email da descricao do codigo."""
+    nome_cliente = ""
+    email_cliente = ""
+    plano_nome = "Desconhecido"
+    plano_valor = 0.0
+
+    if not descricao:
+        return plano_nome, plano_valor, email_cliente, nome_cliente
+
+    # Formato: "Nome — Plano (email)"
+    try:
+        if " — " in descricao:
+            partes = descricao.split(" — ", 1)
+            nome_cliente = partes[0].strip()
+            resto = partes[1] if len(partes) > 1 else ""
+            if " (" in resto:
+                plano_raw = resto.split(" (")[0].strip()
+                email_raw = resto.split("(")[1].rstrip(")")
+                email_cliente = email_raw.strip()
+            else:
+                plano_raw = resto.strip()
+        else:
+            plano_raw = descricao
+    except Exception:
+        plano_raw = descricao
+
+    d = plano_raw.lower()
+    if "clínica" in d or "clinica" in d:
+        plano_nome, plano_valor = "Clínica", 697.0
+    elif "profissional" in d:
+        plano_nome, plano_valor = "Profissional", 297.0
+    elif "essencial" in d:
+        plano_nome, plano_valor = "Essencial", 197.0
+    elif "iniciante" in d:
+        plano_nome, plano_valor = "Iniciante", 97.0
+
+    return plano_nome, plano_valor, email_cliente, nome_cliente
+
+
+@router.get("/financeiro")
+async def financeiro(
+    token: Optional[str] = Query(None),
+    x_dashboard_token: Optional[str] = Header(None, alias="X-Dashboard-Token"),
+):
+    """MRR, ARR, breakdown por plano, crescimento mensal."""
+    _verificar_token(token, x_dashboard_token)
+    sb = get_supabase()
+
+    agora = datetime.now(timezone.utc)
+    inicio_mes = agora.replace(day=1, hour=0, minute=0, second=0, microsecond=0).isoformat()
+    inicio_semana = (agora - timedelta(days=7)).isoformat()
+
+    codigos_resp = sb.table("codigos_liberacao").select("*").order("criado_em", desc=False).execute()
+    codigos = codigos_resp.data or []
+
+    mrr = 0.0
+    por_plano: dict = {}
+    novos_mes = 0
+    novos_semana = 0
+    total_ativos = 0
+    total_trial = 0
+    total_cancelados = 0
+    total_pendentes = 0
+    evolucao_mensal: dict = {}
+
+    for c in codigos:
+        plano_nome, preco, _, _ = _parse_descricao(c.get("descricao", ""))
+        status = c.get("status_assinatura", "disponivel")
+        criado = c.get("criado_em", "")
+
+        if status == "ativo":
+            total_ativos += 1
+            if preco > 0:
+                mrr += preco
+                por_plano[plano_nome] = por_plano.get(plano_nome, {"count": 0, "valor": 0.0})
+                por_plano[plano_nome]["count"] += 1
+                por_plano[plano_nome]["valor"] += preco
+        elif status == "disponivel":
+            total_pendentes += 1
+        elif status in ("cancelado", "suspenso_pagamento"):
+            total_cancelados += 1
+
+        if criado >= inicio_mes:
+            novos_mes += 1
+        if criado >= inicio_semana:
+            novos_semana += 1
+
+        if criado:
+            mes = criado[:7]
+            if mes not in evolucao_mensal:
+                evolucao_mensal[mes] = {"novos": 0, "receita": 0.0}
+            evolucao_mensal[mes]["novos"] += 1
+            if status == "ativo" and preco > 0:
+                evolucao_mensal[mes]["receita"] += preco
+
+    return {
+        "mrr": round(mrr, 2),
+        "arr": round(mrr * 12, 2),
+        "total_ativos": total_ativos,
+        "total_pendentes": total_pendentes,
+        "total_cancelados": total_cancelados,
+        "total_codigos": len(codigos),
+        "novos_este_mes": novos_mes,
+        "novos_esta_semana": novos_semana,
+        "por_plano": [
+            {"plano": k, "count": v["count"], "valor": v["valor"]}
+            for k, v in sorted(por_plano.items(), key=lambda x: -x[1]["valor"])
+        ],
+        "evolucao": [
+            {"mes": k, **v}
+            for k, v in sorted(evolucao_mensal.items())
+        ][-12:],
+    }
