@@ -3590,6 +3590,8 @@ function portalApp() {
                     this.api('GET', `/portal/api/prontuario/${paciente.id}`),
                     this.api('GET', `/portal/api/prontuario/${paciente.id}/timeline`),
                 ]);
+                // Parse mapa_json de todos os mapas do prontuário
+                (pront.mapas_natais || []).forEach(m => this._parseMapaJson(m));
                 this.prontuario = { ...pront, timeline: tl.timeline || [] };
             } catch (e) {
                 this.mostrarToast('Erro ao carregar prontuario', false);
@@ -3718,7 +3720,9 @@ function portalApp() {
             this.loading = true;
             try {
                 const resMapas = await this.api('GET', '/portal/api/mapas');
-                this.mapas = resMapas.mapas || resMapas;
+                const lista = resMapas.mapas || resMapas;
+                lista.forEach(m => this._parseMapaJson(m));
+                this.mapas = lista;
             } catch (e) {
                 this.mostrarToast('Erro ao carregar mapas', false);
             } finally {
