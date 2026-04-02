@@ -31,6 +31,12 @@ router = APIRouter(prefix="/api/portal", tags=["Checkout"])
 
 # Planos disponíveis
 PLANOS = {
+    "iniciante": {
+        "nome": "Iniciante",
+        "valor": 97.00,
+        "descricao": "TerapeutasAgent — Plano Iniciante",
+        "ciclo": "MONTHLY",
+    },
     "essencial": {
         "nome": "Essencial",
         "valor": 197.00,
@@ -41,6 +47,12 @@ PLANOS = {
         "nome": "Profissional",
         "valor": 297.00,
         "descricao": "TerapeutasAgent — Plano Profissional",
+        "ciclo": "MONTHLY",
+    },
+    "clinica": {
+        "nome": "Clínica",
+        "valor": 697.00,
+        "descricao": "TerapeutasAgent — Plano Clínica",
         "ciclo": "MONTHLY",
     },
 }
