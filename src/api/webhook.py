@@ -483,19 +483,45 @@ def _extrair_audio_bytes(b64_data: str) -> bytes | None:
         return None
 
 
-def _criar_acesso_portal_sync(email: str, senha: str, nome: str, telefone: str) -> str:
-    """Cria terapeuta + portal_auth. Retorna terapeuta_id. Sync — chamar via to_thread."""
+def _criar_acesso_portal_sync(email: str, senha: str, nome: str, telefone: str, terapeuta_id_existente: str = None) -> str:
+    """Cria portal_auth para terapeuta existente (ou cria novo se não houver).
+
+    IMPORTANTE: Quando chamado do onboarding WhatsApp, SEMPRE passar terapeuta_id_existente
+    para que o portal use o MESMO terapeuta_id dos dados do WhatsApp (conversas, mapas, etc).
+    """
     import bcrypt
     from src.core.supabase_client import get_supabase
     from uuid import uuid4
     sb = get_supabase()
-    existing = sb.table("terapeutas").select("id").eq("email", email).limit(1).execute()
-    if existing.data:
-        t_id = existing.data[0]["id"]
-        sb.table("terapeutas").update({"nome": nome, "telefone": telefone}).eq("id", t_id).execute()
+
+    if terapeuta_id_existente:
+        # USAR o terapeuta já existente (da instância Evolution) — atualizar email/nome/telefone
+        t_id = terapeuta_id_existente
+
+        # Limpar terapeuta órfão que tenha esse email (criado em testes anteriores)
+        orphan = sb.table("terapeutas").select("id").eq("email", email).neq("id", t_id).limit(1).execute()
+        if orphan.data:
+            orphan_id = orphan.data[0]["id"]
+            sb.table("portal_auth").delete().eq("terapeuta_id", orphan_id).execute()
+            sb.table("terapeutas").delete().eq("id", orphan_id).execute()
+            logger.info(f"[PORTAL] Removido terapeuta órfão {orphan_id} com email={email}")
+
+        sb.table("terapeutas").update({
+            "nome": nome,
+            "email": email,
+            "telefone": telefone,
+        }).eq("id", t_id).execute()
+        logger.info(f"[PORTAL] Atualizado terapeuta existente {t_id} com email={email}")
     else:
-        t_id = str(uuid4())
-        sb.table("terapeutas").insert({"id": t_id, "nome": nome, "email": email, "telefone": telefone, "especialidade": "Alquimia Terapêutica"}).execute()
+        # Fallback: buscar por email ou criar novo
+        existing = sb.table("terapeutas").select("id").eq("email", email).limit(1).execute()
+        if existing.data:
+            t_id = existing.data[0]["id"]
+            sb.table("terapeutas").update({"nome": nome, "telefone": telefone}).eq("id", t_id).execute()
+        else:
+            t_id = str(uuid4())
+            sb.table("terapeutas").insert({"id": t_id, "nome": nome, "email": email, "telefone": telefone, "especialidade": "Alquimia Terapêutica"}).execute()
+
     senha_hash = bcrypt.hashpw(senha.encode(), bcrypt.gensalt()).decode()
     existing_auth = sb.table("portal_auth").select("id").eq("terapeuta_id", t_id).limit(1).execute()
     if existing_auth.data:
@@ -1264,7 +1290,7 @@ async def _processar_mensagem(payload: dict) -> None:
                         return
 
                     try:
-                        t_id = await asyncio.to_thread(_criar_acesso_portal_sync, email, senha, nome, numero_paciente)
+                        t_id = await asyncio.to_thread(_criar_acesso_portal_sync, email, senha, nome, numero_paciente, terapeuta_id)
                         # Step 12 → 13: NÃO limpar onboarding — ir para perguntar_inicio
                         await asyncio.to_thread(atualizar_onboarding, terapeuta_id, numero_paciente, "perguntar_inicio", email=email)
 
@@ -2877,7 +2903,7 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                         return
 
                     try:
-                        t_id = await asyncio.to_thread(_criar_acesso_portal_sync, email, senha, nome, numero_paciente)
+                        t_id = await asyncio.to_thread(_criar_acesso_portal_sync, email, senha, nome, numero_paciente, terapeuta_id)
                         # Step 12 → 13: NÃO limpar onboarding — ir para perguntar_inicio
                         await asyncio.to_thread(atualizar_onboarding, terapeuta_id, numero_paciente, "perguntar_inicio", email=email)
 
