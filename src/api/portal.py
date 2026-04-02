@@ -806,7 +806,11 @@ async def get_timeline(paciente_id: str, authorization: str = Header(...)):
             pass
     for m in mapas_tl:
         tipo_label = m.get("tipo_mapa") or "Mapa Natal"
-        eventos.append({"tipo": "mapa_natal", "data": m["criado_em"], "resumo": f"{tipo_label} — {m.get('data_nascimento') or ''}", "id": m["id"]})
+        nasc = m.get("data_nascimento") or ""
+        resumo_mapa = tipo_label
+        if nasc:
+            resumo_mapa += f" (nascimento: {nasc})"
+        eventos.append({"tipo": "mapa_natal", "data": m["criado_em"], "resumo": resumo_mapa, "id": m["id"]})
 
     # Resumos de sessão (memória IA)
     resumos = sb.table("resumos_sessao").select("id, sessao_inicio, resumo, total_mensagens").eq("terapeuta_id", terapeuta_id).eq("numero_telefone", numero).execute()

@@ -944,8 +944,8 @@
                     <template x-for="ev in (prontuario?.timeline || [])" :key="(ev.id || '') + ev.tipo + ev.data">
                         <div class="timeline-item glass-card ml-4 p-4">
                             <div class="flex items-start justify-between">
-                                <div class="flex items-center gap-2">
-                                    <span class="badge text-xs"
+                                <div class="flex items-center gap-2 min-w-0">
+                                    <span class="badge text-xs flex-shrink-0"
                                         :class="ev.tipo === 'conversa_inicio' ? 'bg-green-100 text-green-700' :
                                                 ev.tipo === 'conversa_fim' ? 'bg-gray-100 text-gray-600' :
                                                 ev.tipo === 'diagnostico' ? 'bg-brand-50 text-brand-600' :
@@ -960,9 +960,11 @@
                                                 ev.tipo.startsWith('anotacao_') ? ev.tipo.replace('anotacao_','') :
                                                 ev.tipo === 'resumo_sessao' ? 'sessao IA' :
                                                 ev.tipo"></span>
-                                    <span class="text-sm font-medium text-gray-800" x-text="ev.titulo || ev.resumo || ''"></span>
+                                    <div class="min-w-0">
+                                        <span class="text-sm font-medium text-gray-800" x-text="ev.titulo || ev.resumo || ''"></span>
+                                        <p class="text-[11px] text-gray-400 mt-0.5" x-text="ev.data ? new Date(ev.data).toLocaleDateString('pt-BR', {day:'2-digit', month:'long', year:'numeric'}) + ' as ' + new Date(ev.data).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}) : ''"></p>
+                                    </div>
                                 </div>
-                                <span class="text-xs text-gray-400 flex-shrink-0 ml-2" x-text="formatarDataCurta(ev.data)"></span>
                             </div>
                         </div>
                     </template>
