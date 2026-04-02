@@ -386,6 +386,7 @@ async def rotear_mensagem(
     historico: list[dict],
     nome_usuario: Optional[str],
     is_audio: bool = False,
+    onboarding_just_completed: bool = False,
 ) -> ModoOperacao:
     """
     Roteia a mensagem para o modo de operação correto.
@@ -403,6 +404,9 @@ async def rotear_mensagem(
         historico: Últimas mensagens da conversa (até 6 turnos).
         nome_usuario: Nome do terapeuta, se disponível.
         is_audio: Se True, a mensagem é transcrição de áudio — nunca classificar como SAUDACAO.
+        onboarding_just_completed: Se True, o usuário acabou de completar o onboarding
+            (step 13 → 14). Força CONSULTA para que a primeira mensagem real seja
+            tratada como caso/pedido, não como saudação.
 
     Returns:
         ModoOperacao correspondente à intenção detectada.
@@ -410,6 +414,13 @@ async def rotear_mensagem(
     if not texto or not texto.strip():
         logger.info("[ROUTER] Texto vazio — retornando SAUDACAO")
         return ModoOperacao.SAUDACAO
+
+    # Se o usuário acabou de completar o onboarding, forçar CONSULTA
+    # para que a primeira mensagem (ex: "mapa natal", "caso clínico") seja
+    # processada pelo RAG, e não descartada como saudação
+    if onboarding_just_completed:
+        logger.info(f"[ROUTER] Onboarding recém-concluído — forçando CONSULTA: '{texto[:50]}'")
+        return ModoOperacao.CONSULTA
 
     # Etapa 1: tentar classificação local (sem LLM)
     modo_local = _classificar_localmente(texto, is_audio=is_audio, historico=historico)

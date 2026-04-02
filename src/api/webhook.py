@@ -1265,7 +1265,8 @@ async def _processar_mensagem(payload: dict) -> None:
 
                     try:
                         t_id = await asyncio.to_thread(_criar_acesso_portal_sync, email, senha, nome, numero_paciente)
-                        await asyncio.to_thread(limpar_onboarding, terapeuta_id, numero_paciente)
+                        # Step 12 → 13: NÃO limpar onboarding — ir para perguntar_inicio
+                        await asyncio.to_thread(atualizar_onboarding, terapeuta_id, numero_paciente, "perguntar_inicio", email=email)
 
                         msg1 = f"Tudo pronto, {nome}! Seu acesso ao portal foi criado com sucesso."
                         await evolution.enviar_mensagem(instance=instance_name, numero=numero_paciente, texto=msg1)
@@ -1276,11 +1277,13 @@ async def _processar_mensagem(payload: dict) -> None:
                             f"\U0001f517 https://portal-vercel-ten.vercel.app\n"
                             f"\U0001f4e7 Login: {email}\n"
                             f"\U0001f511 Senha: a que você acabou de criar\n\n"
-                            f"Lá você acompanha pacientes, diagnósticos, mapas natais e todo o histórico."
+                            f"Lá você acompanha pacientes, diagnósticos, mapas natais e todo o histórico.\n\n"
+                            f"Acesse e siga o tour guiado na plataforma para conhecer as funcionalidades."
                         )
                         await evolution.enviar_mensagem(instance=instance_name, numero=numero_paciente, texto=msg2)
                         await asyncio.sleep(1.5)
 
+                        # Step 13: Perguntar por onde quer começar
                         msg3 = "Agora vamos iniciar! Quer trazer algum caso clínico, fazer um mapa natal, entender algo do método ou criar conteúdo?"
                         await evolution.enviar_mensagem(instance=instance_name, numero=numero_paciente, texto=msg3)
 
@@ -1298,11 +1301,17 @@ async def _processar_mensagem(payload: dict) -> None:
                 await _salvar_conversa(terapeuta_id=terapeuta_id, paciente_numero=numero_paciente, mensagem_paciente="[SENHA_OCULTADA]", resposta_agente="[ONBOARDING_CRIAR_ACESSO]", intencao="ONBOARDING")
                 return
 
+            elif step == "perguntar_inicio":
+                # Step 13 → 14: Usuário escolheu por onde começar — limpar onboarding
+                # e deixar cair no processamento RAG normal com a mensagem do usuário
+                await asyncio.to_thread(limpar_onboarding, terapeuta_id, numero_paciente)
+                logger.info(f"[ONBOARDING] Step 13 concluído para {numero_paciente} — passando para agente ativo")
+                # NÃO retorna — fall-through para o RAG pipeline processar a mensagem
+
             else:
                 logger.error(f"[ONBOARDING] Step desconhecido: {step} para {numero_paciente} — limpando")
                 await asyncio.to_thread(limpar_onboarding, terapeuta_id, numero_paciente)
-
-            return  # Sempre retorna se estava em onboarding — impede fall-through
+                return  # Step desconhecido: retorna para evitar comportamento inesperado
 
         # 5b. Coletar nome se ainda não temos
         if estado.aguardando_nome:
@@ -1343,6 +1352,17 @@ async def _processar_mensagem(payload: dict) -> None:
                     mensagem_paciente=texto_mensagem, resposta_agente=MSG_NOME_NAO_IDENTIFICADO, intencao="NOME_NAO_IDENTIFICADO",
                 )
             return
+
+        # Flag: se o usuário acabou de sair do step 13 (perguntar_inicio),
+        # forçar modo CONSULTA para que a primeira mensagem real vá para o RAG
+        _onboarding_just_completed = (
+            estado.onboarding_step == "perguntar_inicio"
+            and estado.aguardando_onboarding
+            and not estado.aguardando_nome
+            and not estado.aguardando_confirmacao_nome
+        )
+        # NOTA: se _onboarding_just_completed, o onboarding já foi limpo acima
+        # pelo bloco perguntar_inicio, então o fall-through é seguro.
 
         # 5c. Moderação: detectar profanidade ANTES do RAG
         if detectar_profanidade(texto_mensagem):
@@ -1386,6 +1406,7 @@ async def _processar_mensagem(payload: dict) -> None:
             historico[-6:] if historico else [],
             estado.nome_usuario,
             is_audio=_is_audio,
+            onboarding_just_completed=_onboarding_just_completed,
         )
         logger.info(f"Modo roteado (Evolution): {modo.value}")
         # classificar_intencao só é chamado nos modos que usam RAG (economiza API)
@@ -2820,7 +2841,8 @@ async def _processar_mensagem_meta(payload: dict) -> None:
 
                     try:
                         t_id = await asyncio.to_thread(_criar_acesso_portal_sync, email, senha, nome, numero_paciente)
-                        await asyncio.to_thread(limpar_onboarding, terapeuta_id, numero_paciente)
+                        # Step 12 → 13: NÃO limpar onboarding — ir para perguntar_inicio
+                        await asyncio.to_thread(atualizar_onboarding, terapeuta_id, numero_paciente, "perguntar_inicio", email=email)
 
                         msg1 = f"Tudo pronto, {nome}! Seu acesso ao portal foi criado com sucesso."
                         await meta_client.send_text_message(phone_number=numero_paciente, message=msg1)
@@ -2831,11 +2853,13 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                             f"\U0001f517 https://portal-vercel-ten.vercel.app\n"
                             f"\U0001f4e7 Login: {email}\n"
                             f"\U0001f511 Senha: a que você acabou de criar\n\n"
-                            f"Lá você acompanha pacientes, diagnósticos, mapas natais e todo o histórico."
+                            f"Lá você acompanha pacientes, diagnósticos, mapas natais e todo o histórico.\n\n"
+                            f"Acesse e siga o tour guiado na plataforma para conhecer as funcionalidades."
                         )
                         await meta_client.send_text_message(phone_number=numero_paciente, message=msg2)
                         await asyncio.sleep(1.5)
 
+                        # Step 13: Perguntar por onde quer começar
                         msg3 = "Agora vamos iniciar! Quer trazer algum caso clínico, fazer um mapa natal, entender algo do método ou criar conteúdo?"
                         await meta_client.send_text_message(phone_number=numero_paciente, message=msg3)
 
@@ -2853,11 +2877,17 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                 await _salvar_conversa(terapeuta_id=terapeuta_id, paciente_numero=numero_paciente, mensagem_paciente="[SENHA_OCULTADA]", resposta_agente="[ONBOARDING_CRIAR_ACESSO]", intencao="ONBOARDING")
                 return
 
+            elif step == "perguntar_inicio":
+                # Step 13 → 14: Usuário escolheu por onde começar — limpar onboarding
+                # e deixar cair no processamento RAG normal com a mensagem do usuário
+                await asyncio.to_thread(limpar_onboarding, terapeuta_id, numero_paciente)
+                logger.info(f"[ONBOARDING] Step 13 concluído para {numero_paciente} — passando para agente ativo")
+                # NÃO retorna — fall-through para o RAG pipeline processar a mensagem
+
             else:
                 logger.error(f"[ONBOARDING] Step desconhecido: {step} para {numero_paciente} — limpando")
                 await asyncio.to_thread(limpar_onboarding, terapeuta_id, numero_paciente)
-
-            return  # Sempre retorna se estava em onboarding — impede fall-through
+                return  # Step desconhecido: retorna para evitar comportamento inesperado
 
         # 6b. Coletar nome se ainda não temos
         if estado.aguardando_nome:
@@ -2895,6 +2925,15 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                     mensagem_paciente=texto_mensagem, resposta_agente=MSG_NOME_NAO_IDENTIFICADO, intencao="NOME_NAO_IDENTIFICADO",
                 )
             return
+
+        # Flag: se o usuário acabou de sair do step 13 (perguntar_inicio),
+        # forçar modo CONSULTA para que a primeira mensagem real vá para o RAG
+        _onboarding_just_completed = (
+            estado.onboarding_step == "perguntar_inicio"
+            and estado.aguardando_onboarding
+            and not estado.aguardando_nome
+            and not estado.aguardando_confirmacao_nome
+        )
 
         # 6c. Moderação: detectar profanidade ANTES do RAG
         if detectar_profanidade(texto_mensagem):
@@ -2936,6 +2975,7 @@ async def _processar_mensagem_meta(payload: dict) -> None:
             historico[-6:] if historico else [],
             estado.nome_usuario,
             is_audio=_is_audio,
+            onboarding_just_completed=_onboarding_just_completed,
         )
         logger.info(f"Modo roteado (Meta): {modo.value}")
         # classificar_intencao só é chamado nos modos que usam RAG (economiza chamada Haiku)

@@ -379,6 +379,51 @@ class EstadoChat:
         """True quando ATIVO, nome confirmado e onboarding de cadastro em andamento."""
         return self.is_ativo and bool(self.nome_usuario) and self.onboarding_step is not None
 
+    @property
+    def pipeline_step(self) -> int:
+        """
+        Retorna em qual passo (1-14) do pipeline de onboarding o usuário está.
+
+        Pipeline completo:
+          1: BOAS_VINDAS       → Mensagens de boas-vindas (automático na 1ª mensagem)
+          2: PEDIR_CODIGO      → Pedir código de acesso
+          3: CODIGO_LIBERADO   → Código validado, informar desbloqueio
+          4: EXPLICAR_ACESSO   → Explicar o que foi liberado
+          5: PEDIR_NOME        → Perguntar nome
+          6: CONFIRMAR_NOME    → Confirmar nome digitado
+          7: EXPLICAR_PLATAFORMA → Explicar que existe portal
+          8: PEDIR_EMAIL       → Pedir e-mail para cadastro
+          9: CONFIRMAR_EMAIL   → Confirmar e-mail
+         10: PEDIR_SENHA       → Pedir senha
+         11: CONFIRMAR_SENHA   → Confirmar senha
+         12: CRIAR_ACESSO      → Criar acesso portal, enviar link
+         13: PERGUNTAR_INICIO  → Perguntar por onde quer começar
+         14: AGENTE_ATIVO      → Agente ativo (operação normal RAG)
+          0: BLOQUEADO         → Bloqueado
+        """
+        if self.is_bloqueado:
+            return 0
+        if self.is_pendente:
+            return 2  # Steps 1-2 são tratados juntos (PENDENTE_CODIGO)
+        # ATIVO — verificar progresso
+        if not self.nome_usuario:
+            if self.aguardando_confirmacao_nome:
+                return 6  # Confirmando nome
+            return 5  # Pedindo nome
+        # Tem nome — verificar onboarding de cadastro
+        if self.onboarding_step:
+            _step_map = {
+                "explicar_plataforma": 7,
+                "email": 8,
+                "confirmar_email": 9,
+                "senha": 10,
+                "confirmar_senha": 11,
+                "criar_acesso": 12,
+                "perguntar_inicio": 13,
+            }
+            return _step_map.get(self.onboarding_step, 14)
+        return 14  # Agente ativo
+
 
 # =============================================================================
 # FUNÇÕES PRINCIPAIS
