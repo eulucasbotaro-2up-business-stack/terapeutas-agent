@@ -659,8 +659,21 @@ async def get_prontuario(paciente_id: str, authorization: str = Header(...)):
     paciente = pac_res.data[0]
     numero = paciente["numero_telefone"]
 
-    # Conversas (últimas 20)
-    conv_res = sb.table("conversas").select("id, mensagem_paciente, resposta_agente, intencao, criado_em").eq("terapeuta_id", terapeuta_id).eq("paciente_numero", numero).order("criado_em", desc=True).limit(20).execute()
+    # Conversas — busca por numero E por paciente_vinculado_id
+    conv_by_num = []
+    if numero and numero != "sem-numero":
+        r1 = sb.table("conversas").select("id, mensagem_paciente, resposta_agente, intencao, criado_em").eq("terapeuta_id", terapeuta_id).eq("paciente_numero", numero).order("criado_em", desc=True).limit(50).execute()
+        conv_by_num = r1.data or []
+    conv_by_link = sb.table("conversas").select("id, mensagem_paciente, resposta_agente, intencao, criado_em").eq("terapeuta_id", terapeuta_id).eq("paciente_vinculado_id", paciente_id).order("criado_em", desc=True).limit(50).execute()
+    # Merge sem duplicatas
+    seen_ids = set()
+    all_convs = []
+    for c in (conv_by_num + (conv_by_link.data or [])):
+        if c["id"] not in seen_ids:
+            seen_ids.add(c["id"])
+            all_convs.append(c)
+    all_convs.sort(key=lambda x: x.get("criado_em", ""), reverse=True)
+    conv_res_data = all_convs[:50]
 
     # Diagnósticos
     diag_res = sb.table("diagnosticos_alquimicos").select("*").eq("paciente_id", paciente_id).eq("terapeuta_id", terapeuta_id).order("sessao_data", desc=True).execute()
@@ -671,8 +684,23 @@ async def get_prontuario(paciente_id: str, authorization: str = Header(...)):
     # Acompanhamentos pendentes
     acomp_res = sb.table("acompanhamentos").select("*").eq("paciente_id", paciente_id).eq("status", "pendente").order("data_prevista").execute()
 
-    # Mapas natais
-    mapas_res = sb.table("mapas_astrais").select("id, data_nascimento, imagem_url, tipo_mapa, criado_em").eq("numero_telefone", numero).order("criado_em", desc=True).execute()
+    # Mapas natais — busca por numero E por nome do paciente
+    nome_paciente = paciente.get("nome", "")
+    mapas_by_num = []
+    if numero and numero != "sem-numero":
+        r2 = sb.table("mapas_astrais").select("id, nome, data_nascimento, hora_nascimento, cidade_nascimento, imagem_url, mapa_json, tipo_mapa, criado_em").eq("terapeuta_id", terapeuta_id).eq("numero_telefone", numero).order("criado_em", desc=True).execute()
+        mapas_by_num = r2.data or []
+    mapas_by_name = []
+    if nome_paciente:
+        r3 = sb.table("mapas_astrais").select("id, nome, data_nascimento, hora_nascimento, cidade_nascimento, imagem_url, mapa_json, tipo_mapa, criado_em").eq("terapeuta_id", terapeuta_id).eq("nome", nome_paciente).order("criado_em", desc=True).execute()
+        mapas_by_name = r3.data or []
+    seen_mids = set()
+    all_mapas = []
+    for m in (mapas_by_num + mapas_by_name):
+        if m["id"] not in seen_mids:
+            seen_mids.add(m["id"])
+            all_mapas.append(m)
+    mapas_res_data = all_mapas
 
     # Resumos de sessão (memória de longo prazo)
     resumos_res = sb.table("resumos_sessao").select("*").eq("terapeuta_id", terapeuta_id).eq("numero_telefone", numero).order("sessao_inicio", desc=True).limit(20).execute()
@@ -682,11 +710,11 @@ async def get_prontuario(paciente_id: str, authorization: str = Header(...)):
 
     return {
         "paciente": paciente,
-        "conversas": conv_res.data or [],
+        "conversas": conv_res_data,
         "diagnosticos": diag_res.data or [],
         "anotacoes": anot_res.data or [],
         "acompanhamentos": acomp_res.data or [],
-        "mapas_natais": mapas_res.data or [],
+        "mapas_natais": mapas_res_data,
         "resumos_sessao": resumos_res.data or [],
         "perfil_memoria": perfil_res.data[0] if perfil_res.data else None,
     }
@@ -1122,25 +1150,24 @@ async def listar_mapas(
         if pac.data:
             numeros = [pac.data[0]["numero_telefone"]]
 
-    # Buscar mapas da instância do terapeuta via perfil_usuario
-    if numeros is None:
-        perfis = sb.table("perfil_usuario").select("numero_telefone").eq("terapeuta_id", terapeuta_id).execute()
-        numeros = [p["numero_telefone"] for p in (perfis.data or [])]
-
-    if not numeros:
-        return {"mapas": [], "total": 0}
-
+    # Buscar TODOS os mapas do terapeuta (via terapeuta_id direto)
     offset = (pagina - 1) * por_pagina
-    res = sb.table("mapas_astrais").select("id, numero_telefone, nome, data_nascimento, hora_nascimento, cidade_nascimento, mapa_json, imagem_url, tipo_mapa, criado_em").in_("numero_telefone", numeros).order("criado_em", desc=True).range(offset, offset + por_pagina - 1).execute()
+    q = sb.table("mapas_astrais").select("id, numero_telefone, nome, data_nascimento, hora_nascimento, cidade_nascimento, mapa_json, imagem_url, tipo_mapa, criado_em").eq("terapeuta_id", terapeuta_id)
+    if numeros:
+        # Filtro por paciente específico: busca por numero OU nome
+        pac_nome = None
+        if paciente_id:
+            pac2 = sb.table("pacientes").select("nome").eq("id", paciente_id).limit(1).execute()
+            pac_nome = pac2.data[0]["nome"] if pac2.data else None
+        if pac_nome:
+            q = q.or_(f"numero_telefone.in.({','.join(numeros)}),nome.eq.{pac_nome}")
+        else:
+            q = q.in_("numero_telefone", numeros)
+    res = q.order("criado_em", desc=True).range(offset, offset + por_pagina - 1).execute()
 
-    # Enriquecer com nome do paciente — batch query para evitar N+1
     mapas = res.data or []
-    if mapas:
-        numeros_mapas = list(set(m["numero_telefone"] for m in mapas if m.get("numero_telefone")))
-        pac_res = sb.table("pacientes").select("numero_telefone, nome").eq("terapeuta_id", terapeuta_id).in_("numero_telefone", numeros_mapas).execute()
-        nomes_por_numero = {p["numero_telefone"]: p["nome"] for p in (pac_res.data or [])}
-        for m in mapas:
-            m["nome_paciente"] = nomes_por_numero.get(m["numero_telefone"], m["numero_telefone"])
+    for m in mapas:
+        m["nome_paciente"] = m.get("nome") or m.get("numero_telefone", "")
 
     return {"mapas": mapas, "pagina": pagina, "por_pagina": por_pagina}
 
