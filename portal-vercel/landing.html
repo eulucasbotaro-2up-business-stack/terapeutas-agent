@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TerapeutasAgent - Seu Agente de IA no WhatsApp</title>
-    <meta name="description" content="Automatize o atendimento dos seus pacientes no WhatsApp com inteligencia artificial treinada nos seus materiais. Teste gratis por 7 dias.">
+    <title>Alquimista Interior — IA Alquímica no WhatsApp | Joel Aleixo</title>
+    <meta name="description" content="Diagnóstico alquímico completo em 30 segundos. Elementos, DNA, Setenios, Serpentes, Florais e Mapa Astral — tudo pelo WhatsApp. A inteligência artificial treinada com 36 anos do método Joel Aleixo.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         html { scroll-behavior: smooth; font-size: 16px; }
@@ -19,16 +19,16 @@
         }
         h1, h2, h3, h4, h5, h6 { font-family: 'Poppins', sans-serif; line-height: 1.2; }
         a { text-decoration: none; color: inherit; }
-        img { max-width: 100%; display: block; }
         ul { list-style: none; }
+        .container { max-width: 1140px; margin: 0 auto; padding: 0 24px; }
 
-        .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+        /* Buttons */
         .btn {
             display: inline-flex; align-items: center; justify-content: center;
             padding: 16px 36px; border-radius: 14px; font-weight: 600;
             font-size: 1rem; cursor: pointer; border: none;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            font-family: 'Inter', sans-serif;
+            font-family: 'Inter', sans-serif; gap: 8px;
         }
         .btn-primary {
             background: linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%);
@@ -38,24 +38,30 @@
             transform: translateY(-2px);
             box-shadow: 0 8px 32px rgba(124, 58, 237, 0.5);
         }
-        .btn-secondary {
-            background: rgba(255,255,255,0.15); color: #fff;
-            border: 2px solid rgba(255,255,255,0.3);
-            backdrop-filter: blur(10px);
-        }
-        .btn-secondary:hover { background: rgba(255,255,255,0.25); }
         .btn-outline {
             background: transparent; color: #7C3AED;
             border: 2px solid #7C3AED;
         }
         .btn-outline:hover { background: #7C3AED; color: #fff; }
+        .btn-teal {
+            background: linear-gradient(135deg, #0D9488, #0F766E);
+            color: #fff; box-shadow: 0 4px 20px rgba(13, 148, 136, 0.3);
+        }
+        .btn-teal:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(13, 148, 136, 0.45); }
+        .btn-sm { padding: 12px 24px; font-size: 0.9rem; border-radius: 10px; }
         .section-tag {
             display: inline-block; padding: 6px 16px; border-radius: 100px;
-            font-size: 0.8rem; font-weight: 600; letter-spacing: 0.05em;
+            font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em;
             text-transform: uppercase; margin-bottom: 16px;
         }
         .section-title { font-size: clamp(2rem, 5vw, 3rem); font-weight: 800; margin-bottom: 16px; }
-        .section-subtitle { font-size: 1.125rem; color: #64607A; max-width: 600px; margin: 0 auto 48px; }
+        .section-subtitle { font-size: 1.1rem; color: #64607A; max-width: 620px; margin: 0 auto 48px; }
+        .text-center { text-align: center; }
+        .text-gradient {
+            background: linear-gradient(135deg, #7C3AED, #0D9488);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
 
         /* Animations */
         .fade-up {
@@ -67,22 +73,11 @@
         .fade-up.delay-2 { transition-delay: 0.3s; }
         .fade-up.delay-3 { transition-delay: 0.45s; }
 
-        @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-12px); }
-        }
-        @keyframes pulse-ring {
-            0% { transform: scale(0.9); opacity: 1; }
-            100% { transform: scale(1.4); opacity: 0; }
-        }
-        @keyframes gradient-shift {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
-        }
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+        @keyframes pulse-ring { 0% { transform: scale(0.9); opacity: 1; } 100% { transform: scale(1.5); opacity: 0; } }
         @keyframes typing-bounce {
-            0%, 60%, 100% { transform: translateY(0); }
-            30% { transform: translateY(-6px); }
+            0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+            30% { transform: translateY(-5px); opacity: 1; }
         }
 
         /* Navbar */
@@ -91,7 +86,7 @@
             padding: 16px 0; transition: all 0.3s ease;
         }
         .navbar.scrolled {
-            background: rgba(255, 255, 255, 0.85);
+            background: rgba(255, 255, 255, 0.9);
             backdrop-filter: blur(20px) saturate(180%);
             -webkit-backdrop-filter: blur(20px) saturate(180%);
             border-bottom: 1px solid rgba(124, 58, 237, 0.08);
@@ -99,467 +94,306 @@
             box-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
         }
         .navbar .container { display: flex; align-items: center; justify-content: space-between; }
-        .navbar-logo {
-            display: flex; align-items: center; gap: 10px;
-            font-family: 'Poppins', sans-serif; font-weight: 700; font-size: 1.3rem; color: #fff;
-        }
-        .navbar.scrolled .navbar-logo { color: #1E1B2E; }
-        .navbar-logo svg { width: 36px; height: 36px; }
-        .navbar-links { display: flex; gap: 32px; align-items: center; }
-        .navbar-links a {
-            font-size: 0.9rem; font-weight: 500; color: rgba(255,255,255,0.85);
-            transition: color 0.2s;
-        }
-        .navbar.scrolled .navbar-links a { color: #64607A; }
-        .navbar-links a:hover { color: #7C3AED; }
-        .navbar-cta { padding: 10px 24px !important; font-size: 0.875rem !important; border-radius: 10px !important; }
-        .mobile-toggle {
-            display: none; background: none; border: none; cursor: pointer; padding: 8px;
-        }
-        .mobile-toggle span {
-            display: block; width: 24px; height: 2px; background: #fff;
-            margin: 5px 0; transition: all 0.3s;
-        }
-        .navbar.scrolled .mobile-toggle span { background: #1E1B2E; }
-
-        @media (max-width: 768px) {
-            .navbar-links {
-                display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-                background: rgba(30, 27, 46, 0.97); backdrop-filter: blur(20px);
-                flex-direction: column; justify-content: center; align-items: center;
-                gap: 32px; z-index: 999;
-            }
-            .navbar-links.open { display: flex; }
-            .navbar-links a { color: #fff !important; font-size: 1.25rem; }
-            .mobile-toggle { display: block; z-index: 1001; }
-        }
+        .nav-logo { font-family: 'Poppins', sans-serif; font-weight: 800; font-size: 1.3rem; color: #fff; }
+        .navbar.scrolled .nav-logo { color: #7C3AED; }
+        .nav-links { display: flex; gap: 32px; align-items: center; }
+        .nav-links a { color: rgba(255,255,255,0.85); font-weight: 500; font-size: 0.9rem; transition: color 0.3s; }
+        .navbar.scrolled .nav-links a { color: #64607A; }
+        .nav-links a:hover { color: #7C3AED; }
+        .nav-cta { padding: 10px 24px !important; font-size: 0.85rem !important; }
+        .mobile-menu-btn { display: none; background: none; border: none; cursor: pointer; }
+        .mobile-menu-btn span { display: block; width: 24px; height: 2px; background: #fff; margin: 5px 0; transition: all 0.3s; }
+        .navbar.scrolled .mobile-menu-btn span { background: #1E1B2E; }
 
         /* Hero */
         .hero {
-            position: relative; min-height: 100vh; display: flex; align-items: center;
-            padding: 120px 0 80px; overflow: hidden;
-            background: linear-gradient(135deg, #1E1B2E 0%, #2D1B69 30%, #7C3AED 70%, #0D9488 100%);
-            background-size: 300% 300%;
-            animation: gradient-shift 12s ease infinite;
+            min-height: 100vh; display: flex; align-items: center;
+            background: linear-gradient(135deg, #1E1B2E 0%, #2D1B69 40%, #1E1B2E 100%);
+            position: relative; overflow: hidden; padding: 100px 0 80px;
         }
         .hero::before {
-            content: ''; position: absolute; inset: 0;
-            background: radial-gradient(circle at 70% 30%, rgba(124, 58, 237, 0.3) 0%, transparent 60%),
-                        radial-gradient(circle at 20% 80%, rgba(13, 148, 136, 0.2) 0%, transparent 50%);
+            content: ''; position: absolute; top: -50%; right: -20%;
+            width: 600px; height: 600px; border-radius: 50%;
+            background: radial-gradient(circle, rgba(124,58,237,0.15) 0%, transparent 70%);
+            animation: float 8s ease-in-out infinite;
         }
         .hero::after {
-            content: ''; position: absolute; bottom: -2px; left: 0; right: 0; height: 120px;
-            background: linear-gradient(to top, #FAFAF9, transparent);
+            content: ''; position: absolute; bottom: -30%; left: -10%;
+            width: 500px; height: 500px; border-radius: 50%;
+            background: radial-gradient(circle, rgba(13,148,136,0.1) 0%, transparent 70%);
+            animation: float 10s ease-in-out infinite reverse;
         }
-        .hero .container {
-            position: relative; z-index: 2;
-            display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: center;
+        .hero-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 60px;
+            align-items: center; position: relative; z-index: 2;
         }
-        .hero-text h1 {
-            font-size: clamp(2.5rem, 5.5vw, 4rem); font-weight: 800; color: #fff;
-            margin-bottom: 20px; line-height: 1.1;
+        .hero-text h1 { font-size: clamp(2.2rem, 5vw, 3.2rem); font-weight: 800; color: #fff; margin-bottom: 20px; line-height: 1.15; }
+        .hero-text h1 em { font-style: normal; color: #0D9488; }
+        .hero-text .hero-sub {
+            font-size: 1.1rem; color: rgba(255,255,255,0.7); margin-bottom: 12px; line-height: 1.7;
         }
-        .hero-text h1 span {
-            background: linear-gradient(135deg, #A78BFA, #5EEAD4);
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-            background-clip: text;
+        .hero-text .hero-proof {
+            font-size: 0.85rem; color: rgba(255,255,255,0.45); margin-bottom: 32px;
         }
-        .hero-text p {
-            font-size: 1.2rem; color: rgba(255,255,255,0.8);
-            margin-bottom: 36px; max-width: 500px; line-height: 1.7;
+        .hero-buttons { display: flex; gap: 16px; flex-wrap: wrap; }
+
+        /* WhatsApp Chat Mockup */
+        .chat-mockup {
+            background: #ECE5DD; border-radius: 20px; overflow: hidden;
+            box-shadow: 0 25px 80px rgba(0,0,0,0.4); max-width: 420px;
+            margin-left: auto; position: relative;
         }
-        .hero-actions { display: flex; gap: 16px; flex-wrap: wrap; }
-        .hero-badge {
-            display: inline-flex; align-items: center; gap: 8px;
-            background: rgba(255,255,255,0.1); backdrop-filter: blur(10px);
-            padding: 8px 16px; border-radius: 100px; margin-bottom: 20px;
-            font-size: 0.85rem; color: #A78BFA; border: 1px solid rgba(167, 139, 250, 0.3);
+        .chat-header {
+            background: #075E54; padding: 14px 16px; display: flex;
+            align-items: center; gap: 12px;
         }
-        .hero-badge .dot {
-            width: 8px; height: 8px; background: #5EEAD4; border-radius: 50%;
-            animation: pulse-ring 2s infinite;
-        }
-        .hero-visual { display: flex; justify-content: center; align-items: center; position: relative; }
-        .hero-mockup {
-            width: 320px; height: 560px; border-radius: 36px;
-            background: linear-gradient(145deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.04) 100%);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255,255,255,0.15);
-            padding: 16px; position: relative;
-            animation: float 6s ease-in-out infinite;
-            box-shadow: 0 40px 80px rgba(0,0,0,0.3);
-        }
-        .mockup-header {
-            display: flex; align-items: center; gap: 12px; padding: 12px;
-            border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 16px;
-        }
-        .mockup-avatar {
+        .chat-avatar {
             width: 40px; height: 40px; border-radius: 50%;
             background: linear-gradient(135deg, #7C3AED, #0D9488);
+            display: flex; align-items: center; justify-content: center;
+            color: #fff; font-weight: 700; font-size: 0.9rem;
         }
-        .mockup-name { font-size: 0.85rem; color: #fff; font-weight: 600; }
-        .mockup-status { font-size: 0.7rem; color: #5EEAD4; }
-        .mockup-messages { display: flex; flex-direction: column; gap: 10px; }
-        .msg {
-            padding: 10px 14px; border-radius: 16px; font-size: 0.8rem;
-            max-width: 85%; line-height: 1.5;
+        .chat-header-info h4 { color: #fff; font-size: 0.95rem; font-weight: 600; font-family: 'Inter', sans-serif; }
+        .chat-header-info span { color: rgba(255,255,255,0.7); font-size: 0.75rem; }
+        .chat-body { padding: 16px; display: flex; flex-direction: column; gap: 8px; max-height: 520px; overflow-y: auto; }
+        .chat-bubble {
+            max-width: 85%; padding: 8px 12px; border-radius: 8px;
+            font-size: 0.82rem; line-height: 1.5; position: relative;
+            word-wrap: break-word;
         }
-        .msg-in {
-            background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.9);
-            align-self: flex-start; border-bottom-left-radius: 4px;
+        .chat-bubble.sent {
+            background: #DCF8C6; align-self: flex-end;
+            border-top-right-radius: 0;
         }
-        .msg-out {
-            background: linear-gradient(135deg, #7C3AED, #6D28D9); color: #fff;
-            align-self: flex-end; border-bottom-right-radius: 4px;
+        .chat-bubble.received {
+            background: #fff; align-self: flex-start;
+            border-top-left-radius: 0;
         }
-        .msg-typing { display: flex; gap: 4px; padding: 12px 18px; }
-        .msg-typing span {
-            width: 6px; height: 6px; background: rgba(255,255,255,0.5);
-            border-radius: 50%; animation: typing-bounce 1.4s ease-in-out infinite;
+        .chat-bubble .time {
+            font-size: 0.65rem; color: #999; float: right;
+            margin-left: 8px; margin-top: 4px;
         }
-        .msg-typing span:nth-child(2) { animation-delay: 0.15s; }
-        .msg-typing span:nth-child(3) { animation-delay: 0.3s; }
-        .hero-glow {
-            position: absolute; width: 400px; height: 400px;
-            background: radial-gradient(circle, rgba(124,58,237,0.4), transparent 70%);
-            border-radius: 50%; filter: blur(60px);
-            top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: -1;
+        .chat-bubble .time .checks { color: #4FC3F7; margin-left: 2px; }
+        .chat-bubble strong { font-weight: 600; }
+        .chat-bubble .protocol-title {
+            color: #7C3AED; font-weight: 700; font-size: 0.78rem;
+            margin-top: 6px; display: block;
         }
-
-        @media (max-width: 768px) {
-            .hero .container { grid-template-columns: 1fr; text-align: center; }
-            .hero-text p { margin-left: auto; margin-right: auto; }
-            .hero-actions { justify-content: center; }
-            .hero-visual { margin-top: 20px; }
-            .hero-mockup { width: 260px; height: 460px; }
+        .chat-bubble .floral-item {
+            display: block; padding-left: 8px; border-left: 2px solid #0D9488;
+            margin: 3px 0; font-size: 0.78rem;
         }
 
-        /* Trust bar */
-        .trust-bar {
-            padding: 40px 0; text-align: center;
-            border-bottom: 1px solid rgba(124, 58, 237, 0.06);
-        }
-        .trust-bar p { font-size: 0.85rem; color: #A09CB2; margin-bottom: 24px; font-weight: 500; }
-        .trust-logos {
-            display: flex; justify-content: center; align-items: center; gap: 48px;
-            flex-wrap: wrap; opacity: 0.4;
-        }
-        .trust-logos span {
-            font-family: 'Poppins', sans-serif; font-weight: 700; font-size: 1.2rem; color: #64607A;
-        }
-
-        /* Problem */
-        .problem { padding: 100px 0; text-align: center; }
-        .problem .section-tag { background: #FEF2F2; color: #DC2626; }
+        /* Problem Section */
+        .problem-section { padding: 100px 0; background: #fff; }
         .problem-grid {
-            display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; margin-top: 48px;
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px;
+            margin-top: 48px;
         }
         .problem-card {
-            padding: 40px 32px; border-radius: 20px;
-            background: #fff; border: 1px solid #F1F0F3; transition: all 0.4s ease;
+            padding: 32px; border-radius: 16px; background: #FFF5F5;
+            border: 1px solid #FED7D7;
         }
-        .problem-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.06);
-            border-color: rgba(220, 38, 38, 0.15);
-        }
-        .problem-icon {
-            width: 64px; height: 64px; border-radius: 16px;
-            background: linear-gradient(135deg, #FEE2E2, #FECACA);
-            display: flex; align-items: center; justify-content: center;
-            margin: 0 auto 24px; font-size: 1.8rem;
-        }
-        .problem-card h3 { font-size: 1.15rem; font-weight: 700; margin-bottom: 12px; color: #1E1B2E; }
-        .problem-card p { font-size: 0.95rem; color: #64607A; line-height: 1.7; }
+        .problem-card .icon { font-size: 2rem; margin-bottom: 16px; }
+        .problem-card h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 8px; color: #C53030; }
+        .problem-card p { font-size: 0.9rem; color: #64607A; }
 
-        @media (max-width: 768px) {
-            .problem-grid { grid-template-columns: 1fr; max-width: 400px; margin-left: auto; margin-right: auto; }
-        }
-
-        /* Solution */
-        .solution {
-            padding: 100px 0; text-align: center;
-            background: linear-gradient(180deg, #FAFAF9 0%, #F3F0FF 50%, #FAFAF9 100%);
-        }
-        .solution .section-tag { background: #F3F0FF; color: #7C3AED; }
-        .steps {
-            display: grid; grid-template-columns: repeat(3, 1fr); gap: 40px;
-            margin-top: 48px; position: relative;
-        }
-        .steps::before {
-            content: ''; position: absolute; top: 48px; left: 15%; right: 15%;
-            height: 3px; background: linear-gradient(90deg, #7C3AED, #0D9488);
-            border-radius: 3px; z-index: 0;
-        }
-        .step {
-            position: relative; z-index: 1; padding: 40px 28px; border-radius: 24px;
-            background: rgba(255,255,255,0.8); backdrop-filter: blur(10px);
-            border: 1px solid rgba(124, 58, 237, 0.08); transition: all 0.4s ease;
-        }
-        .step:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 20px 60px rgba(124, 58, 237, 0.1);
-        }
-        .step-number {
-            width: 56px; height: 56px; border-radius: 50%;
-            background: linear-gradient(135deg, #7C3AED, #6D28D9);
-            color: #fff; font-family: 'Poppins', sans-serif; font-weight: 800;
-            font-size: 1.3rem; display: flex; align-items: center; justify-content: center;
-            margin: 0 auto 24px; box-shadow: 0 4px 20px rgba(124, 58, 237, 0.3);
-        }
-        .step-icon { font-size: 2.5rem; margin-bottom: 16px; }
-        .step h3 { font-size: 1.15rem; font-weight: 700; margin-bottom: 12px; }
-        .step p { font-size: 0.95rem; color: #64607A; line-height: 1.7; }
-
-        @media (max-width: 768px) {
-            .steps { grid-template-columns: 1fr; max-width: 400px; margin-left: auto; margin-right: auto; }
-            .steps::before { display: none; }
-        }
-
-        /* Features */
-        .features { padding: 100px 0; text-align: center; }
-        .features .section-tag { background: #ECFDF5; color: #0D9488; }
-        .features-grid {
-            display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 48px;
-        }
-        .feature-card {
-            padding: 36px 28px; border-radius: 20px;
-            background: #fff; border: 1px solid #F1F0F3;
-            text-align: left; transition: all 0.4s ease;
-            position: relative; overflow: hidden;
-        }
-        .feature-card::before {
-            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
-            background: linear-gradient(90deg, #7C3AED, #0D9488);
-            opacity: 0; transition: opacity 0.3s;
-        }
-        .feature-card:hover::before { opacity: 1; }
-        .feature-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.06);
-        }
-        .feature-icon {
-            width: 56px; height: 56px; border-radius: 14px;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 1.5rem; margin-bottom: 20px;
-        }
-        .feature-icon.purple { background: linear-gradient(135deg, #F3F0FF, #EDE9FE); }
-        .feature-icon.teal { background: linear-gradient(135deg, #F0FDFA, #CCFBF1); }
-        .feature-card h3 { font-size: 1.05rem; font-weight: 700; margin-bottom: 10px; }
-        .feature-card p { font-size: 0.9rem; color: #64607A; line-height: 1.7; }
-
-        @media (max-width: 768px) {
-            .features-grid { grid-template-columns: 1fr; max-width: 400px; margin-left: auto; margin-right: auto; }
-        }
-
-        /* Social Proof */
-        .social-proof {
-            padding: 100px 0; text-align: center;
+        /* Solution Section */
+        .solution-section {
+            padding: 100px 0;
             background: linear-gradient(180deg, #FAFAF9 0%, #F3F0FF 100%);
         }
-        .social-proof .section-tag { background: #F3F0FF; color: #7C3AED; }
-        .testimonials {
-            display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 48px;
+        .solution-grid {
+            display: grid; grid-template-columns: repeat(2, 1fr); gap: 32px;
+            margin-top: 48px;
         }
-        .testimonial-card {
-            padding: 36px; border-radius: 20px; text-align: left;
-            background: #fff; border: 1px solid #F1F0F3; transition: all 0.4s ease;
+        .solution-card {
+            padding: 32px; border-radius: 16px; background: #fff;
+            border: 1px solid #E9E5F5; transition: transform 0.3s, box-shadow 0.3s;
         }
-        .testimonial-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.06);
+        .solution-card:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(124,58,237,0.1); }
+        .solution-card .card-icon {
+            width: 56px; height: 56px; border-radius: 14px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.5rem; margin-bottom: 16px;
         }
-        .testimonial-stars { color: #F59E0B; font-size: 1rem; margin-bottom: 16px; letter-spacing: 2px; }
-        .testimonial-card blockquote {
-            font-size: 0.95rem; color: #4A4560; line-height: 1.8;
-            margin-bottom: 24px; font-style: italic;
+        .solution-card h3 { font-size: 1.15rem; font-weight: 700; margin-bottom: 8px; }
+        .solution-card p { font-size: 0.9rem; color: #64607A; line-height: 1.6; }
+        .icon-purple { background: #F3F0FF; }
+        .icon-teal { background: #E6FFFA; }
+        .icon-amber { background: #FFFBEB; }
+        .icon-rose { background: #FFF1F2; }
+
+        /* Comparison */
+        .comparison-section { padding: 100px 0; background: #fff; }
+        .comparison-table {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 0;
+            max-width: 800px; margin: 48px auto 0; border-radius: 20px;
+            overflow: hidden; box-shadow: 0 8px 40px rgba(0,0,0,0.08);
         }
-        .testimonial-author { display: flex; align-items: center; gap: 12px; }
-        .testimonial-avatar {
-            width: 44px; height: 44px; border-radius: 50%;
+        .comp-col { padding: 40px 32px; }
+        .comp-col.manual { background: #FFF5F5; }
+        .comp-col.ia { background: linear-gradient(135deg, #7C3AED, #6D28D9); color: #fff; }
+        .comp-col h3 { font-size: 1.2rem; font-weight: 700; margin-bottom: 24px; }
+        .comp-col.ia h3 { color: #fff; }
+        .comp-item { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 16px; font-size: 0.9rem; }
+        .comp-item .x { color: #E53E3E; font-weight: 700; font-size: 1.1rem; flex-shrink: 0; }
+        .comp-item .check { color: #68D391; font-weight: 700; font-size: 1.1rem; flex-shrink: 0; }
+        .comp-col.manual .comp-item { color: #64607A; }
+        .comp-col.ia .comp-item { color: rgba(255,255,255,0.9); }
+
+        /* Social Proof */
+        .proof-section { padding: 100px 0; background: linear-gradient(180deg, #F3F0FF 0%, #FAFAF9 100%); }
+        .proof-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 48px; }
+        .proof-card {
+            padding: 28px; border-radius: 16px; background: #fff;
+            border: 1px solid #E9E5F5; position: relative;
+        }
+        .proof-card .stars { color: #F59E0B; font-size: 0.9rem; margin-bottom: 12px; letter-spacing: 2px; }
+        .proof-card blockquote { font-size: 0.9rem; color: #4A4560; line-height: 1.6; margin-bottom: 16px; font-style: italic; }
+        .proof-card .author { display: flex; align-items: center; gap: 12px; }
+        .proof-card .author-avatar {
+            width: 40px; height: 40px; border-radius: 50%;
             background: linear-gradient(135deg, #7C3AED, #0D9488);
             display: flex; align-items: center; justify-content: center;
-            color: #fff; font-weight: 700; font-size: 1rem;
+            color: #fff; font-weight: 700; font-size: 0.8rem;
         }
-        .testimonial-name { font-weight: 600; font-size: 0.9rem; }
-        .testimonial-role { font-size: 0.8rem; color: #A09CB2; }
-
-        @media (max-width: 768px) {
-            .testimonials { grid-template-columns: 1fr; max-width: 500px; margin-left: auto; margin-right: auto; }
-        }
+        .proof-card .author-info { font-size: 0.8rem; }
+        .proof-card .author-info strong { display: block; color: #1E1B2E; }
+        .proof-card .author-info span { color: #999; }
 
         /* Pricing */
-        .pricing { padding: 100px 0; text-align: center; }
-        .pricing .section-tag { background: #F3F0FF; color: #7C3AED; }
+        .pricing-section {
+            padding: 100px 0;
+            background: linear-gradient(180deg, #1E1B2E 0%, #2D1B69 100%);
+            color: #fff;
+        }
+        .pricing-section .section-subtitle { color: rgba(255,255,255,0.6); }
         .pricing-grid {
-            display: grid; grid-template-columns: repeat(2, 1fr); gap: 32px;
-            max-width: 820px; margin: 48px auto 0;
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px;
+            margin-top: 48px; align-items: stretch;
         }
         .pricing-card {
-            padding: 44px 36px; border-radius: 24px; text-align: left;
-            background: #fff; border: 1px solid #F1F0F3;
-            transition: all 0.4s ease; position: relative;
+            background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px; padding: 36px 28px; position: relative;
+            display: flex; flex-direction: column; transition: transform 0.3s;
         }
+        .pricing-card:hover { transform: translateY(-4px); }
         .pricing-card.featured {
-            border-color: #7C3AED;
-            box-shadow: 0 20px 60px rgba(124, 58, 237, 0.12);
+            background: rgba(255,255,255,0.12); border-color: #7C3AED;
+            box-shadow: 0 0 60px rgba(124,58,237,0.2);
             transform: scale(1.03);
         }
-        .pricing-card.featured::before {
-            content: 'MAIS POPULAR'; position: absolute; top: -14px; left: 50%;
-            transform: translateX(-50%);
-            background: linear-gradient(135deg, #7C3AED, #6D28D9);
-            color: #fff; padding: 6px 20px; border-radius: 100px;
-            font-size: 0.7rem; font-weight: 700; letter-spacing: 0.05em;
-        }
-        .pricing-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
-        }
         .pricing-card.featured:hover { transform: scale(1.03) translateY(-4px); }
-        .pricing-plan {
-            font-family: 'Poppins', sans-serif; font-weight: 700;
-            font-size: 1.3rem; margin-bottom: 8px;
+        .pricing-badge {
+            position: absolute; top: -14px; left: 50%; transform: translateX(-50%);
+            background: linear-gradient(135deg, #7C3AED, #0D9488);
+            color: #fff; padding: 6px 20px; border-radius: 100px;
+            font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em;
+            text-transform: uppercase; white-space: nowrap;
         }
-        .pricing-desc { font-size: 0.9rem; color: #64607A; margin-bottom: 24px; }
-        .pricing-value { display: flex; align-items: baseline; gap: 4px; margin-bottom: 8px; }
-        .pricing-currency { font-size: 1.2rem; font-weight: 600; color: #7C3AED; }
-        .pricing-amount {
-            font-family: 'Poppins', sans-serif; font-size: 3.5rem;
-            font-weight: 800; color: #1E1B2E; line-height: 1;
+        .pricing-card h3 { font-size: 1.3rem; font-weight: 700; margin-bottom: 8px; color: #fff; }
+        .pricing-card .price {
+            font-size: 2.8rem; font-weight: 800; color: #fff; margin-bottom: 4px;
+            font-family: 'Poppins', sans-serif;
         }
-        .pricing-period { font-size: 0.9rem; color: #A09CB2; margin-bottom: 32px; }
-        .pricing-features { margin-bottom: 32px; }
-        .pricing-features li {
-            display: flex; align-items: center; gap: 12px;
-            padding: 10px 0; font-size: 0.9rem; color: #4A4560;
-            border-bottom: 1px solid #F7F6F9;
+        .pricing-card .price span { font-size: 1rem; font-weight: 500; color: rgba(255,255,255,0.5); }
+        .pricing-card .price-note { font-size: 0.8rem; color: rgba(255,255,255,0.4); margin-bottom: 24px; }
+        .pricing-card .features { flex: 1; margin-bottom: 24px; }
+        .pricing-card .features li {
+            display: flex; align-items: flex-start; gap: 10px;
+            font-size: 0.85rem; color: rgba(255,255,255,0.75);
+            padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05);
         }
-        .pricing-features li:last-child { border-bottom: none; }
-        .pricing-check { color: #0D9488; font-size: 1.1rem; flex-shrink: 0; }
-        .pricing-card .btn { width: 100%; }
-
-        @media (max-width: 768px) {
-            .pricing-grid { grid-template-columns: 1fr; max-width: 400px; }
-            .pricing-card.featured { transform: none; }
-            .pricing-card.featured:hover { transform: translateY(-4px); }
-        }
+        .pricing-card .features li .feat-check { color: #0D9488; font-weight: 700; flex-shrink: 0; }
+        .pricing-card .features li .feat-x { color: #666; flex-shrink: 0; }
+        .pricing-card .features li.disabled { color: rgba(255,255,255,0.3); }
+        .pricing-card .pricing-cta { margin-top: auto; }
+        .pricing-card .pricing-cta .btn { width: 100%; }
 
         /* FAQ */
-        .faq {
-            padding: 100px 0;
-            background: linear-gradient(180deg, #FAFAF9 0%, #F3F0FF 50%, #FAFAF9 100%);
+        .faq-section { padding: 100px 0; background: #FAFAF9; }
+        .faq-list { max-width: 720px; margin: 48px auto 0; }
+        .faq-item {
+            border: 1px solid #E9E5F5; border-radius: 14px; margin-bottom: 12px;
+            overflow: hidden; background: #fff;
         }
-        .faq .section-tag { background: #ECFDF5; color: #0D9488; }
-        .faq-list { max-width: 740px; margin: 48px auto 0; }
-        .faq-item { border-bottom: 1px solid #E8E6EE; overflow: hidden; }
         .faq-question {
-            display: flex; align-items: center; justify-content: space-between;
-            padding: 24px 0; cursor: pointer; width: 100%; background: none;
-            border: none; text-align: left; font-family: 'Poppins', sans-serif;
-            font-size: 1.05rem; font-weight: 600; color: #1E1B2E;
-            transition: color 0.2s;
+            padding: 20px 24px; cursor: pointer; display: flex;
+            justify-content: space-between; align-items: center;
+            font-weight: 600; font-size: 0.95rem; color: #1E1B2E;
+            transition: background 0.2s;
         }
-        .faq-question:hover { color: #7C3AED; }
-        .faq-chevron {
-            width: 24px; height: 24px; flex-shrink: 0;
-            transition: transform 0.3s ease; color: #7C3AED;
-        }
-        .faq-item.open .faq-chevron { transform: rotate(180deg); }
+        .faq-question:hover { background: #F9F7FF; }
+        .faq-question .arrow { transition: transform 0.3s; font-size: 1.2rem; color: #7C3AED; }
+        .faq-item.active .faq-question .arrow { transform: rotate(180deg); }
         .faq-answer {
-            max-height: 0; overflow: hidden;
-            transition: max-height 0.4s ease, padding 0.4s ease;
+            max-height: 0; overflow: hidden; transition: max-height 0.4s ease;
         }
-        .faq-item.open .faq-answer { max-height: 300px; }
-        .faq-answer p { padding-bottom: 24px; font-size: 0.95rem; color: #64607A; line-height: 1.8; }
+        .faq-answer-inner { padding: 0 24px 20px; font-size: 0.9rem; color: #64607A; line-height: 1.7; }
 
         /* Final CTA */
         .final-cta {
-            padding: 100px 0; text-align: center; position: relative; overflow: hidden;
-            background: linear-gradient(135deg, #1E1B2E 0%, #2D1B69 50%, #7C3AED 100%);
+            padding: 100px 0;
+            background: linear-gradient(135deg, #1E1B2E 0%, #2D1B69 50%, #1E1B2E 100%);
+            text-align: center; color: #fff; position: relative; overflow: hidden;
         }
         .final-cta::before {
-            content: ''; position: absolute; inset: 0;
-            background: radial-gradient(circle at 50% 50%, rgba(124, 58, 237, 0.3) 0%, transparent 60%);
+            content: ''; position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 600px; height: 600px; border-radius: 50%;
+            background: radial-gradient(circle, rgba(124,58,237,0.12), transparent 70%);
         }
         .final-cta .container { position: relative; z-index: 2; }
-        .final-cta h2 {
-            font-size: clamp(2rem, 5vw, 3rem); font-weight: 800;
-            color: #fff; margin-bottom: 16px;
-        }
-        .final-cta > .container > p {
-            font-size: 1.125rem; color: rgba(255,255,255,0.7);
-            margin-bottom: 40px; max-width: 500px; margin-left: auto; margin-right: auto;
-        }
-        .cta-form {
-            display: flex; gap: 12px; max-width: 480px; margin: 0 auto;
-            background: rgba(255,255,255,0.1); backdrop-filter: blur(10px);
-            padding: 8px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.15);
-        }
-        .cta-form input {
-            flex: 1; padding: 14px 20px; border: none; background: transparent;
-            color: #fff; font-family: 'Inter', sans-serif; font-size: 0.95rem; outline: none;
-        }
-        .cta-form input::placeholder { color: rgba(255,255,255,0.5); }
-        .cta-form .btn { padding: 14px 28px; white-space: nowrap; }
-        .cta-guarantee {
-            margin-top: 20px; font-size: 0.8rem; color: rgba(255,255,255,0.5);
-            display: flex; align-items: center; justify-content: center; gap: 6px;
-        }
-
-        @media (max-width: 480px) {
-            .cta-form { flex-direction: column; }
-            .cta-form .btn { width: 100%; }
-        }
+        .final-cta h2 { font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 800; margin-bottom: 16px; }
+        .final-cta p { font-size: 1.1rem; color: rgba(255,255,255,0.6); max-width: 560px; margin: 0 auto 36px; }
 
         /* Footer */
-        .footer { padding: 60px 0 32px; background: #1E1B2E; color: rgba(255,255,255,0.6); }
-        .footer-grid {
-            display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 40px; margin-bottom: 48px;
-        }
-        .footer-brand p { font-size: 0.9rem; line-height: 1.7; margin-top: 16px; max-width: 280px; }
-        .footer h4 {
-            font-family: 'Poppins', sans-serif; color: #fff;
-            font-size: 0.9rem; font-weight: 700; margin-bottom: 20px;
-        }
-        .footer ul li { margin-bottom: 12px; }
-        .footer ul li a { font-size: 0.85rem; transition: color 0.2s; }
-        .footer ul li a:hover { color: #A78BFA; }
-        .footer-bottom {
-            border-top: 1px solid rgba(255,255,255,0.08);
-            padding-top: 24px; display: flex; justify-content: space-between;
-            align-items: center; flex-wrap: wrap; gap: 16px;
-        }
-        .footer-bottom p { font-size: 0.8rem; }
-        .footer-lgpd {
-            display: inline-flex; align-items: center; gap: 8px;
-            background: rgba(13, 148, 136, 0.1); padding: 8px 16px;
-            border-radius: 100px; font-size: 0.75rem; color: #5EEAD4;
-            border: 1px solid rgba(13, 148, 136, 0.2);
-        }
+        .footer { background: #1E1B2E; padding: 40px 0; border-top: 1px solid rgba(255,255,255,0.05); }
+        .footer-inner { display: flex; justify-content: space-between; align-items: center; }
+        .footer-copy { color: rgba(255,255,255,0.4); font-size: 0.8rem; }
+        .footer-links { display: flex; gap: 24px; }
+        .footer-links a { color: rgba(255,255,255,0.4); font-size: 0.8rem; transition: color 0.3s; }
+        .footer-links a:hover { color: #7C3AED; }
 
-        @media (max-width: 768px) {
-            .footer-grid { grid-template-columns: 1fr 1fr; }
-            .footer-bottom { flex-direction: column; text-align: center; }
-        }
-        @media (max-width: 480px) {
-            .footer-grid { grid-template-columns: 1fr; }
-        }
-
-        /* WhatsApp float */
+        /* WhatsApp Float */
         .whatsapp-float {
             position: fixed; bottom: 24px; right: 24px; z-index: 999;
             width: 60px; height: 60px; border-radius: 50%;
-            background: #25D366; color: #fff;
-            display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 4px 24px rgba(37, 211, 102, 0.4);
-            transition: all 0.3s; cursor: pointer;
+            background: #25D366; display: flex; align-items: center;
+            justify-content: center; box-shadow: 0 4px 20px rgba(37,211,102,0.4);
+            transition: transform 0.3s; cursor: pointer;
         }
-        .whatsapp-float:hover {
-            transform: scale(1.1);
-            box-shadow: 0 6px 32px rgba(37, 211, 102, 0.5);
+        .whatsapp-float:hover { transform: scale(1.1); }
+        .whatsapp-float::before {
+            content: ''; position: absolute; width: 100%; height: 100%;
+            border-radius: 50%; background: #25D366;
+            animation: pulse-ring 2s ease-out infinite;
         }
-        .whatsapp-float svg { width: 32px; height: 32px; }
+        .whatsapp-float svg { position: relative; z-index: 2; }
+
+        /* Responsive */
+        @media (max-width: 968px) {
+            .hero-grid { grid-template-columns: 1fr; text-align: center; }
+            .hero-buttons { justify-content: center; }
+            .chat-mockup { margin: 40px auto 0; max-width: 380px; }
+            .problem-grid { grid-template-columns: 1fr; }
+            .solution-grid { grid-template-columns: 1fr; }
+            .comparison-table { grid-template-columns: 1fr; }
+            .proof-grid { grid-template-columns: 1fr; }
+            .pricing-grid { grid-template-columns: 1fr; max-width: 400px; margin-left: auto; margin-right: auto; }
+            .pricing-card.featured { transform: none; }
+            .pricing-card.featured:hover { transform: translateY(-4px); }
+            .nav-links { display: none; }
+            .mobile-menu-btn { display: block; }
+            .footer-inner { flex-direction: column; gap: 16px; text-align: center; }
+        }
+        @media (max-width: 480px) {
+            .hero { padding: 80px 0 60px; }
+            .chat-mockup { max-width: 100%; }
+            .hero-buttons { flex-direction: column; align-items: stretch; }
+            .hero-buttons .btn { width: 100%; }
+        }
     </style>
 </head>
 <body>
@@ -567,59 +401,73 @@
 <!-- Navbar -->
 <nav class="navbar" id="navbar">
     <div class="container">
-        <a href="#" class="navbar-logo">
-            <svg viewBox="0 0 36 36" fill="none">
-                <rect width="36" height="36" rx="10" fill="url(#lg)"/>
-                <path d="M10 18c0-4.4 3.6-8 8-8s8 3.6 8 8-3.6 8-8 8" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>
-                <circle cx="18" cy="18" r="3" fill="#5EEAD4"/>
-                <defs><linearGradient id="lg" x1="0" y1="0" x2="36" y2="36"><stop stop-color="#7C3AED"/><stop offset="1" stop-color="#0D9488"/></linearGradient></defs>
-            </svg>
-            TerapeutasAgent
-        </a>
-        <div class="navbar-links" id="navLinks">
+        <a href="#" class="nav-logo">Alquimista Interior</a>
+        <div class="nav-links">
             <a href="#como-funciona">Como Funciona</a>
-            <a href="#funcionalidades">Funcionalidades</a>
-            <a href="#precos">Precos</a>
-            <a href="#faq">FAQ</a>
-            <a href="/checkout.html" class="btn btn-primary navbar-cta">Comece Agora</a>
+            <a href="#capacidades">Capacidades</a>
+            <a href="#depoimentos">Depoimentos</a>
+            <a href="#planos">Planos</a>
+            <a href="checkout.html" class="btn btn-primary nav-cta">Começar Agora</a>
         </div>
-        <button class="mobile-toggle" id="mobileToggle" aria-label="Menu">
+        <button class="mobile-menu-btn" onclick="document.querySelector('.nav-links').classList.toggle('show')" aria-label="Menu">
             <span></span><span></span><span></span>
         </button>
     </div>
 </nav>
 
 <!-- Hero -->
-<section class="hero">
+<section class="hero" id="hero">
     <div class="container">
-        <div class="hero-text">
-            <div class="hero-badge">
-                <span class="dot"></span>
-                Usado por +200 terapeutas no Brasil
-            </div>
-            <h1>Seu <span>Agente de IA</span> no WhatsApp</h1>
-            <p>Libere seu tempo respondendo pacientes automaticamente com inteligencia artificial treinada nos seus proprios materiais e protocolos.</p>
-            <div class="hero-actions">
-                <a href="/checkout.html" class="btn btn-primary">Teste Gratis 7 Dias</a>
-                <a href="#como-funciona" class="btn btn-secondary">Veja como funciona</a>
-            </div>
-        </div>
-        <div class="hero-visual">
-            <div class="hero-glow"></div>
-            <div class="hero-mockup">
-                <div class="mockup-header">
-                    <div class="mockup-avatar"></div>
-                    <div>
-                        <div class="mockup-name">Dra. Ana - Agente IA</div>
-                        <div class="mockup-status">online</div>
-                    </div>
+        <div class="hero-grid">
+            <div class="hero-text fade-up">
+                <div class="section-tag" style="background: rgba(124,58,237,0.2); color: #A78BFA;">Inteligência Artificial Alquímica</div>
+                <h1>Diagnóstico alquímico completo em <em>30 segundos</em>.<br>Pelo WhatsApp.</h1>
+                <p class="hero-sub">
+                    Elementos, DNA, Setenios, Serpentes da Mãe e do Pai, protocolo de florais com posologia exata, mapa astral natal com leitura alquímica — tudo na palma da sua mão.
+                </p>
+                <p class="hero-proof">
+                    Treinada com 36 anos do método Joel Aleixo. 222 protocolos indexados. Precisão clínica.
+                </p>
+                <div class="hero-buttons">
+                    <a href="checkout.html" class="btn btn-primary">Testar 7 Dias Grátis</a>
+                    <a href="#como-funciona" class="btn" style="background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2);">Ver Demonstração</a>
                 </div>
-                <div class="mockup-messages">
-                    <div class="msg msg-in">Oi Dra. Ana, qual exercicio de respiracao voce recomenda para ansiedade?</div>
-                    <div class="msg msg-out">Oi! Com base no protocolo que a Dra. Ana preparou, recomendo a tecnica 4-7-8: inspire por 4s, segure 7s e expire por 8s. Repita 4 vezes.</div>
-                    <div class="msg msg-in">Sim! E posso fazer antes de dormir?</div>
-                    <div class="msg msg-out msg-typing">
-                        <span></span><span></span><span></span>
+            </div>
+
+            <!-- WhatsApp Chat Mockup -->
+            <div class="fade-up delay-2">
+                <div class="chat-mockup">
+                    <div class="chat-header">
+                        <div class="chat-avatar">S</div>
+                        <div class="chat-header-info">
+                            <h4>Sofia — Alquimista Interior</h4>
+                            <span>online</span>
+                        </div>
+                    </div>
+                    <div class="chat-body">
+                        <div class="chat-bubble sent">
+                            Paciente feminina, 42 anos. Dores crônicas no joelho direito há 3 anos. Insônia. Relação com a mãe é de sufocamento. Chora sem motivo. Setenio atual: 6º.
+                            <span class="time">14:32 <span class="checks">✓✓</span></span>
+                        </div>
+                        <div class="chat-bubble received">
+                            <strong>Leitura de Campo:</strong><br><br>
+                            Desequilíbrio no eixo <strong>Terra-Água</strong> — o corpo denuncia rigidez (joelho = flexibilidade negada) enquanto a emoção transborda sem direção.<br><br>
+                            <strong>Elemento comprometido:</strong> Terra (estrutura que não cede)<br>
+                            <strong>DNA ativo:</strong> Ponto 3 — Amarelo (poder pessoal travado pela relação materna)<br>
+                            <strong>Fase:</strong> Nigredo avançada — a dor já está dissolvendo o que precisa morrer<br><br>
+                            <strong>Serpente da Mãe ativa:</strong> padrão de sufocamento = ela internalizou que amar é aprisionar. O joelho direito (lado paterno) resiste ao passo que ela precisa dar para se separar emocionalmente.
+                            <span class="time">14:32</span>
+                        </div>
+                        <div class="chat-bubble received">
+                            <span class="protocol-title">Protocolo de Florais:</span>
+                            <span class="floral-item"><strong>Ipê Roxo</strong> — dissolve rigidez estrutural</span>
+                            <span class="floral-item"><strong>Embaúba</strong> — libera o padrão materno de controle</span>
+                            <span class="floral-item"><strong>Quaresmeira</strong> — transição do Nigredo</span>
+                            <br>
+                            <strong>Posologia:</strong> 7 gotas, 9h / 15h / 21h — 21 dias<br><br>
+                            <em>Próxima investigação: como é a relação dela com dinheiro? Terra comprometida geralmente trava prosperidade...</em>
+                            <span class="time">14:33</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -627,153 +475,138 @@
     </div>
 </section>
 
-<!-- Trust Bar -->
-<section class="trust-bar">
+<!-- Problem Section -->
+<section class="problem-section" id="como-funciona">
     <div class="container">
-        <p>Tecnologia utilizada por profissionais de referencia</p>
-        <div class="trust-logos">
-            <span>CRP</span>
-            <span>ABRAP</span>
-            <span>CFP</span>
-            <span>SBP</span>
-            <span>FBTC</span>
+        <div class="text-center fade-up">
+            <div class="section-tag" style="background: #FFF5F5; color: #C53030;">O Problema</div>
+            <h2 class="section-title">Você é brilhante no consultório.<br>Mas está <span style="color: #C53030;">se esgotando</span> entre consultas.</h2>
+            <p class="section-subtitle">Cada diagnóstico alquímico completo leva 2 a 3 horas de análise manual. Seus pacientes merecem precisão. Você merece dormir.</p>
         </div>
-    </div>
-</section>
-
-<!-- Problem -->
-<section class="problem" id="problema">
-    <div class="container">
-        <span class="section-tag fade-up">O problema</span>
-        <h2 class="section-title fade-up">Voce reconhece essas situacoes?</h2>
-        <p class="section-subtitle fade-up">Terapeutas perdem horas por semana respondendo as mesmas perguntas no WhatsApp.</p>
         <div class="problem-grid">
+            <div class="problem-card fade-up">
+                <div class="icon">⏰</div>
+                <h3>2 horas por diagnóstico</h3>
+                <p>Cruzar elemento comprometido, DNA, setenio, serpentes e prescrever florais consome seu tempo mais precioso. Quantos pacientes você deixou de atender essa semana?</p>
+            </div>
             <div class="problem-card fade-up delay-1">
-                <div class="problem-icon">&#128257;</div>
-                <h3>Pacientes perguntam a mesma coisa varias vezes</h3>
-                <p>Exercicios, tecnicas, orientacoes... voce repete as mesmas respostas todos os dias para pacientes diferentes.</p>
+                <div class="icon">🧠</div>
+                <h3>Sobrecarga cognitiva</h3>
+                <p>36 anos de método. Centenas de correlações. Você mantém tudo na cabeça — e quando a carga aumenta, a precisão cai. Não porque você é menos capaz, mas porque é humano.</p>
             </div>
             <div class="problem-card fade-up delay-2">
-                <div class="problem-icon">&#9203;</div>
-                <h3>Voce gasta horas respondendo mensagens</h3>
-                <p>Tempo precioso que poderia ser investido em atendimentos, estudos ou na sua vida pessoal.</p>
-            </div>
-            <div class="problem-card fade-up delay-3">
-                <div class="problem-icon">&#128683;</div>
-                <h3>Informacoes importantes se perdem no WhatsApp</h3>
-                <p>Protocolos, orientacoes e materiais ficam perdidos em conversas antigas que ninguem encontra mais.</p>
+                <div class="icon">📱</div>
+                <h3>WhatsApp vira segundo turno</h3>
+                <p>Pacientes mandam mensagem à noite, no fim de semana, em crise. Você quer ajudar, mas cada resposta te custa energia que deveria ir para sua própria vida.</p>
             </div>
         </div>
     </div>
 </section>
 
-<!-- Solution -->
-<section class="solution" id="como-funciona">
+<!-- Solution / Capabilities Section -->
+<section class="solution-section" id="capacidades">
     <div class="container">
-        <span class="section-tag fade-up">Como funciona</span>
-        <h2 class="section-title fade-up">3 passos para automatizar seu atendimento</h2>
-        <p class="section-subtitle fade-up">Configure em menos de 10 minutos. Sem conhecimento tecnico.</p>
-        <div class="steps">
-            <div class="step fade-up delay-1">
-                <div class="step-number">1</div>
-                <div class="step-icon">&#128196;</div>
-                <h3>Suba seus materiais</h3>
-                <p>Faca upload dos seus PDFs, protocolos, tecnicas e guias. A IA aprende com o seu conteudo.</p>
+        <div class="text-center fade-up">
+            <div class="section-tag" style="background: #E6FFFA; color: #0D9488;">A Solução</div>
+            <h2 class="section-title">Sofia faz em 30 segundos<br>o que você faz em <span class="text-gradient">2 horas</span>.</h2>
+            <p class="section-subtitle">Não é um chatbot genérico. É uma inteligência treinada exclusivamente no método alquímico do Joel Aleixo.</p>
+        </div>
+        <div class="solution-grid">
+            <div class="solution-card fade-up">
+                <div class="card-icon icon-purple">🔮</div>
+                <h3>Diagnóstico Alquímico Completo</h3>
+                <p>Leitura de campo em 5 camadas: <strong>Elemento comprometido</strong> (Terra/Água/Fogo/Ar), <strong>DNA alquímico</strong> (7 pontos coloridos), <strong>Setenio</strong> (ciclo de 7 anos), <strong>fase transmutacional</strong> (Nigredo/Albedo/Rubedo) e <strong>Serpentes do Pai e da Mãe</strong>. Protocolo de florais com posologia exata às 9h, 15h e 21h.</p>
             </div>
-            <div class="step fade-up delay-2">
-                <div class="step-number">2</div>
-                <div class="step-icon">&#128241;</div>
-                <h3>Conecte seu WhatsApp</h3>
-                <p>Escaneie o QR code e conecte seu numero de WhatsApp em segundos.</p>
+            <div class="solution-card fade-up delay-1">
+                <div class="card-icon icon-teal">🌟</div>
+                <h3>Mapa Astral Natal Alquímico</h3>
+                <p>Calcula o mapa natal com <strong>Swiss Ephemeris</strong> (precisão astronômica real), gera imagem visual e cruza posições planetárias com os elementos alquímicos. Uma leitura que nenhum software de astrologia faz sozinho.</p>
             </div>
-            <div class="step fade-up delay-3">
-                <div class="step-number">3</div>
-                <div class="step-icon">&#129302;</div>
-                <h3>O agente responde por voce</h3>
-                <p>Seus pacientes recebem respostas precisas baseadas nos seus proprios materiais, 24/7.</p>
+            <div class="solution-card fade-up">
+                <div class="card-icon icon-rose">💫</div>
+                <h3>Leitura Quântica de Casal</h3>
+                <p>Por que essas duas pessoas se encontraram? Pontos de cooperação, zonas de sombra, interseções de padrões ancestrais. A IA cruza os dois campos e revela o que o casal veio resolver juntos nesta encarnação.</p>
+            </div>
+            <div class="solution-card fade-up delay-1">
+                <div class="card-icon icon-amber">📚</div>
+                <h3>Ensino do Método + Conteúdo</h3>
+                <p>Explicações profundas de qualquer conceito do método alquímico. Cria posts, stories e roteiros de reels <strong>na voz do Joel</strong>. Seu marketing alinhado com sua prática — sem precisar escrever uma linha.</p>
             </div>
         </div>
     </div>
 </section>
 
-<!-- Features -->
-<section class="features" id="funcionalidades">
+<!-- Comparison Section -->
+<section class="comparison-section">
     <div class="container">
-        <span class="section-tag fade-up">Funcionalidades</span>
-        <h2 class="section-title fade-up">Tudo que voce precisa em um so lugar</h2>
-        <p class="section-subtitle fade-up">Ferramentas poderosas pensadas especificamente para terapeutas.</p>
-        <div class="features-grid">
-            <div class="feature-card fade-up delay-1">
-                <div class="feature-icon purple">&#128172;</div>
-                <h3>Agente IA no WhatsApp</h3>
-                <p>Responde automaticamente seus pacientes com IA treinada nos seus materiais. Disponivel 24 horas, 7 dias por semana.</p>
+        <div class="text-center fade-up">
+            <div class="section-tag" style="background: #F3F0FF; color: #7C3AED;">Antes vs Depois</div>
+            <h2 class="section-title">O que muda na sua prática</h2>
+        </div>
+        <div class="comparison-table fade-up">
+            <div class="comp-col manual">
+                <h3 style="color: #C53030;">❌ Sem a Sofia</h3>
+                <div class="comp-item"><span class="x">✕</span> 2-3 horas por diagnóstico completo</div>
+                <div class="comp-item"><span class="x">✕</span> Mapa astral calculado manualmente ou em software separado</div>
+                <div class="comp-item"><span class="x">✕</span> Cruza elemento + DNA + setenio de cabeça</div>
+                <div class="comp-item"><span class="x">✕</span> Prescrição de florais sem conferência cruzada</div>
+                <div class="comp-item"><span class="x">✕</span> WhatsApp dos pacientes toca a qualquer hora</div>
+                <div class="comp-item"><span class="x">✕</span> Conteúdo para redes? Quando sobra tempo.</div>
+                <div class="comp-item"><span class="x">✕</span> Prontuário em caderno ou planilha</div>
             </div>
-            <div class="feature-card fade-up delay-2">
-                <div class="feature-icon teal">&#128218;</div>
-                <h3>Base de Conhecimento Propria</h3>
-                <p>Suba seus PDFs, protocolos e tecnicas. A IA usa exclusivamente o seu conteudo para responder.</p>
-            </div>
-            <div class="feature-card fade-up delay-3">
-                <div class="feature-icon purple">&#10024;</div>
-                <h3>Mapas Astrais Alquimicos</h3>
-                <p>Gere mapas astrais completos com interpretacoes alquimicas para complementar sua pratica terapeutica.</p>
-            </div>
-            <div class="feature-card fade-up delay-1">
-                <div class="feature-icon teal">&#128203;</div>
-                <h3>Prontuario Digital</h3>
-                <p>Registro automatico de conversas e evolucao dos pacientes. Tudo organizado e seguro.</p>
-            </div>
-            <div class="feature-card fade-up delay-2">
-                <div class="feature-icon purple">&#128197;</div>
-                <h3>Agenda Inteligente</h3>
-                <p>Agendamento automatico de sessoes direto pelo WhatsApp. Sem conflitos, sem dor de cabeca.</p>
-            </div>
-            <div class="feature-card fade-up delay-3">
-                <div class="feature-icon teal">&#128187;</div>
-                <h3>Portal do Terapeuta</h3>
-                <p>Painel completo para gerenciar pacientes, materiais e configuracoes do seu agente.</p>
+            <div class="comp-col ia">
+                <h3>✨ Com a Sofia</h3>
+                <div class="comp-item"><span class="check">✓</span> Diagnóstico completo em 30 segundos</div>
+                <div class="comp-item"><span class="check">✓</span> Mapa astral calculado e cruzado com alquimia automaticamente</div>
+                <div class="comp-item"><span class="check">✓</span> IA cruza todas as 5 camadas instantaneamente</div>
+                <div class="comp-item"><span class="check">✓</span> Florais prescritos com base no protocolo indexado</div>
+                <div class="comp-item"><span class="check">✓</span> IA responde primeiro, você valida depois</div>
+                <div class="comp-item"><span class="check">✓</span> Posts e reels escritos na voz do método</div>
+                <div class="comp-item"><span class="check">✓</span> Prontuário digital com histórico completo</div>
             </div>
         </div>
     </div>
 </section>
 
 <!-- Social Proof -->
-<section class="social-proof" id="depoimentos">
+<section class="proof-section" id="depoimentos">
     <div class="container">
-        <span class="section-tag fade-up">Depoimentos</span>
-        <h2 class="section-title fade-up">O que terapeutas estao dizendo</h2>
-        <p class="section-subtitle fade-up">Profissionais que ja transformaram seu atendimento.</p>
-        <div class="testimonials">
-            <div class="testimonial-card fade-up delay-1">
-                <div class="testimonial-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
-                <blockquote>"Eu gastava 2 horas por dia respondendo mensagens repetitivas. Agora o agente faz isso por mim com uma qualidade incrivel. Meus pacientes amam!"</blockquote>
-                <div class="testimonial-author">
-                    <div class="testimonial-avatar">M</div>
-                    <div>
-                        <div class="testimonial-name">Dra. Marina Silva</div>
-                        <div class="testimonial-role">Psicologa Clinica - SP</div>
+        <div class="text-center fade-up">
+            <div class="section-tag" style="background: #F3F0FF; color: #7C3AED;">Depoimentos</div>
+            <h2 class="section-title">Quem já usa, não volta atrás</h2>
+            <p class="section-subtitle">Terapeutas alquímicos que descobriram que tecnologia e sensibilidade podem caminhar juntas.</p>
+        </div>
+        <div class="proof-grid">
+            <div class="proof-card fade-up">
+                <div class="stars">★★★★★</div>
+                <blockquote>"Eu atendia 8 pacientes por dia e chegava em casa destruída. Agora a Sofia monta o pré-diagnóstico antes da consulta. Eu entro na sessão já sabendo o eixo comprometido, o DNA ativo e os florais sugeridos. Minha consulta ficou mais precisa e eu saio inteira."</blockquote>
+                <div class="author">
+                    <div class="author-avatar">MC</div>
+                    <div class="author-info">
+                        <strong>M.C.</strong>
+                        <span>Terapeuta alquímica, 200+ pacientes</span>
                     </div>
                 </div>
             </div>
-            <div class="testimonial-card fade-up delay-2">
-                <div class="testimonial-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
-                <blockquote>"O melhor investimento que fiz no meu consultorio. Os mapas astrais alquimicos sao um diferencial enorme para meus pacientes."</blockquote>
-                <div class="testimonial-author">
-                    <div class="testimonial-avatar">R</div>
-                    <div>
-                        <div class="testimonial-name">Dr. Ricardo Lopes</div>
-                        <div class="testimonial-role">Terapeuta Holistico - RJ</div>
+            <div class="proof-card fade-up delay-1">
+                <div class="stars">★★★★★</div>
+                <blockquote>"O mapa astral cruzado com a leitura alquímica é absurdo. Eu usava 3 softwares diferentes para fazer isso. A Sofia faz tudo numa mensagem de WhatsApp e ainda conecta com as serpentes ancestrais. Economizo 4 horas por semana, fácil."</blockquote>
+                <div class="author">
+                    <div class="author-avatar">RP</div>
+                    <div class="author-info">
+                        <strong>R.P.</strong>
+                        <span>Aluno do Joel, atende online há 5 anos</span>
                     </div>
                 </div>
             </div>
-            <div class="testimonial-card fade-up delay-3">
-                <div class="testimonial-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
-                <blockquote>"Configurei em 10 minutos e ja comecou a funcionar. O prontuario digital me poupa um tempo absurdo de organizacao."</blockquote>
-                <div class="testimonial-author">
-                    <div class="testimonial-avatar">C</div>
-                    <div>
-                        <div class="testimonial-name">Dra. Camila Rocha</div>
-                        <div class="testimonial-role">Psicanalista - MG</div>
+            <div class="proof-card fade-up delay-2">
+                <div class="stars">★★★★★</div>
+                <blockquote>"Tinha medo de que a IA fosse 'genérica'. Mandei um caso complexo — paciente com Nigredo profundo, Terra e Água comprometidas, serpente da mãe ativa. A resposta foi tão precisa que achei que o Joel tinha escrito. Assinei na hora."</blockquote>
+                <div class="author">
+                    <div class="author-avatar">AF</div>
+                    <div class="author-info">
+                        <strong>A.F.</strong>
+                        <span>Clínica com 3 terapeutas</span>
                     </div>
                 </div>
             </div>
@@ -782,112 +615,168 @@
 </section>
 
 <!-- Pricing -->
-<section class="pricing" id="precos">
+<section class="pricing-section" id="planos">
     <div class="container">
-        <span class="section-tag fade-up">Planos</span>
-        <h2 class="section-title fade-up">Invista no seu tempo</h2>
-        <p class="section-subtitle fade-up">Comece gratis por 7 dias. Cancele quando quiser.</p>
-        <div class="pricing-grid">
-            <div class="pricing-card fade-up delay-1">
-                <div class="pricing-plan">Essencial</div>
-                <div class="pricing-desc">Para terapeutas individuais que querem comecar.</div>
-                <div class="pricing-value">
-                    <span class="pricing-currency">R$</span>
-                    <span class="pricing-amount">197</span>
-                </div>
-                <div class="pricing-period">/mes</div>
-                <ul class="pricing-features">
-                    <li><span class="pricing-check">&#10003;</span> 1 numero de WhatsApp</li>
-                    <li><span class="pricing-check">&#10003;</span> Ate 50 PDFs na base</li>
-                    <li><span class="pricing-check">&#10003;</span> Agente IA 24/7</li>
-                    <li><span class="pricing-check">&#10003;</span> Prontuario digital</li>
-                    <li><span class="pricing-check">&#10003;</span> Mapas astrais</li>
-                    <li><span class="pricing-check">&#10003;</span> Suporte por email</li>
-                </ul>
-                <a href="/checkout.html" class="btn btn-outline">Teste Gratis 7 Dias</a>
-            </div>
-            <div class="pricing-card featured fade-up delay-2">
-                <div class="pricing-plan">Profissional</div>
-                <div class="pricing-desc">Para clinicas e terapeutas com alta demanda.</div>
-                <div class="pricing-value">
-                    <span class="pricing-currency">R$</span>
-                    <span class="pricing-amount">297</span>
-                </div>
-                <div class="pricing-period">/mes</div>
-                <ul class="pricing-features">
-                    <li><span class="pricing-check">&#10003;</span> 2 numeros de WhatsApp</li>
-                    <li><span class="pricing-check">&#10003;</span> PDFs ilimitados</li>
-                    <li><span class="pricing-check">&#10003;</span> Agente IA 24/7</li>
-                    <li><span class="pricing-check">&#10003;</span> Prontuario digital</li>
-                    <li><span class="pricing-check">&#10003;</span> Mapas astrais</li>
-                    <li><span class="pricing-check">&#10003;</span> Suporte prioritario</li>
-                    <li><span class="pricing-check">&#10003;</span> Relatorios avancados</li>
-                    <li><span class="pricing-check">&#10003;</span> Agenda inteligente</li>
-                </ul>
-                <a href="/checkout.html" class="btn btn-primary">Teste Gratis 7 Dias</a>
-            </div>
+        <div class="text-center fade-up">
+            <div class="section-tag" style="background: rgba(124,58,237,0.2); color: #A78BFA;">Planos</div>
+            <h2 class="section-title" style="color: #fff;">Escolha o plano que cabe na sua prática</h2>
+            <p class="section-subtitle">Todos os planos incluem 7 dias grátis. Cancele quando quiser, sem burocracia.</p>
         </div>
+        <div class="pricing-grid">
+
+            <!-- Plano Iniciante -->
+            <div class="pricing-card fade-up">
+                <h3>Iniciante</h3>
+                <div class="price">R$97<span>/mês</span></div>
+                <div class="price-note">Ideal para quem está começando a atender</div>
+                <ul class="features">
+                    <li><span class="feat-check">✓</span> 1 número WhatsApp conectado</li>
+                    <li><span class="feat-check">✓</span> Até 100 mensagens/mês com a IA</li>
+                    <li><span class="feat-check">✓</span> Diagnóstico alquímico básico (elementos + florais)</li>
+                    <li><span class="feat-check">✓</span> Prontuário digital (até 10 pacientes)</li>
+                    <li><span class="feat-check">✓</span> Ensino do método alquímico</li>
+                    <li><span class="feat-check">✓</span> Suporte por email</li>
+                    <li class="disabled"><span class="feat-x">—</span> Mapa astral natal</li>
+                    <li class="disabled"><span class="feat-x">—</span> Leitura de casal</li>
+                    <li class="disabled"><span class="feat-x">—</span> Criação de conteúdo</li>
+                </ul>
+                <div class="pricing-cta">
+                    <a href="checkout.html?plano=iniciante" class="btn btn-outline" style="border-color: rgba(255,255,255,0.3); color: #fff;">Começar Grátis</a>
+                </div>
+            </div>
+
+            <!-- Plano Profissional -->
+            <div class="pricing-card featured fade-up delay-1">
+                <div class="pricing-badge">Mais Popular</div>
+                <h3>Profissional</h3>
+                <div class="price">R$297<span>/mês</span></div>
+                <div class="price-note">Tudo que um terapeuta ativo precisa</div>
+                <ul class="features">
+                    <li><span class="feat-check">✓</span> 1 número WhatsApp conectado</li>
+                    <li><span class="feat-check">✓</span> 500 mensagens/mês com a IA</li>
+                    <li><span class="feat-check">✓</span> Diagnóstico alquímico COMPLETO (5 camadas)</li>
+                    <li><span class="feat-check">✓</span> Mapa astral natal (até 15/mês)</li>
+                    <li><span class="feat-check">✓</span> Leitura quântica de casal</li>
+                    <li><span class="feat-check">✓</span> Prontuário digital ilimitado</li>
+                    <li><span class="feat-check">✓</span> Criação de conteúdo para redes</li>
+                    <li><span class="feat-check">✓</span> Suporte prioritário WhatsApp</li>
+                </ul>
+                <div class="pricing-cta">
+                    <a href="checkout.html?plano=profissional" class="btn btn-primary">Começar Grátis</a>
+                </div>
+            </div>
+
+            <!-- Plano Clínica -->
+            <div class="pricing-card fade-up delay-2">
+                <h3>Clínica</h3>
+                <div class="price">R$697<span>/mês</span></div>
+                <div class="price-note">Para clínicas com múltiplos terapeutas</div>
+                <ul class="features">
+                    <li><span class="feat-check">✓</span> 2 números WhatsApp conectados</li>
+                    <li><span class="feat-check">✓</span> Mensagens ilimitadas</li>
+                    <li><span class="feat-check">✓</span> Tudo do Profissional +</li>
+                    <li><span class="feat-check">✓</span> Mapas astrais ilimitados</li>
+                    <li><span class="feat-check">✓</span> Relatórios clínicos em PDF</li>
+                    <li><span class="feat-check">✓</span> Dashboard financeiro</li>
+                    <li><span class="feat-check">✓</span> Até 3 terapeutas na mesma conta</li>
+                    <li><span class="feat-check">✓</span> API de integração</li>
+                    <li><span class="feat-check">✓</span> Onboarding personalizado + suporte dedicado</li>
+                </ul>
+                <div class="pricing-cta">
+                    <a href="checkout.html?plano=clinica" class="btn btn-teal">Falar com Consultor</a>
+                </div>
+            </div>
+
+        </div>
+        <p class="text-center fade-up" style="margin-top: 32px; color: rgba(255,255,255,0.4); font-size: 0.8rem;">
+            Valor referente a 3 terapeutas separados: R$891/mês. Economia de R$194/mês no plano Clínica.
+        </p>
     </div>
 </section>
 
 <!-- FAQ -->
-<section class="faq" id="faq">
+<section class="faq-section" id="faq">
     <div class="container">
-        <span class="section-tag fade-up">Duvidas frequentes</span>
-        <h2 class="section-title fade-up">Perguntas frequentes</h2>
+        <div class="text-center fade-up">
+            <div class="section-tag" style="background: #F3F0FF; color: #7C3AED;">Dúvidas</div>
+            <h2 class="section-title">Perguntas frequentes</h2>
+        </div>
         <div class="faq-list">
             <div class="faq-item fade-up">
-                <button class="faq-question">
-                    Preciso ter conhecimento tecnico para usar?
-                    <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                </button>
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    A IA vai substituir meu trabalho como terapeuta?
+                    <span class="arrow">▼</span>
+                </div>
                 <div class="faq-answer">
-                    <p>Nao! O processo e super simples. Voce sobe seus PDFs, conecta o WhatsApp com QR code e pronto. Qualquer pessoa consegue configurar em menos de 10 minutos.</p>
+                    <div class="faq-answer-inner">
+                        Não. A Sofia é uma assistente, não uma terapeuta. Ela faz o trabalho pesado de análise — cruzar elementos, DNA, setenios, serpentes e montar o protocolo de florais. Mas quem olha nos olhos do paciente, quem sente o campo, quem decide o caminho terapêutico é você. A IA te dá velocidade e precisão. A cura continua sendo sua responsabilidade sagrada.
+                    </div>
                 </div>
             </div>
             <div class="faq-item fade-up">
-                <button class="faq-question">
-                    Os dados dos meus pacientes estao seguros?
-                    <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                </button>
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    O método alquímico está fielmente representado? Não vai "inventar" coisas?
+                    <span class="arrow">▼</span>
+                </div>
                 <div class="faq-answer">
-                    <p>Sim. Seguimos todas as diretrizes da LGPD. Seus dados sao criptografados e armazenados em servidores seguros. Cada terapeuta tem um ambiente totalmente isolado.</p>
+                    <div class="faq-answer-inner">
+                        A Sofia foi treinada exclusivamente com os materiais do Joel Aleixo — 222 chunks de protocolos, técnicas e conteúdos indexados. Ela não "inventa". Ela busca nos protocolos reais e monta a resposta com base no que o Joel ensina há 36 anos. Se uma informação não está na base, ela avisa que não tem dados suficientes em vez de fabricar uma resposta.
+                    </div>
                 </div>
             </div>
             <div class="faq-item fade-up">
-                <button class="faq-question">
-                    O agente pode responder algo errado ao paciente?
-                    <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                </button>
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    Preciso ser aluno do Joel para usar?
+                    <span class="arrow">▼</span>
+                </div>
                 <div class="faq-answer">
-                    <p>O agente responde exclusivamente com base nos materiais que voce subiu. Ele nao inventa informacoes. Alem disso, voce pode revisar todas as conversas no prontuario digital.</p>
+                    <div class="faq-answer-inner">
+                        A ferramenta foi desenhada para terapeutas que já conhecem o método alquímico do Joel Aleixo — alunos da Escola de Alquimia, participantes de formações ou profissionais que já trabalham com elementos, florais alquímicos e leitura de campo. Se você ainda não conhece o método, a Sofia pode ensinar os conceitos, mas a aplicação clínica pressupõe formação prévia.
+                    </div>
                 </div>
             </div>
             <div class="faq-item fade-up">
-                <button class="faq-question">
-                    Posso cancelar a qualquer momento?
-                    <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                </button>
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    Os dados dos meus pacientes estão seguros?
+                    <span class="arrow">▼</span>
+                </div>
                 <div class="faq-answer">
-                    <p>Sim, sem multa e sem burocracia. Voce pode cancelar diretamente pelo painel. Seus dados ficam disponiveis por 30 dias apos o cancelamento.</p>
+                    <div class="faq-answer-inner">
+                        Sim. Cada terapeuta tem um ambiente completamente isolado — seus pacientes, diagnósticos e prontuários não são acessíveis por nenhum outro terapeuta. Usamos criptografia em trânsito (HTTPS), banco de dados com acesso restrito por ID do terapeuta, e não armazenamos dados de cartão. As conversas do WhatsApp são processadas e descartadas — mantemos apenas o prontuário estruturado que você autoriza.
+                    </div>
                 </div>
             </div>
             <div class="faq-item fade-up">
-                <button class="faq-question">
-                    Funciona com qualquer numero de WhatsApp?
-                    <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                </button>
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    Posso cancelar quando quiser?
+                    <span class="arrow">▼</span>
+                </div>
                 <div class="faq-answer">
-                    <p>Sim! Funciona com qualquer numero de WhatsApp -- pessoal ou comercial. Recomendamos usar um numero dedicado para o atendimento automatizado.</p>
+                    <div class="faq-answer-inner">
+                        Sim. Sem fidelidade, sem multa, sem burocracia. Você cancela direto pelo portal ou por WhatsApp. Seus dados ficam armazenados por 90 dias caso queira voltar. Acreditamos que você fica porque quer, não porque está preso.
+                    </div>
                 </div>
             </div>
             <div class="faq-item fade-up">
-                <button class="faq-question">
-                    O que acontece apos os 7 dias de teste gratis?
-                    <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                </button>
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    O mapa astral é calculado de verdade ou é genérico?
+                    <span class="arrow">▼</span>
+                </div>
                 <div class="faq-answer">
-                    <p>Apos o periodo de teste, voce escolhe um plano para continuar. Se nao assinar, o agente e pausado, mas seus dados ficam salvos por 30 dias.</p>
+                    <div class="faq-answer-inner">
+                        De verdade. Usamos Swiss Ephemeris — o mesmo motor de cálculo usado por astrólogos profissionais no mundo inteiro. Você informa data, hora e local de nascimento, e a Sofia calcula as posições planetárias reais, gera a imagem do mapa e então cruza com os elementos alquímicos para uma leitura integrada que nenhum software de astrologia oferece sozinho.
+                    </div>
+                </div>
+            </div>
+            <div class="faq-item fade-up">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    Funciona no meu celular? Preciso instalar algo?
+                    <span class="arrow">▼</span>
+                </div>
+                <div class="faq-answer">
+                    <div class="faq-answer-inner">
+                        Não precisa instalar nada. A Sofia funciona direto no WhatsApp que você já usa. Basta conectar seu número no painel (leva 2 minutos com QR code) e começar a conversar. O portal de gestão funciona no navegador — celular, tablet ou computador.
+                    </div>
                 </div>
             </div>
         </div>
@@ -895,17 +784,16 @@
 </section>
 
 <!-- Final CTA -->
-<section class="final-cta" id="comecar">
+<section class="final-cta">
     <div class="container">
-        <h2 class="fade-up">Comece Agora -- Teste Gratis por 7 Dias</h2>
-        <p class="fade-up">Junte-se a centenas de terapeutas que ja automatizaram seu atendimento no WhatsApp.</p>
-        <form class="cta-form fade-up" onsubmit="handleSignup(event)">
-            <input type="email" placeholder="Seu melhor email" required>
-            <button type="submit" class="btn btn-primary">Comecar</button>
-        </form>
-        <div class="cta-guarantee fade-up">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-            Sem cartao de credito. Cancele quando quiser.
+        <div class="fade-up">
+            <div class="section-tag" style="background: rgba(13,148,136,0.2); color: #5EEAD4;">Comece Agora</div>
+            <h2>Seus pacientes merecem<br>um terapeuta <span style="color: #0D9488;">descansado</span>.</h2>
+            <p>Você não precisa escolher entre precisão e qualidade de vida. A Sofia cuida da análise. Você cuida da cura.</p>
+            <a href="checkout.html" class="btn btn-primary" style="font-size: 1.1rem; padding: 18px 48px;">
+                Testar 7 Dias Grátis
+            </a>
+            <p style="margin-top: 16px; font-size: 0.8rem; color: rgba(255,255,255,0.35);">Sem cartão de crédito nos primeiros 7 dias. Cancele quando quiser.</p>
         </div>
     </div>
 </section>
@@ -913,114 +801,73 @@
 <!-- Footer -->
 <footer class="footer">
     <div class="container">
-        <div class="footer-grid">
-            <div class="footer-brand">
-                <a href="#" class="navbar-logo" style="color:#fff; font-size:1.2rem;">
-                    <svg viewBox="0 0 36 36" fill="none" width="32" height="32">
-                        <rect width="36" height="36" rx="10" fill="url(#lg2)"/>
-                        <path d="M10 18c0-4.4 3.6-8 8-8s8 3.6 8 8-3.6 8-8 8" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>
-                        <circle cx="18" cy="18" r="3" fill="#5EEAD4"/>
-                        <defs><linearGradient id="lg2" x1="0" y1="0" x2="36" y2="36"><stop stop-color="#7C3AED"/><stop offset="1" stop-color="#0D9488"/></linearGradient></defs>
-                    </svg>
-                    TerapeutasAgent
-                </a>
-                <p>Inteligencia artificial a servico da saude mental. Automatize seu atendimento no WhatsApp com seguranca e qualidade.</p>
+        <div class="footer-inner">
+            <div class="footer-copy">
+                © 2026 Alquimista Interior — Powered by 2UP Business. Todos os direitos reservados.
             </div>
-            <div>
-                <h4>Produto</h4>
-                <ul>
-                    <li><a href="#como-funciona">Como Funciona</a></li>
-                    <li><a href="#funcionalidades">Funcionalidades</a></li>
-                    <li><a href="#precos">Precos</a></li>
-                    <li><a href="#faq">FAQ</a></li>
-                </ul>
-            </div>
-            <div>
-                <h4>Empresa</h4>
-                <ul>
-                    <li><a href="#">Sobre nos</a></li>
-                    <li><a href="#">Blog</a></li>
-                    <li><a href="#">Contato</a></li>
-                    <li><a href="#">Parceiros</a></li>
-                </ul>
-            </div>
-            <div>
-                <h4>Legal</h4>
-                <ul>
-                    <li><a href="#">Termos de Uso</a></li>
-                    <li><a href="#">Politica de Privacidade</a></li>
-                    <li><a href="#">LGPD</a></li>
-                </ul>
-            </div>
-        </div>
-        <div class="footer-bottom">
-            <p>&copy; 2026 TerapeutasAgent -- 2UP Business. Todos os direitos reservados.</p>
-            <div class="footer-lgpd">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-                Em conformidade com a LGPD
+            <div class="footer-links">
+                <a href="#">Termos de Uso</a>
+                <a href="#">Privacidade</a>
+                <a href="mailto:suporte@alquimistainterior.com">Contato</a>
             </div>
         </div>
     </div>
 </footer>
 
 <!-- WhatsApp Float -->
-<a href="https://wa.me/5511999999999?text=Oi!%20Quero%20saber%20mais%20sobre%20o%20TerapeutasAgent" target="_blank" class="whatsapp-float" aria-label="Fale conosco no WhatsApp">
-    <svg viewBox="0 0 32 32" fill="currentColor">
-        <path d="M16.004 0h-.008C7.174 0 0 7.176 0 16.004c0 3.5 1.128 6.744 3.046 9.378L1.054 31.29l6.118-1.958A15.9 15.9 0 0016.004 32C24.826 32 32 24.826 32 16.004S24.826 0 16.004 0zm9.334 22.606c-.39 1.1-1.932 2.014-3.164 2.28-.844.18-1.946.324-5.66-1.216-4.752-1.97-7.81-6.792-8.046-7.106-.228-.314-1.904-2.538-1.904-4.838s1.204-3.432 1.632-3.902c.428-.47.934-.588 1.246-.588.312 0 .624.002.898.016.288.014.674-.11 1.054.804.39.936 1.326 3.236 1.442 3.47.116.234.194.508.038.82-.156.312-.234.508-.468.784-.234.276-.492.616-.702.826-.234.234-.478.49-.206.96.272.47 1.212 1.998 2.602 3.236 1.786 1.59 3.29 2.082 3.758 2.316.47.234.742.196 1.014-.118.272-.314 1.17-1.364 1.482-1.834.312-.47.624-.39 1.054-.234.43.156 2.728 1.288 3.196 1.522.468.234.78.352.898.546.116.194.116 1.132-.274 2.232z"/>
+<a href="https://wa.me/5511999999999?text=Quero%20conhecer%20a%20Sofia%20-%20Alquimista%20Interior" target="_blank" class="whatsapp-float" aria-label="WhatsApp">
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="#fff">
+        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
     </svg>
 </a>
 
 <script>
-// Navbar scroll
-var navbar = document.getElementById('navbar');
-window.addEventListener('scroll', function() {
-    navbar.classList.toggle('scrolled', window.scrollY > 40);
-});
+    // Navbar scroll effect
+    const navbar = document.getElementById('navbar');
+    window.addEventListener('scroll', () => {
+        navbar.classList.toggle('scrolled', window.scrollY > 50);
+    });
 
-// Mobile menu
-var toggle = document.getElementById('mobileToggle');
-var navLinks = document.getElementById('navLinks');
-toggle.addEventListener('click', function() {
-    navLinks.classList.toggle('open');
-});
-var links = navLinks.querySelectorAll('a');
-for (var i = 0; i < links.length; i++) {
-    links[i].addEventListener('click', function() { navLinks.classList.remove('open'); });
-}
+    // Fade-up on scroll (IntersectionObserver)
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('visible');
+            }
+        });
+    }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
 
-// Scroll animations
-var observer = new IntersectionObserver(function(entries) {
-    entries.forEach(function(entry) {
-        if (entry.isIntersecting) {
-            entry.target.classList.add('visible');
+    document.querySelectorAll('.fade-up').forEach(el => observer.observe(el));
+
+    // FAQ accordion
+    function toggleFaq(el) {
+        const item = el.parentElement;
+        const answer = item.querySelector('.faq-answer');
+        const isActive = item.classList.contains('active');
+
+        // Close all
+        document.querySelectorAll('.faq-item.active').forEach(i => {
+            i.classList.remove('active');
+            i.querySelector('.faq-answer').style.maxHeight = null;
+        });
+
+        // Open clicked if it was closed
+        if (!isActive) {
+            item.classList.add('active');
+            answer.style.maxHeight = answer.scrollHeight + 'px';
         }
+    }
+
+    // Smooth scroll for anchor links
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', e => {
+            e.preventDefault();
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) {
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        });
     });
-}, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
-
-var fadeEls = document.querySelectorAll('.fade-up');
-for (var j = 0; j < fadeEls.length; j++) {
-    observer.observe(fadeEls[j]);
-}
-
-// FAQ accordion
-var faqBtns = document.querySelectorAll('.faq-question');
-for (var k = 0; k < faqBtns.length; k++) {
-    faqBtns[k].addEventListener('click', function() {
-        var item = this.parentElement;
-        var isOpen = item.classList.contains('open');
-        var allItems = document.querySelectorAll('.faq-item');
-        for (var l = 0; l < allItems.length; l++) { allItems[l].classList.remove('open'); }
-        if (!isOpen) item.classList.add('open');
-    });
-}
-
-// Signup handler
-function handleSignup(e) {
-    e.preventDefault();
-    var email = e.target.querySelector('input').value;
-    alert('Obrigado! Enviaremos o acesso para: ' + email);
-    e.target.reset();
-}
 </script>
 
 </body>
