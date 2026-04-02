@@ -1630,7 +1630,7 @@ async def _processar_mensagem(payload: dict) -> None:
                                     "\n\nINSTRUCAO INTERNA — nao reproduza este aviso na resposta: "
                                     "A imagem do mapa alquimico ja foi enviada como arquivo separado. "
                                     "NAO mencione a imagem, NAO diga que foi enviada. "
-                                    "Va direto para a leitura alquimica completa."
+                                    "Entregue a leitura do campo astrologico do mapa (elementos, posicoes, ascendente). NAO entregue diagnostico, protocolo ou posologia ainda. Termine com UMA pergunta investigativa sobre o comportamento do paciente na consulta."
                                 )
                         # Se tem cache mas não enviou imagem (contexto apenas), não mencionar imagem
                         if not _nota_imagem_sp and _mapa_json_cache:
@@ -1717,12 +1717,12 @@ async def _processar_mensagem(payload: dict) -> None:
                             "\n\nINSTRUCAO INTERNA — nao reproduza este aviso na resposta: "
                             "A imagem do mapa alquimico ja foi enviada como arquivo separado. "
                             "NAO mencione a imagem, NAO diga que foi enviada, NAO diga que houve instabilidade. "
-                            "Va direto para a leitura alquimica completa — comece pela primeira linha."
+                            "Entregue a leitura do campo astrologico do mapa (elementos, posicoes, ascendente). NAO entregue diagnostico, protocolo ou posologia ainda. Termine com UMA pergunta investigativa sobre o comportamento do paciente na consulta."
                             if imagem_enviada else
                             "\n\nINSTRUCAO INTERNA — nao reproduza este aviso na resposta: "
                             "A imagem do mapa NAO foi enviada desta vez por instabilidade tecnica. "
                             "O terapeuta JA foi avisado sobre o problema via mensagem anterior. "
-                            "ENTREGUE A LEITURA ALQUIMICA COMPLETA AGORA — nao peca permissao, nao pergunte se deve continuar, nao mencione a imagem. "
+                            "Entregue a leitura do campo astrologico. NAO entregue diagnostico completo, protocolo ou posologia ainda. Termine com UMA pergunta sobre o paciente. "
                             "Se o terapeuta pedir para reenviar a imagem, diga que ele deve digitar 'refazer mapa'."
                         )
                         mapa_prefixo = (
@@ -1756,7 +1756,7 @@ async def _processar_mensagem(payload: dict) -> None:
                                     "\n\nINSTRUCAO INTERNA — nao reproduza este aviso na resposta: "
                                     "A imagem do mapa alquimico ja foi enviada como arquivo separado. "
                                     "NAO mencione a imagem, NAO diga que foi enviada, NAO diga que houve instabilidade. "
-                                    "Va direto para a leitura alquimica completa — comece pela primeira linha."
+                                    "Entregue a leitura do campo astrologico do mapa (elementos, posicoes, ascendente). NAO entregue diagnostico, protocolo ou posologia ainda. Termine com UMA pergunta investigativa sobre o comportamento do paciente na consulta."
                                 )
                             # chunks_texto pode não ter o mapa_prefixo, mas o LLM ainda gera a leitura
                         else:
@@ -3249,13 +3249,13 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                                 "\n\nINSTRUCAO INTERNA — nao reproduza este aviso na resposta: "
                                 "A imagem do mapa alquimico ja foi enviada como arquivo separado. "
                                 "NAO mencione a imagem, NAO diga que foi enviada, NAO diga que houve instabilidade. "
-                                "Va direto para a leitura alquimica completa — comece pela primeira linha."
+                                "Entregue a leitura do campo astrologico do mapa (elementos, posicoes, ascendente). NAO entregue diagnostico, protocolo ou posologia ainda. Termine com UMA pergunta investigativa sobre o comportamento do paciente na consulta."
                             )
                         else:
                             _nota_imagem_sp = (
                                 "\n\nINSTRUCAO INTERNA — nao reproduza este aviso na resposta: "
                                 "A imagem do mapa NAO foi enviada desta vez por instabilidade tecnica. "
-                                "ENTREGUE A LEITURA ALQUIMICA COMPLETA AGORA — nao peca permissao, nao pergunte se deve continuar, nao mencione a imagem. "
+                                "Entregue a leitura do campo astrologico. NAO entregue diagnostico completo, protocolo ou posologia ainda. Termine com UMA pergunta sobre o paciente. "
                                 "Se o terapeuta pedir para reenviar a imagem, diga que ele deve digitar 'refazer mapa'."
                             )
 
@@ -3340,12 +3340,12 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                             "\n\nINSTRUCAO INTERNA — nao reproduza este aviso na resposta: "
                             "A imagem do mapa alquimico ja foi enviada como arquivo separado. "
                             "NAO mencione a imagem, NAO diga que foi enviada, NAO diga que houve instabilidade. "
-                            "Va direto para a leitura alquimica completa — comece pela primeira linha."
+                            "Entregue a leitura do campo astrologico do mapa (elementos, posicoes, ascendente). NAO entregue diagnostico, protocolo ou posologia ainda. Termine com UMA pergunta investigativa sobre o comportamento do paciente na consulta."
                             if imagem_enviada else
                             "\n\nINSTRUCAO INTERNA — nao reproduza este aviso na resposta: "
                             "A imagem do mapa NAO foi enviada desta vez por instabilidade tecnica. "
                             "O terapeuta JA foi avisado sobre o problema via mensagem anterior. "
-                            "ENTREGUE A LEITURA ALQUIMICA COMPLETA AGORA — nao peca permissao, nao pergunte se deve continuar, nao mencione a imagem nem o problema tecnico."
+                            "Entregue a leitura do campo astrologico. NAO entregue diagnostico completo, protocolo ou posologia ainda. Termine com UMA pergunta sobre como o paciente se comportava na consulta."
                         )
                         mapa_prefixo = (
                             f"MAPA NATAL CALCULADO AUTOMATICAMENTE (Swiss Ephemeris — dado preciso, nao alucinado):\n"
@@ -3380,7 +3380,7 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                                     "\n\nINSTRUCAO INTERNA — nao reproduza este aviso na resposta: "
                                     "A imagem do mapa alquimico ja foi enviada como arquivo separado. "
                                     "NAO mencione a imagem, NAO diga que foi enviada, NAO diga que houve instabilidade. "
-                                    "Va direto para a leitura alquimica completa — comece pela primeira linha."
+                                    "Entregue a leitura do campo astrologico do mapa (elementos, posicoes, ascendente). NAO entregue diagnostico, protocolo ou posologia ainda. Termine com UMA pergunta investigativa sobre o comportamento do paciente na consulta."
                                 )
                             # chunks_texto pode não ter o mapa_prefixo, mas o LLM ainda gera a leitura
                         else:
