@@ -253,84 +253,105 @@ tr:last-child td{border-bottom:none}
       <div class="flex items-center justify-between mb-6">
         <div>
           <h1 class="text-white text-xl font-bold">Clientes</h1>
-          <p class="text-gray-500 text-sm mt-0.5" x-text="(assinaturas||[]).length + ' cadastros'"></p>
+          <p class="text-gray-500 text-sm mt-0.5" x-text="(clientes||[]).length + ' usuários encontrados'"></p>
         </div>
+        <button @click="recarregarClientes()" class="btn-ghost text-xs flex items-center gap-1.5">
+          <span x-show="loadingClientes" class="spinner" style="width:14px;height:14px"></span>
+          Atualizar
+        </button>
       </div>
 
       <!-- Filtros -->
       <div class="flex flex-wrap gap-3 mb-5">
-        <input class="input-dark" style="max-width:260px" x-model="buscaCliente" placeholder="Buscar nome, email, plano...">
+        <input class="input-dark" style="max-width:260px" x-model="buscaCliente" placeholder="Buscar nome, número, plano...">
         <select class="input-dark" style="max-width:160px" x-model="filtroStatusCliente">
           <option value="">Todos status</option>
-          <option value="ativo">Ativo</option>
-          <option value="disponivel">Aguardando</option>
-          <option value="cancelado">Cancelado</option>
-          <option value="suspenso_pagamento">Suspenso</option>
+          <option value="ATIVO">Ativo (bot)</option>
+          <option value="PENDENTE_CODIGO">Aguardando código</option>
+          <option value="BLOQUEADO">Bloqueado</option>
+          <option value="ativo">Assinante ativo</option>
+          <option value="sem_assinatura">Sem assinatura</option>
         </select>
-        <select class="input-dark" style="max-width:160px" x-model="filtroPlano">
-          <option value="">Todos planos</option>
-          <option value="Iniciante">Iniciante</option>
-          <option value="Essencial">Essencial</option>
-          <option value="Profissional">Profissional</option>
-          <option value="Clínica">Clínica</option>
+        <select class="input-dark" style="max-width:160px" x-model="filtroTerapeuta">
+          <option value="">Todos terapeutas</option>
+          <template x-for="t in terapeutas" :key="t.id">
+            <option :value="t.id" x-text="t.nome"></option>
+          </template>
         </select>
       </div>
 
       <!-- Stats rápidas -->
-      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+      <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-5">
         <div class="card p-4 text-center">
-          <p class="text-2xl font-bold" style="color:#34d399" x-text="assinaturas.filter(a=>a.status_assinatura==='ativo').length"></p>
-          <p class="text-gray-500 text-xs mt-0.5">Ativos</p>
+          <p class="text-2xl font-bold text-white" x-text="(clientes||[]).length"></p>
+          <p class="text-gray-500 text-xs mt-0.5">Total usuários</p>
         </div>
         <div class="card p-4 text-center">
-          <p class="text-2xl font-bold" style="color:#fbbf24" x-text="assinaturas.filter(a=>a.status_assinatura==='disponivel').length"></p>
-          <p class="text-gray-500 text-xs mt-0.5">Aguardando</p>
+          <p class="text-2xl font-bold" style="color:#34d399" x-text="(clientes||[]).filter(c=>c.status_assinatura==='ativo').length"></p>
+          <p class="text-gray-500 text-xs mt-0.5">Assinantes</p>
         </div>
         <div class="card p-4 text-center">
-          <p class="text-2xl font-bold" style="color:#f87171" x-text="assinaturas.filter(a=>['cancelado','suspenso_pagamento'].includes(a.status_assinatura)).length"></p>
-          <p class="text-gray-500 text-xs mt-0.5">Cancelados</p>
+          <p class="text-2xl font-bold" style="color:#fbbf24" x-text="(clientes||[]).filter(c=>c.estado==='PENDENTE_CODIGO').length"></p>
+          <p class="text-gray-500 text-xs mt-0.5">Aguardando código</p>
         </div>
         <div class="card p-4 text-center">
-          <p class="text-2xl font-bold text-white" x-text="assinaturas.filter(a=>a.status_assinatura==='ativo'&&a.valor_mensal).reduce((s,a)=>s+a.valor_mensal,0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})"></p>
-          <p class="text-gray-500 text-xs mt-0.5">MRR filtrado</p>
+          <p class="text-2xl font-bold" style="color:#c084fc" x-text="(clientes||[]).reduce((s,c)=>s+c.total_msgs,0).toLocaleString('pt-BR')"></p>
+          <p class="text-gray-500 text-xs mt-0.5">Msgs total</p>
+        </div>
+        <div class="card p-4 text-center">
+          <p class="text-2xl font-bold" style="color:#fb923c" x-text="(clientes||[]).reduce((s,c)=>s+c.msgs_este_mes,0)"></p>
+          <p class="text-gray-500 text-xs mt-0.5">Msgs este mês</p>
         </div>
       </div>
 
       <div class="card">
-        <div class="overflow-x-auto">
+        <div x-show="loadingClientes" class="text-center py-8 text-gray-500 text-sm">Carregando...</div>
+        <div x-show="!loadingClientes" class="overflow-x-auto">
           <table>
             <thead>
               <tr>
-                <th>Cliente</th>
-                <th>Email</th>
+                <th>Usuário / Número</th>
+                <th>Estado</th>
                 <th>Plano</th>
-                <th>Status</th>
-                <th>Valor/mês</th>
-                <th>Ativado em</th>
-                <th>Expira</th>
+                <th>Msgs Total</th>
+                <th>Msgs/Mês</th>
+                <th>Msgs Este Mês</th>
+                <th>Última msg</th>
                 <th>Terapeuta</th>
+                <th>Expira</th>
               </tr>
             </thead>
             <tbody>
-              <template x-for="s in clientesFiltrados" :key="s.id">
+              <template x-for="(c, i) in clientesFiltrados" :key="i">
                 <tr>
                   <td>
                     <div>
-                      <p class="font-medium text-white" x-text="s.nome_cliente || s.nome_usuario || '—'"></p>
-                      <p class="text-gray-600 text-xs" x-text="s.numero_ativo || ''"></p>
+                      <p class="font-medium text-white" x-text="c.nome || 'Sem nome'"></p>
+                      <p class="text-gray-500 text-xs font-mono" x-text="c.numero_telefone"></p>
                     </div>
                   </td>
-                  <td class="text-gray-400" x-text="s.email_cliente || '—'"></td>
-                  <td><span class="badge" :class="'badge-'+s.plano" x-text="s.plano"></span></td>
-                  <td><span class="badge" :class="'badge-'+s.status_assinatura" x-text="s.status_assinatura"></span></td>
-                  <td class="font-semibold" :class="s.valor_mensal ? 'text-green-400' : 'text-gray-600'" x-text="s.valor_mensal ? 'R$'+s.valor_mensal : '—'"></td>
-                  <td class="text-gray-500 text-xs" x-text="formatarData(s.usado_em || s.criado_em)"></td>
-                  <td class="text-xs" :class="expirado(s.data_expiracao) ? 'text-red-400' : 'text-gray-400'" x-text="s.data_expiracao ? formatarData(s.data_expiracao) : '—'"></td>
-                  <td class="text-gray-500 text-xs" x-text="s.terapeuta_nome"></td>
+                  <td>
+                    <span class="badge" :class="'badge-'+c.estado" x-text="c.estado"></span>
+                  </td>
+                  <td>
+                    <span x-show="c.plano && c.plano !== '—'" class="badge" :class="'badge-'+c.plano" x-text="c.plano + (c.valor_mensal ? ' R$'+c.valor_mensal : '')"></span>
+                    <span x-show="!c.plano || c.plano === '—'" class="text-gray-600 text-xs">sem plano</span>
+                  </td>
+                  <td class="text-center">
+                    <span class="font-semibold" :class="c.total_msgs>50?'text-green-400':c.total_msgs>10?'text-white':'text-gray-500'" x-text="c.total_msgs"></span>
+                  </td>
+                  <td class="text-center text-gray-400 text-sm" x-text="c.media_msgs_mes"></td>
+                  <td class="text-center">
+                    <span x-show="c.msgs_este_mes>0" class="font-semibold text-purple-400" x-text="c.msgs_este_mes"></span>
+                    <span x-show="!c.msgs_este_mes" class="text-gray-600">0</span>
+                  </td>
+                  <td class="text-gray-500 text-xs whitespace-nowrap" x-text="c.ultima_msg ? formatarDataRelativa(c.ultima_msg) : '—'"></td>
+                  <td class="text-gray-400 text-xs" x-text="c.terapeuta_nome"></td>
+                  <td class="text-xs" :class="expirado(c.data_expiracao)?'text-red-400':'text-gray-500'" x-text="c.data_expiracao ? formatarData(c.data_expiracao) : '—'"></td>
                 </tr>
               </template>
-              <tr x-show="!clientesFiltrados.length">
-                <td colspan="8" class="text-center text-gray-600 py-8">Nenhum cliente encontrado</td>
+              <tr x-show="!clientesFiltrados.length && !loadingClientes">
+                <td colspan="9" class="text-center text-gray-600 py-8">Nenhum cliente encontrado</td>
               </tr>
             </tbody>
           </table>
@@ -552,14 +573,19 @@ function admin() {
     overview: null,
     fin: null,
     assinaturas: [],
+    clientes: [],
     terapeutas: [],
     conversas: [],
     evolucao: [],
+
+    // Loading states
+    loadingClientes: false,
 
     // Filters
     buscaCliente: '',
     filtroStatusCliente: '',
     filtroPlano: '',
+    filtroTerapeuta: '',
     buscaTerapeuta: '',
     buscaConversa: '',
 
@@ -596,14 +622,16 @@ function admin() {
 
     async carregarTudo() {
       this.loading = true;
+      this.loadingClientes = true;
       try {
-        const [ov, finData, subs, teraps, convs, evol] = await Promise.all([
+        const [ov, finData, subs, teraps, convs, evol, clts] = await Promise.all([
           this.api('/dashboard/api/overview'),
           this.api('/dashboard/api/financeiro'),
           this.api('/dashboard/api/assinaturas'),
           this.api('/dashboard/api/terapeutas'),
           this.api('/dashboard/api/conversas?limite=200'),
           this.api('/dashboard/api/evolucao?dias=30'),
+          this.api('/dashboard/api/clientes'),
         ]);
         if (ov) { this.overview = ov; this.auth = true; }
         if (finData) this.fin = finData;
@@ -611,14 +639,26 @@ function admin() {
         if (teraps) this.terapeutas = teraps.terapeutas || [];
         if (convs) this.conversas = convs.conversas || [];
         if (evol) this.evolucao = evol.evolucao || [];
+        if (clts) this.clientes = clts.clientes || [];
         this.ultimaAtualizacao = new Date().toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
         this.$nextTick(() => this.renderCharts());
       } finally {
         this.loading = false;
+        this.loadingClientes = false;
       }
     },
 
     async recarregarTudo() { await this.carregarTudo(); },
+
+    async recarregarClientes() {
+      this.loadingClientes = true;
+      try {
+        const clts = await this.api('/dashboard/api/clientes');
+        if (clts) this.clientes = clts.clientes || [];
+      } finally {
+        this.loadingClientes = false;
+      }
+    },
 
     async irPara(s) {
       this.secao = s;
@@ -726,18 +766,24 @@ function admin() {
 
     // Computed
     get clientesFiltrados() {
-      let list = this.assinaturas;
+      let list = this.clientes;
       if (this.buscaCliente) {
         const b = this.buscaCliente.toLowerCase();
-        list = list.filter(s =>
-          (s.nome_cliente||'').toLowerCase().includes(b) ||
-          (s.email_cliente||'').toLowerCase().includes(b) ||
-          (s.nome_usuario||'').toLowerCase().includes(b) ||
-          (s.plano||'').toLowerCase().includes(b)
+        list = list.filter(c =>
+          (c.nome||'').toLowerCase().includes(b) ||
+          (c.numero_telefone||'').toLowerCase().includes(b) ||
+          (c.plano||'').toLowerCase().includes(b) ||
+          (c.terapeuta_nome||'').toLowerCase().includes(b)
         );
       }
-      if (this.filtroStatusCliente) list = list.filter(s => s.status_assinatura === this.filtroStatusCliente);
-      if (this.filtroPlano) list = list.filter(s => s.plano === this.filtroPlano);
+      if (this.filtroStatusCliente) {
+        list = list.filter(c =>
+          c.estado === this.filtroStatusCliente ||
+          c.status_assinatura === this.filtroStatusCliente
+        );
+      }
+      if (this.filtroPlano) list = list.filter(c => c.plano === this.filtroPlano);
+      if (this.filtroTerapeuta) list = list.filter(c => c.terapeuta_id === this.filtroTerapeuta);
       return list;
     },
 
