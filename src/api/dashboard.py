@@ -735,15 +735,7 @@ async def cliente_detalhe(
     """Retorna perfil completo + histórico de conversas de um usuário."""
     _verificar_token(token, x_dashboard_token)
     sb = get_supabase()
-    try:
-     return await _cliente_detalhe_impl(sb, terapeuta_id, numero)
-    except Exception as e:
-        import traceback
-        raise HTTPException(status_code=500, detail=f"{type(e).__name__}: {e}\n{traceback.format_exc()}")
 
-
-async def _cliente_detalhe_impl(sb, terapeuta_id: str, numero: str):
-    from datetime import datetime, timezone
     agora = datetime.now(timezone.utc)
     inicio_mes = agora.replace(day=1, hour=0, minute=0, second=0, microsecond=0).isoformat()
 
@@ -761,7 +753,7 @@ async def _cliente_detalhe_impl(sb, terapeuta_id: str, numero: str):
     # Terapeuta
     terapeuta_resp = (
         sb.table("terapeutas")
-        .select("id, nome, email, numero_whatsapp")
+        .select("id, nome, email")
         .eq("id", terapeuta_id)
         .limit(1)
         .execute()
@@ -819,7 +811,7 @@ async def _cliente_detalhe_impl(sb, terapeuta_id: str, numero: str):
             "id": terapeuta.get("id"),
             "nome": terapeuta.get("nome", "Desconhecido"),
             "email": terapeuta.get("email", ""),
-            "whatsapp": terapeuta.get("numero_whatsapp", ""),
+            "whatsapp": "",
         },
         "plano": plano_nome if codigo else "—",
         "valor_mensal": plano_valor if codigo else 0,
