@@ -753,7 +753,7 @@ async def cliente_detalhe(
     # Terapeuta
     terapeuta_resp = (
         sb.table("terapeutas")
-        .select("id, nome, email, whatsapp_numero")
+        .select("id, nome, email, numero_whatsapp")
         .eq("id", terapeuta_id)
         .limit(1)
         .execute()
@@ -811,7 +811,7 @@ async def cliente_detalhe(
             "id": terapeuta.get("id"),
             "nome": terapeuta.get("nome", "Desconhecido"),
             "email": terapeuta.get("email", ""),
-            "whatsapp": terapeuta.get("whatsapp_numero", ""),
+            "whatsapp": terapeuta.get("numero_whatsapp", ""),
         },
         "plano": plano_nome if codigo else "—",
         "valor_mensal": plano_valor if codigo else 0,
