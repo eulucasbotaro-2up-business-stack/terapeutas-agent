@@ -55,10 +55,12 @@ tr:last-child td{border-bottom:none}
 .spinner{border:2px solid #2a2a35;border-top-color:#7C3AED;border-radius:50%;width:20px;height:20px;animation:spin .6s linear infinite;display:inline-block}
 @keyframes slideIn{from{transform:translateX(100%)}to{transform:translateX(0)}}
 .slide-in{animation:slideIn .25s cubic-bezier(.4,0,.2,1)}
-.msg-user{background:#23232e;border-radius:12px 12px 12px 2px;padding:10px 14px;max-width:85%;font-size:13px;color:#e5e7eb;line-height:1.5}
-.msg-agent{background:linear-gradient(135deg,#7C3AED18,#0D948818);border:1px solid #7C3AED33;border-radius:12px 12px 2px 12px;padding:10px 14px;max-width:85%;font-size:13px;color:#e5e7eb;line-height:1.5}
-.drawer-overlay{background:rgba(0,0,0,.6);backdrop-filter:blur(2px)}
+.msg-user{background:#23232e;border-radius:12px 12px 12px 2px;padding:10px 14px;max-width:85%;font-size:13px;color:#e5e7eb;line-height:1.5;white-space:pre-wrap;word-break:break-word}
+.msg-agent{background:linear-gradient(135deg,#7C3AED18,#0D948818);border:1px solid #7C3AED33;border-radius:12px 12px 2px 12px;padding:10px 14px;max-width:85%;font-size:13px;color:#e5e7eb;line-height:1.5;white-space:pre-wrap;word-break:break-word}
 tr.clickable:hover td{background:#1e1e2a;cursor:pointer}
+.tab-pill{padding:6px 18px;border-radius:9999px;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;color:#9CA3AF;background:transparent;border:none}
+.tab-pill.active{background:#7C3AED;color:#fff}
+.tab-pill:not(.active):hover{color:#fff;background:#23232e}
 </style>
 </head>
 <body x-data="admin()" x-init="init()" x-cloak>
@@ -599,135 +601,223 @@ tr.clickable:hover td{background:#1e1e2a;cursor:pointer}
   </div>
 </div>
 
-<!-- ========== DRAWER CLIENTE ========== -->
-<div x-show="drawerAberto" x-cloak class="fixed inset-0 z-50 flex">
-  <!-- overlay -->
-  <div class="flex-1 drawer-overlay" @click="fecharDrawer()"></div>
-  <!-- painel -->
-  <div class="w-full max-w-2xl bg-[#18181F] border-l border-gray-800 flex flex-col overflow-hidden slide-in" style="min-height:100vh">
+<!-- ========== MODAL CLIENTE FULLSCREEN ========== -->
+<div x-show="drawerAberto" x-cloak class="fixed inset-0 z-50 flex flex-col" style="background:#0F0F13">
 
-    <!-- header -->
-    <div class="flex items-start justify-between p-5 border-b border-gray-800 flex-shrink-0">
-      <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0" style="background:linear-gradient(135deg,#7C3AED,#0D9488)" x-text="(detalhe?.nome||'?').charAt(0).toUpperCase()"></div>
-        <div>
-          <p class="text-white font-bold text-base" x-text="detalhe?.nome || 'Sem nome'"></p>
-          <p class="text-gray-400 text-xs font-mono" x-text="detalhe?.numero"></p>
-        </div>
-        <span class="badge ml-2" :class="'badge-'+(detalhe?.estado||'')" x-text="detalhe?.estado"></span>
+  <!-- HEADER FIXO -->
+  <div class="flex items-center justify-between px-6 py-4 border-b flex-shrink-0" style="border-color:#2a2a35;background:#18181F">
+    <div class="flex items-center gap-4 min-w-0">
+      <div class="w-11 h-11 rounded-full flex items-center justify-center text-white font-bold text-base flex-shrink-0"
+           style="background:linear-gradient(135deg,#7C3AED,#0D9488)"
+           x-text="(detalhe?.nome||clienteSelecionado?.nome||'?').charAt(0).toUpperCase()"></div>
+      <div class="min-w-0">
+        <p class="text-white font-bold text-lg leading-tight truncate" x-text="detalhe?.nome || clienteSelecionado?.nome || 'Carregando...'"></p>
+        <p class="text-gray-400 text-xs font-mono mt-0.5" x-text="detalhe?.numero || clienteSelecionado?.numero_raw"></p>
       </div>
-      <button @click="fecharDrawer()" class="text-gray-500 hover:text-white p-1.5 rounded-lg hover:bg-gray-800 transition-colors">
-        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      <span x-show="detalhe?.estado" class="badge flex-shrink-0" :class="'badge-'+(detalhe?.estado||'')" x-text="detalhe?.estado"></span>
+    </div>
+    <button @click="fecharDrawer()" class="text-gray-500 hover:text-white p-2 rounded-xl hover:bg-gray-800 transition-colors flex-shrink-0 ml-4">
+      <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+  </div>
+
+  <!-- SPINNER -->
+  <div x-show="loadingDetalhe" class="flex-1 flex items-center justify-center">
+    <div class="text-center">
+      <span class="spinner" style="width:36px;height:36px;border-width:3px"></span>
+      <p class="text-gray-500 text-sm mt-4">Carregando dados...</p>
+    </div>
+  </div>
+
+  <!-- CONTEÚDO -->
+  <div x-show="!loadingDetalhe && detalhe" class="flex-1 flex flex-col overflow-hidden">
+
+    <!-- KPI ROW -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 px-6 py-4 border-b flex-shrink-0" style="border-color:#2a2a35">
+      <div class="card p-4 text-center">
+        <p class="text-2xl font-bold text-white" x-text="detalhe?.total_msgs||0"></p>
+        <p class="text-gray-500 text-xs mt-0.5">Total Msgs</p>
+      </div>
+      <div class="card p-4 text-center">
+        <p class="text-2xl font-bold" style="color:#c084fc" x-text="detalhe?.msgs_este_mes||0"></p>
+        <p class="text-gray-500 text-xs mt-0.5">Este Mês</p>
+      </div>
+      <div class="card p-4 text-center">
+        <p class="text-2xl font-bold text-gray-300" x-text="detalhe?.media_msgs_mes||0"></p>
+        <p class="text-gray-500 text-xs mt-0.5">Média/Mês</p>
+      </div>
+      <div class="card p-4 text-center">
+        <p class="text-2xl font-bold" style="color:#0D9488" x-text="(detalhe?.mapas||[]).length"></p>
+        <p class="text-gray-500 text-xs mt-0.5">Mapas Gerados</p>
+      </div>
+    </div>
+
+    <!-- ABAS -->
+    <div class="flex items-center gap-1 px-6 py-3 border-b flex-shrink-0" style="border-color:#2a2a35;background:#18181F">
+      <button class="tab-pill" :class="abaDetalhe==='resumo'&&'active'" @click="abaDetalhe='resumo'">Resumo</button>
+      <button class="tab-pill" :class="abaDetalhe==='conversas'&&'active'" @click="abaDetalhe='conversas'">
+        Conversas <span class="opacity-60 text-xs" x-text="'('+( detalhe?.conversas||[]).length+')'"></span>
+      </button>
+      <button class="tab-pill" :class="abaDetalhe==='mapas'&&'active'" @click="abaDetalhe='mapas'">
+        Mapas <span class="opacity-60 text-xs" x-text="'('+(detalhe?.mapas||[]).length+')'"></span>
       </button>
     </div>
 
-    <div class="flex-1 overflow-y-auto">
-      <div x-show="loadingDetalhe" class="flex items-center justify-center py-16">
-        <span class="spinner"></span>
-      </div>
+    <!-- CONTEÚDO DAS ABAS -->
+    <div class="flex-1 overflow-y-auto px-6 py-6">
 
-      <div x-show="!loadingDetalhe && detalhe">
+      <!-- ABA RESUMO -->
+      <div x-show="abaDetalhe==='resumo'" class="max-w-4xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-5">
 
-        <!-- Stats -->
-        <div class="grid grid-cols-3 gap-3 p-5 border-b border-gray-800">
-          <div class="card p-3 text-center">
-            <p class="text-xl font-bold text-white" x-text="detalhe?.total_msgs||0"></p>
-            <p class="text-gray-500 text-xs mt-0.5">Total msgs</p>
+        <!-- Terapeuta -->
+        <div class="card p-5">
+          <p class="text-gray-500 text-xs font-semibold uppercase tracking-wider mb-4">Terapeuta Vinculado</p>
+          <div class="flex items-center gap-3 mb-4">
+            <div class="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0" style="background:linear-gradient(135deg,#7C3AED,#0D9488)" x-text="(detalhe?.terapeuta?.nome||'?').charAt(0)"></div>
+            <div>
+              <p class="text-white font-semibold" x-text="detalhe?.terapeuta?.nome||'—'"></p>
+              <p class="text-gray-400 text-xs" x-text="detalhe?.terapeuta?.email||''"></p>
+            </div>
           </div>
-          <div class="card p-3 text-center">
-            <p class="text-xl font-bold text-purple-400" x-text="detalhe?.msgs_este_mes||0"></p>
-            <p class="text-gray-500 text-xs mt-0.5">Este mês</p>
-          </div>
-          <div class="card p-3 text-center">
-            <p class="text-xl font-bold text-gray-300" x-text="detalhe?.media_msgs_mes||0"></p>
-            <p class="text-gray-500 text-xs mt-0.5">Média/mês</p>
+          <div x-show="detalhe?.terapeuta?.whatsapp" class="flex items-center gap-2 mt-2">
+            <span class="text-gray-500 text-xs">WhatsApp:</span>
+            <code class="text-green-400 text-xs font-mono" x-text="detalhe?.terapeuta?.whatsapp"></code>
           </div>
         </div>
 
-        <!-- Info -->
-        <div class="p-5 border-b border-gray-800 space-y-3">
-          <div class="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <p class="text-gray-500 text-xs uppercase tracking-wider mb-1">Terapeuta</p>
-              <p class="text-white font-medium" x-text="detalhe?.terapeuta?.nome||'—'"></p>
-              <p class="text-gray-500 text-xs" x-text="detalhe?.terapeuta?.email||''"></p>
-              <p class="text-gray-500 text-xs font-mono" x-text="detalhe?.terapeuta?.whatsapp||''"></p>
+        <!-- Assinatura -->
+        <div class="card p-5">
+          <p class="text-gray-500 text-xs font-semibold uppercase tracking-wider mb-4">Assinatura</p>
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-gray-400 text-sm">Plano</span>
+              <span x-show="detalhe?.plano && detalhe.plano!=='—'" class="badge" :class="'badge-'+(detalhe?.plano||'')" x-text="detalhe?.plano"></span>
+              <span x-show="!detalhe?.plano||detalhe.plano==='—'" class="text-gray-600 text-sm">sem plano</span>
             </div>
-            <div>
-              <p class="text-gray-500 text-xs uppercase tracking-wider mb-1">Assinatura</p>
-              <div class="flex items-center gap-2">
-                <span x-show="detalhe?.plano && detalhe.plano !== '—'" class="badge" :class="'badge-'+(detalhe?.plano||'')" x-text="detalhe?.plano"></span>
-                <span x-show="!detalhe?.plano || detalhe.plano==='—'" class="text-gray-600 text-xs">sem plano</span>
-              </div>
-              <p x-show="detalhe?.valor_mensal" class="text-green-400 text-sm font-semibold mt-1" x-text="'R$'+detalhe?.valor_mensal+'/mês'"></p>
-              <p x-show="detalhe?.status_assinatura" class="text-gray-500 text-xs mt-0.5" x-text="detalhe?.status_assinatura"></p>
-              <p x-show="detalhe?.data_expiracao" class="text-xs mt-0.5" :class="expirado(detalhe?.data_expiracao)?'text-red-400':'text-gray-500'" x-text="detalhe?.data_expiracao ? 'Expira: '+formatarData(detalhe.data_expiracao) : ''"></p>
+            <div x-show="detalhe?.valor_mensal" class="flex items-center justify-between">
+              <span class="text-gray-400 text-sm">Valor</span>
+              <span class="text-green-400 font-semibold" x-text="'R$'+detalhe?.valor_mensal+'/mês'"></span>
             </div>
-          </div>
-          <div class="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <p class="text-gray-500 text-xs uppercase tracking-wider mb-1">Cadastro</p>
-              <p class="text-gray-300 text-xs" x-text="formatarDataHora(detalhe?.criado_em)"></p>
+            <div class="flex items-center justify-between">
+              <span class="text-gray-400 text-sm">Status</span>
+              <span class="badge" :class="'badge-'+(detalhe?.status_assinatura||'')" x-text="detalhe?.status_assinatura||'sem assinatura'"></span>
             </div>
-            <div x-show="detalhe?.email">
-              <p class="text-gray-500 text-xs uppercase tracking-wider mb-1">E-mail</p>
-              <p class="text-gray-300 text-xs" x-text="detalhe?.email"></p>
+            <div x-show="detalhe?.data_expiracao" class="flex items-center justify-between">
+              <span class="text-gray-400 text-sm">Expira</span>
+              <span :class="expirado(detalhe?.data_expiracao)?'text-red-400':'text-gray-300'" class="text-sm" x-text="formatarData(detalhe?.data_expiracao)"></span>
             </div>
-          </div>
-          <div x-show="detalhe?.codigo_acesso" class="flex items-center gap-2">
-            <p class="text-gray-500 text-xs uppercase tracking-wider">Código:</p>
-            <code class="text-yellow-400 text-xs bg-gray-900 px-2 py-0.5 rounded" x-text="detalhe?.codigo_acesso"></code>
           </div>
         </div>
 
-        <!-- Conversas -->
-        <div class="p-5">
-          <div class="flex items-center justify-between mb-4">
-            <h3 class="text-white font-semibold text-sm">Histórico de conversas</h3>
-            <span class="text-gray-600 text-xs" x-text="(detalhe?.conversas||[]).length + ' mensagens'"></span>
+        <!-- Dados de Cadastro -->
+        <div class="card p-5">
+          <p class="text-gray-500 text-xs font-semibold uppercase tracking-wider mb-4">Dados de Cadastro</p>
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-gray-400 text-sm">Número</span>
+              <code class="text-gray-200 text-xs font-mono" x-text="detalhe?.numero"></code>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-gray-400 text-sm">Cadastro</span>
+              <span class="text-gray-300 text-sm" x-text="formatarDataHora(detalhe?.criado_em)"></span>
+            </div>
+            <div x-show="detalhe?.email" class="flex items-center justify-between">
+              <span class="text-gray-400 text-sm">E-mail</span>
+              <span class="text-gray-300 text-sm" x-text="detalhe?.email"></span>
+            </div>
+            <div x-show="detalhe?.codigo_acesso" class="flex items-center justify-between">
+              <span class="text-gray-400 text-sm">Código acesso</span>
+              <code class="text-yellow-400 text-xs bg-gray-900 px-2 py-0.5 rounded" x-text="detalhe?.codigo_acesso"></code>
+            </div>
+            <div x-show="detalhe?.violacoes > 0" class="flex items-center justify-between">
+              <span class="text-gray-400 text-sm">Violações</span>
+              <span class="text-red-400 font-semibold" x-text="detalhe?.violacoes"></span>
+            </div>
           </div>
+        </div>
 
-          <div x-show="!(detalhe?.conversas?.length)" class="text-center text-gray-600 text-sm py-8">
-            Nenhuma conversa registrada
-          </div>
-
-          <div class="space-y-4">
-            <template x-for="(msg, i) in (detalhe?.conversas||[])" :key="msg.id||i">
-              <div>
-                <!-- data separator -->
-                <div x-show="i===0 || formatarData(msg.criado_em) !== formatarData((detalhe.conversas[i-1]||{}).criado_em)" class="flex items-center gap-2 my-3">
-                  <div class="flex-1 h-px bg-gray-800"></div>
-                  <span class="text-gray-600 text-xs" x-text="formatarData(msg.criado_em)"></span>
-                  <div class="flex-1 h-px bg-gray-800"></div>
-                </div>
-
-                <!-- user message -->
-                <div x-show="msg.mensagem_paciente" class="flex justify-start mb-2">
-                  <div>
-                    <div class="msg-user" x-text="msg.mensagem_paciente"></div>
-                    <p class="text-gray-600 text-xs mt-1 ml-1" x-text="formatarHora(msg.criado_em)"></p>
-                  </div>
-                </div>
-
-                <!-- agent response -->
-                <div x-show="msg.resposta_agente" class="flex justify-end">
-                  <div class="text-right">
-                    <div class="msg-agent" x-text="msg.resposta_agente"></div>
-                    <div class="flex items-center justify-end gap-2 mt-1 mr-1">
-                      <span x-show="msg.intencao" class="text-gray-600 text-xs" x-text="msg.intencao"></span>
-                      <p class="text-gray-600 text-xs" x-text="formatarHora(msg.criado_em)"></p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </template>
+        <!-- Estatísticas -->
+        <div class="card p-5">
+          <p class="text-gray-500 text-xs font-semibold uppercase tracking-wider mb-4">Estatísticas de Uso</p>
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-gray-400 text-sm">Total de mensagens</span>
+              <span class="text-white font-semibold" x-text="detalhe?.total_msgs||0"></span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-gray-400 text-sm">Mensagens este mês</span>
+              <span style="color:#c084fc" class="font-semibold" x-text="detalhe?.msgs_este_mes||0"></span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-gray-400 text-sm">Média por mês</span>
+              <span class="text-gray-300 font-semibold" x-text="detalhe?.media_msgs_mes||0"></span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-gray-400 text-sm">Mapas gerados</span>
+              <span style="color:#0D9488" class="font-semibold" x-text="(detalhe?.mapas||[]).length"></span>
+            </div>
           </div>
         </div>
 
       </div>
+
+      <!-- ABA CONVERSAS -->
+      <div x-show="abaDetalhe==='conversas'" class="max-w-3xl mx-auto">
+        <div x-show="!(detalhe?.conversas?.length)" class="text-center text-gray-600 text-sm py-16">Nenhuma conversa registrada</div>
+        <div class="space-y-3">
+          <template x-for="(msg, i) in (detalhe?.conversas||[])" :key="msg.id||i">
+            <div>
+              <div x-show="i===0 || formatarData(msg.criado_em) !== formatarData((detalhe.conversas[i-1]||{}).criado_em)"
+                   class="flex items-center gap-3 my-5">
+                <div class="flex-1 h-px" style="background:#2a2a35"></div>
+                <span class="text-gray-600 text-xs px-3 py-1 rounded-full" style="background:#18181F;border:1px solid #2a2a35" x-text="formatarData(msg.criado_em)"></span>
+                <div class="flex-1 h-px" style="background:#2a2a35"></div>
+              </div>
+              <div x-show="msg.mensagem_paciente" class="flex justify-start mb-2">
+                <div class="max-w-[72%]">
+                  <div class="msg-user" x-text="msg.mensagem_paciente"></div>
+                  <p class="text-gray-600 text-xs mt-1 ml-1" x-text="formatarHora(msg.criado_em)"></p>
+                </div>
+              </div>
+              <div x-show="msg.resposta_agente" class="flex justify-end">
+                <div class="max-w-[72%] text-right">
+                  <div class="msg-agent" x-text="msg.resposta_agente"></div>
+                  <div class="flex items-center justify-end gap-2 mt-1 mr-1">
+                    <span x-show="msg.intencao" class="text-gray-600 text-xs" x-text="msg.intencao"></span>
+                    <p class="text-gray-600 text-xs" x-text="formatarHora(msg.criado_em)"></p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <!-- ABA MAPAS -->
+      <div x-show="abaDetalhe==='mapas'" class="max-w-5xl mx-auto">
+        <div x-show="!(detalhe?.mapas?.length)" class="text-center text-gray-600 text-sm py-16">Nenhum mapa gerado</div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <template x-for="(m, i) in (detalhe?.mapas||[])" :key="m.id||i">
+            <div class="card p-4" style="border-color:#2a2a35">
+              <div class="flex items-center justify-between mb-3">
+                <span class="badge" style="background:#2d1b4e;color:#c084fc" x-text="m.tipo_mapa||'mapa'"></span>
+                <a x-show="m.imagem_url" :href="m.imagem_url" target="_blank" class="text-purple-400 hover:text-purple-300 text-xs">Ver →</a>
+              </div>
+              <p class="text-white font-semibold text-sm mb-3" x-text="m.nome||'—'"></p>
+              <div class="space-y-1.5">
+                <div class="flex gap-2 text-xs"><span class="text-gray-500 w-14">Nasc.</span><span class="text-gray-300" x-text="(m.data_nascimento ? formatarData(m.data_nascimento) : '—') + (m.hora_nascimento ? ' às '+m.hora_nascimento : '')"></span></div>
+                <div class="flex gap-2 text-xs"><span class="text-gray-500 w-14">Cidade</span><span class="text-gray-300" x-text="m.cidade_nascimento||'—'"></span></div>
+                <div class="flex gap-2 text-xs"><span class="text-gray-500 w-14">Gerado</span><span class="text-gray-500" x-text="formatarDataHora(m.criado_em)"></span></div>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>
+<!-- ========== FIM MODAL ========== -->
 
 <script>
 const API = '';
@@ -754,9 +844,11 @@ function admin() {
     loadingClientes: false,
     loadingDetalhe: false,
 
-    // Drawer
+    // Modal detalhe
     drawerAberto: false,
     detalhe: null,
+    clienteSelecionado: null,
+    abaDetalhe: 'resumo',
 
     // Filters
     buscaCliente: '',
@@ -840,6 +932,8 @@ function admin() {
     async verCliente(c) {
       this.drawerAberto = true;
       this.detalhe = null;
+      this.clienteSelecionado = c;
+      this.abaDetalhe = 'resumo';
       this.loadingDetalhe = true;
       document.body.style.overflow = 'hidden';
       try {
@@ -854,6 +948,7 @@ function admin() {
     fecharDrawer() {
       this.drawerAberto = false;
       this.detalhe = null;
+      this.clienteSelecionado = null;
       document.body.style.overflow = '';
     },
 

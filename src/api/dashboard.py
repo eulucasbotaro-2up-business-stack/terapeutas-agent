@@ -772,6 +772,17 @@ async def cliente_detalhe(
     )
     conversas = convs_resp.data or []
 
+    # Mapas astrais gerados para este usuário
+    mapas_resp = (
+        sb.table("mapas_astrais")
+        .select("id, nome, tipo_mapa, data_nascimento, hora_nascimento, cidade_nascimento, criado_em, imagem_url")
+        .eq("terapeuta_id", terapeuta_id)
+        .eq("numero_telefone", numero)
+        .order("criado_em", desc=False)
+        .execute()
+    )
+    mapas = mapas_resp.data or []
+
     # Código de assinatura
     codigo_resp = (
         sb.table("codigos_liberacao")
@@ -819,5 +830,18 @@ async def cliente_detalhe(
                 "criado_em": c.get("criado_em"),
             }
             for c in conversas
+        ],
+        "mapas": [
+            {
+                "id": m.get("id"),
+                "nome": m.get("nome", ""),
+                "tipo_mapa": m.get("tipo_mapa", ""),
+                "data_nascimento": m.get("data_nascimento"),
+                "hora_nascimento": m.get("hora_nascimento"),
+                "cidade_nascimento": m.get("cidade_nascimento", ""),
+                "criado_em": m.get("criado_em"),
+                "imagem_url": m.get("imagem_url"),
+            }
+            for m in mapas
         ],
     }
