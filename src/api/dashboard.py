@@ -93,9 +93,26 @@ async def overview(
     terapeutas_ativos = terapeutas_resp.count or 0
 
     # --- Códigos ---
-    codigos_resp = sb.table("codigos_liberacao").select("ativo").execute()
-    codigos_ativos = sum(1 for c in codigos_resp.data if c.get("ativo"))
-    codigos_expirados = sum(1 for c in codigos_resp.data if not c.get("ativo"))
+    codigos_resp = sb.table("codigos_liberacao").select("ativo, descricao, status_assinatura").execute()
+    codigos_ativos = sum(1 for c in (codigos_resp.data or []) if c.get("ativo"))
+    codigos_expirados = sum(1 for c in (codigos_resp.data or []) if not c.get("ativo"))
+
+    # --- Assinantes por plano ---
+    por_plano_count: dict = {"Iniciante": 0, "Essencial": 0, "Profissional": 0, "Clínica": 0}
+    assinantes_pagantes = 0
+    for cod in (codigos_resp.data or []):
+        if not cod.get("ativo"):
+            continue
+        plano_nome, _, _, _ = _parse_descricao(cod.get("descricao", ""))
+        if plano_nome in por_plano_count:
+            por_plano_count[plano_nome] += 1
+        assinantes_pagantes += 1
+
+    # Trial = usuários ATIVO no bot mas sem assinatura paga ativa
+    usuarios_trial = max(0, usuarios_ativos - assinantes_pagantes)
+
+    # Total de todos os usuários que já conversaram
+    total_usuarios = usuarios_ativos + usuarios_pendentes + usuarios_bloqueados
 
     # --- Média de mensagens por dia (últimos 30 dias) ---
     inicio_30d = (agora - timedelta(days=30)).isoformat()
@@ -109,9 +126,13 @@ async def overview(
     mensagem_media_dia = round(conversas_30d / 30, 1) if conversas_30d else 0
 
     return {
+        "total_usuarios": total_usuarios,
         "usuarios_ativos": usuarios_ativos,
         "usuarios_pendentes": usuarios_pendentes,
         "usuarios_bloqueados": usuarios_bloqueados,
+        "usuarios_trial": usuarios_trial,
+        "assinantes_pagantes": assinantes_pagantes,
+        "por_plano": por_plano_count,
         "conversas_hoje": conversas_hoje,
         "conversas_semana": conversas_semana,
         "conversas_total": conversas_total,
@@ -601,3 +622,99 @@ async def financeiro(
             for k, v in sorted(evolucao_mensal.items())
         ][-12:],
     }
+
+
+# =============================================
+# CLIENTES (todos os usuários que conversaram)
+# =============================================
+
+@router.get("/clientes")
+async def listar_clientes(
+    token: Optional[str] = Query(None),
+    x_dashboard_token: Optional[str] = Header(None, alias="X-Dashboard-Token"),
+):
+    """
+    Retorna TODOS os usuários que já conversaram (chat_estado),
+    enriquecidos com total de mensagens, média mensal e dados de assinatura.
+    """
+    _verificar_token(token, x_dashboard_token)
+    sb = get_supabase()
+
+    agora = datetime.now(timezone.utc)
+    inicio_mes = agora.replace(day=1, hour=0, minute=0, second=0, microsecond=0).isoformat()
+
+    # 1. Todos os estados de chat (um por usuário por terapeuta)
+    estados_resp = sb.table("chat_estado").select("*").order("criado_em", desc=True).execute()
+    estados = estados_resp.data or []
+
+    # 2. Terapeutas para nome
+    teraps_resp = sb.table("terapeutas").select("id, nome, email").execute()
+    teraps_map = {t["id"]: t for t in (teraps_resp.data or [])}
+
+    # 3. Todas as conversas — para contar mensagens por (terapeuta, numero)
+    convs_resp = sb.table("conversas").select("paciente_numero, terapeuta_id, criado_em").execute()
+    convs = convs_resp.data or []
+
+    # Indexar: (terapeuta_id, numero) -> lista de datas
+    convs_index: dict = {}
+    for c in convs:
+        key = (c.get("terapeuta_id"), c.get("paciente_numero"))
+        if key not in convs_index:
+            convs_index[key] = []
+        convs_index[key].append(c.get("criado_em", ""))
+
+    # 4. Codigos de liberacao — para dados de assinatura por numero
+    codigos_resp = sb.table("codigos_liberacao").select(
+        "numero_ativo, status_assinatura, data_expiracao, descricao, meses_contratados, criado_em"
+    ).execute()
+    # Chave: numero_ativo -> código mais recente
+    codigos_por_numero: dict = {}
+    for cod in (codigos_resp.data or []):
+        num = cod.get("numero_ativo")
+        if num:
+            existing = codigos_por_numero.get(num)
+            if not existing or (cod.get("criado_em", "") > existing.get("criado_em", "")):
+                codigos_por_numero[num] = cod
+
+    resultado = []
+    for e in estados:
+        numero = e.get("numero_telefone", "")
+        tid = e.get("terapeuta_id")
+        key = (tid, numero)
+
+        datas_msgs = convs_index.get(key, [])
+        total_msgs = len(datas_msgs)
+        msgs_mes = sum(1 for d in datas_msgs if d >= inicio_mes)
+
+        # Média mensal: total / meses desde criação (mín 1)
+        criado = e.get("criado_em") or agora.isoformat()
+        dias_ativo = max(1, (agora - datetime.fromisoformat(criado.replace("Z", "+00:00"))).days)
+        media_mes = round(total_msgs / max(1, dias_ativo / 30), 1)
+
+        # Assinatura
+        cod = codigos_por_numero.get(numero, {})
+        plano_nome, plano_valor, email_cliente, _ = _parse_descricao(cod.get("descricao", ""))
+
+        terapeuta = teraps_map.get(tid, {})
+
+        resultado.append({
+            "numero_telefone": _mascarar_telefone(numero),
+            "nome": e.get("nome_usuario") or "",
+            "email": email_cliente,
+            "estado": e.get("estado", ""),
+            "terapeuta_nome": terapeuta.get("nome", "Desconhecido"),
+            "terapeuta_id": tid,
+            "total_msgs": total_msgs,
+            "msgs_este_mes": msgs_mes,
+            "media_msgs_mes": media_mes,
+            "plano": plano_nome if cod else "—",
+            "valor_mensal": plano_valor if cod else 0,
+            "status_assinatura": cod.get("status_assinatura", "sem_assinatura") if cod else "sem_assinatura",
+            "data_expiracao": cod.get("data_expiracao"),
+            "criado_em": e.get("criado_em"),
+            "ultima_msg": max(datas_msgs) if datas_msgs else None,
+        })
+
+    # Ordenar por total de mensagens desc
+    resultado.sort(key=lambda x: x["total_msgs"], reverse=True)
+    return {"clientes": resultado, "total": len(resultado)}
