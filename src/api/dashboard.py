@@ -699,6 +699,7 @@ async def listar_clientes(
 
         resultado.append({
             "numero_telefone": _mascarar_telefone(numero),
+            "numero_raw": numero,
             "nome": e.get("nome_usuario") or "",
             "email": email_cliente,
             "estado": e.get("estado", ""),
@@ -718,3 +719,105 @@ async def listar_clientes(
     # Ordenar por total de mensagens desc
     resultado.sort(key=lambda x: x["total_msgs"], reverse=True)
     return {"clientes": resultado, "total": len(resultado)}
+
+
+# =============================================
+# DETALHE DE CLIENTE
+# =============================================
+
+@router.get("/cliente-detalhe")
+async def cliente_detalhe(
+    token: Optional[str] = Query(None),
+    x_dashboard_token: Optional[str] = Header(None, alias="X-Dashboard-Token"),
+    terapeuta_id: str = Query(...),
+    numero: str = Query(...),
+):
+    """Retorna perfil completo + histórico de conversas de um usuário."""
+    _verificar_token(token, x_dashboard_token)
+    sb = get_supabase()
+
+    agora = datetime.now(timezone.utc)
+    inicio_mes = agora.replace(day=1, hour=0, minute=0, second=0, microsecond=0).isoformat()
+
+    # Perfil do usuário
+    estado_resp = (
+        sb.table("chat_estado")
+        .select("*")
+        .eq("terapeuta_id", terapeuta_id)
+        .eq("numero_telefone", numero)
+        .limit(1)
+        .execute()
+    )
+    estado = (estado_resp.data or [{}])[0]
+
+    # Terapeuta
+    terapeuta_resp = (
+        sb.table("terapeutas")
+        .select("id, nome, email, whatsapp_numero")
+        .eq("id", terapeuta_id)
+        .limit(1)
+        .execute()
+    )
+    terapeuta = (terapeuta_resp.data or [{}])[0]
+
+    # Histórico de conversas (última 200)
+    convs_resp = (
+        sb.table("conversas")
+        .select("id, mensagem_paciente, resposta_agente, intencao, criado_em")
+        .eq("terapeuta_id", terapeuta_id)
+        .eq("paciente_numero", numero)
+        .order("criado_em", desc=False)
+        .limit(200)
+        .execute()
+    )
+    conversas = convs_resp.data or []
+
+    # Código de assinatura
+    codigo_resp = (
+        sb.table("codigos_liberacao")
+        .select("*")
+        .eq("numero_ativo", numero)
+        .order("criado_em", desc=True)
+        .limit(1)
+        .execute()
+    )
+    codigo = (codigo_resp.data or [{}])[0]
+    plano_nome, plano_valor, email_cliente, _ = _parse_descricao(codigo.get("descricao", ""))
+
+    msgs_este_mes = sum(1 for c in conversas if (c.get("criado_em") or "") >= inicio_mes)
+    criado = estado.get("criado_em") or agora.isoformat()
+    dias_ativo = max(1, (agora - datetime.fromisoformat(criado.replace("Z", "+00:00"))).days)
+    media_mes = round(len(conversas) / max(1, dias_ativo / 30), 1)
+
+    return {
+        "nome": estado.get("nome_usuario") or "",
+        "numero": numero,
+        "estado": estado.get("estado", ""),
+        "criado_em": estado.get("criado_em"),
+        "codigo_acesso": estado.get("codigo_usado", ""),
+        "violacoes": estado.get("violacoes_conteudo", 0),
+        "terapeuta": {
+            "id": terapeuta.get("id"),
+            "nome": terapeuta.get("nome", "Desconhecido"),
+            "email": terapeuta.get("email", ""),
+            "whatsapp": terapeuta.get("whatsapp_numero", ""),
+        },
+        "plano": plano_nome if codigo else "—",
+        "valor_mensal": plano_valor if codigo else 0,
+        "status_assinatura": codigo.get("status_assinatura", "sem_assinatura") if codigo else "sem_assinatura",
+        "data_expiracao": codigo.get("data_expiracao"),
+        "email": email_cliente,
+        "total_msgs": len(conversas),
+        "msgs_este_mes": msgs_este_mes,
+        "media_msgs_mes": media_mes,
+        "conversas": [
+            {
+                "id": c.get("id"),
+                "mensagem_paciente": c.get("mensagem_paciente", ""),
+                "resposta_agente": c.get("resposta_agente", ""),
+                "intencao": c.get("intencao", ""),
+                "criado_em": c.get("criado_em"),
+            }
+            for c in conversas
+        ],
+    }

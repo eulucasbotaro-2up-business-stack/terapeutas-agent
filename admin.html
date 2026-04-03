@@ -53,6 +53,12 @@ tr:last-child td{border-bottom:none}
 .fade-in{animation:fadeIn .35s ease}
 @keyframes spin{to{transform:rotate(360deg)}}
 .spinner{border:2px solid #2a2a35;border-top-color:#7C3AED;border-radius:50%;width:20px;height:20px;animation:spin .6s linear infinite;display:inline-block}
+@keyframes slideIn{from{transform:translateX(100%)}to{transform:translateX(0)}}
+.slide-in{animation:slideIn .25s cubic-bezier(.4,0,.2,1)}
+.msg-user{background:#23232e;border-radius:12px 12px 12px 2px;padding:10px 14px;max-width:85%;font-size:13px;color:#e5e7eb;line-height:1.5}
+.msg-agent{background:linear-gradient(135deg,#7C3AED18,#0D948818);border:1px solid #7C3AED33;border-radius:12px 12px 2px 12px;padding:10px 14px;max-width:85%;font-size:13px;color:#e5e7eb;line-height:1.5}
+.drawer-overlay{background:rgba(0,0,0,.6);backdrop-filter:blur(2px)}
+tr.clickable:hover td{background:#1e1e2a;cursor:pointer}
 </style>
 </head>
 <body x-data="admin()" x-init="init()" x-cloak>
@@ -359,7 +365,7 @@ tr:last-child td{border-bottom:none}
             </thead>
             <tbody>
               <template x-for="(c, i) in clientesFiltrados" :key="i">
-                <tr>
+                <tr class="clickable" @click="verCliente(c)" style="cursor:pointer">
                   <td>
                     <div>
                       <p class="font-medium text-white" x-text="c.nome || 'Sem nome'"></p>
@@ -593,6 +599,136 @@ tr:last-child td{border-bottom:none}
   </div>
 </div>
 
+<!-- ========== DRAWER CLIENTE ========== -->
+<div x-show="drawerAberto" x-cloak class="fixed inset-0 z-50 flex">
+  <!-- overlay -->
+  <div class="flex-1 drawer-overlay" @click="fecharDrawer()"></div>
+  <!-- painel -->
+  <div class="w-full max-w-2xl bg-[#18181F] border-l border-gray-800 flex flex-col overflow-hidden slide-in" style="min-height:100vh">
+
+    <!-- header -->
+    <div class="flex items-start justify-between p-5 border-b border-gray-800 flex-shrink-0">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0" style="background:linear-gradient(135deg,#7C3AED,#0D9488)" x-text="(detalhe?.nome||'?').charAt(0).toUpperCase()"></div>
+        <div>
+          <p class="text-white font-bold text-base" x-text="detalhe?.nome || 'Sem nome'"></p>
+          <p class="text-gray-400 text-xs font-mono" x-text="detalhe?.numero"></p>
+        </div>
+        <span class="badge ml-2" :class="'badge-'+(detalhe?.estado||'')" x-text="detalhe?.estado"></span>
+      </div>
+      <button @click="fecharDrawer()" class="text-gray-500 hover:text-white p-1.5 rounded-lg hover:bg-gray-800 transition-colors">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <div class="flex-1 overflow-y-auto">
+      <div x-show="loadingDetalhe" class="flex items-center justify-center py-16">
+        <span class="spinner"></span>
+      </div>
+
+      <div x-show="!loadingDetalhe && detalhe">
+
+        <!-- Stats -->
+        <div class="grid grid-cols-3 gap-3 p-5 border-b border-gray-800">
+          <div class="card p-3 text-center">
+            <p class="text-xl font-bold text-white" x-text="detalhe?.total_msgs||0"></p>
+            <p class="text-gray-500 text-xs mt-0.5">Total msgs</p>
+          </div>
+          <div class="card p-3 text-center">
+            <p class="text-xl font-bold text-purple-400" x-text="detalhe?.msgs_este_mes||0"></p>
+            <p class="text-gray-500 text-xs mt-0.5">Este mês</p>
+          </div>
+          <div class="card p-3 text-center">
+            <p class="text-xl font-bold text-gray-300" x-text="detalhe?.media_msgs_mes||0"></p>
+            <p class="text-gray-500 text-xs mt-0.5">Média/mês</p>
+          </div>
+        </div>
+
+        <!-- Info -->
+        <div class="p-5 border-b border-gray-800 space-y-3">
+          <div class="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <p class="text-gray-500 text-xs uppercase tracking-wider mb-1">Terapeuta</p>
+              <p class="text-white font-medium" x-text="detalhe?.terapeuta?.nome||'—'"></p>
+              <p class="text-gray-500 text-xs" x-text="detalhe?.terapeuta?.email||''"></p>
+              <p class="text-gray-500 text-xs font-mono" x-text="detalhe?.terapeuta?.whatsapp||''"></p>
+            </div>
+            <div>
+              <p class="text-gray-500 text-xs uppercase tracking-wider mb-1">Assinatura</p>
+              <div class="flex items-center gap-2">
+                <span x-show="detalhe?.plano && detalhe.plano !== '—'" class="badge" :class="'badge-'+(detalhe?.plano||'')" x-text="detalhe?.plano"></span>
+                <span x-show="!detalhe?.plano || detalhe.plano==='—'" class="text-gray-600 text-xs">sem plano</span>
+              </div>
+              <p x-show="detalhe?.valor_mensal" class="text-green-400 text-sm font-semibold mt-1" x-text="'R$'+detalhe?.valor_mensal+'/mês'"></p>
+              <p x-show="detalhe?.status_assinatura" class="text-gray-500 text-xs mt-0.5" x-text="detalhe?.status_assinatura"></p>
+              <p x-show="detalhe?.data_expiracao" class="text-xs mt-0.5" :class="expirado(detalhe?.data_expiracao)?'text-red-400':'text-gray-500'" x-text="detalhe?.data_expiracao ? 'Expira: '+formatarData(detalhe.data_expiracao) : ''"></p>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <p class="text-gray-500 text-xs uppercase tracking-wider mb-1">Cadastro</p>
+              <p class="text-gray-300 text-xs" x-text="formatarDataHora(detalhe?.criado_em)"></p>
+            </div>
+            <div x-show="detalhe?.email">
+              <p class="text-gray-500 text-xs uppercase tracking-wider mb-1">E-mail</p>
+              <p class="text-gray-300 text-xs" x-text="detalhe?.email"></p>
+            </div>
+          </div>
+          <div x-show="detalhe?.codigo_acesso" class="flex items-center gap-2">
+            <p class="text-gray-500 text-xs uppercase tracking-wider">Código:</p>
+            <code class="text-yellow-400 text-xs bg-gray-900 px-2 py-0.5 rounded" x-text="detalhe?.codigo_acesso"></code>
+          </div>
+        </div>
+
+        <!-- Conversas -->
+        <div class="p-5">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-white font-semibold text-sm">Histórico de conversas</h3>
+            <span class="text-gray-600 text-xs" x-text="(detalhe?.conversas||[]).length + ' mensagens'"></span>
+          </div>
+
+          <div x-show="!(detalhe?.conversas?.length)" class="text-center text-gray-600 text-sm py-8">
+            Nenhuma conversa registrada
+          </div>
+
+          <div class="space-y-4">
+            <template x-for="(msg, i) in (detalhe?.conversas||[])" :key="msg.id||i">
+              <div>
+                <!-- data separator -->
+                <div x-show="i===0 || formatarData(msg.criado_em) !== formatarData((detalhe.conversas[i-1]||{}).criado_em)" class="flex items-center gap-2 my-3">
+                  <div class="flex-1 h-px bg-gray-800"></div>
+                  <span class="text-gray-600 text-xs" x-text="formatarData(msg.criado_em)"></span>
+                  <div class="flex-1 h-px bg-gray-800"></div>
+                </div>
+
+                <!-- user message -->
+                <div x-show="msg.mensagem_paciente" class="flex justify-start mb-2">
+                  <div>
+                    <div class="msg-user" x-text="msg.mensagem_paciente"></div>
+                    <p class="text-gray-600 text-xs mt-1 ml-1" x-text="formatarHora(msg.criado_em)"></p>
+                  </div>
+                </div>
+
+                <!-- agent response -->
+                <div x-show="msg.resposta_agente" class="flex justify-end">
+                  <div class="text-right">
+                    <div class="msg-agent" x-text="msg.resposta_agente"></div>
+                    <div class="flex items-center justify-end gap-2 mt-1 mr-1">
+                      <span x-show="msg.intencao" class="text-gray-600 text-xs" x-text="msg.intencao"></span>
+                      <p class="text-gray-600 text-xs" x-text="formatarHora(msg.criado_em)"></p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 const API = '';
 
@@ -616,6 +752,11 @@ function admin() {
 
     // Loading states
     loadingClientes: false,
+    loadingDetalhe: false,
+
+    // Drawer
+    drawerAberto: false,
+    detalhe: null,
 
     // Filters
     buscaCliente: '',
@@ -694,6 +835,26 @@ function admin() {
       } finally {
         this.loadingClientes = false;
       }
+    },
+
+    async verCliente(c) {
+      this.drawerAberto = true;
+      this.detalhe = null;
+      this.loadingDetalhe = true;
+      document.body.style.overflow = 'hidden';
+      try {
+        const params = `terapeuta_id=${encodeURIComponent(c.terapeuta_id)}&numero=${encodeURIComponent(c.numero_raw)}`;
+        const d = await this.api(`/dashboard/api/cliente-detalhe?${params}`);
+        if (d) this.detalhe = d;
+      } finally {
+        this.loadingDetalhe = false;
+      }
+    },
+
+    fecharDrawer() {
+      this.drawerAberto = false;
+      this.detalhe = null;
+      document.body.style.overflow = '';
     },
 
     async irPara(s) {
@@ -863,6 +1024,11 @@ function admin() {
     expirado(iso) {
       if (!iso) return false;
       return new Date(iso) < new Date();
+    },
+
+    formatarHora(iso) {
+      if (!iso) return '';
+      return new Date(iso).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
     },
   };
 }
