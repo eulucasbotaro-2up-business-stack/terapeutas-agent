@@ -21,7 +21,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;background:
 .kpi-card:hover{border-color:#7C3AED55}
 .badge{display:inline-flex;align-items:center;padding:2px 10px;border-radius:9999px;font-size:11px;font-weight:700;letter-spacing:.3px}
 .badge-ativo{background:#064e3b;color:#6ee7b7}
-.badge-disponivel{background:#78350f44;color:#fbbf24}
+.badge-disponivel{background:#064e3b;color:#6ee7b7}
 .badge-pendente{background:#78350f44;color:#fbbf24}
 .badge-cancelado,.badge-suspenso_pagamento{background:#7f1d1d44;color:#fca5a5}
 .badge-expirado{background:#1f2937;color:#9ca3af}
@@ -55,8 +55,8 @@ tr:last-child td{border-bottom:none}
 .spinner{border:2px solid #2a2a35;border-top-color:#7C3AED;border-radius:50%;width:20px;height:20px;animation:spin .6s linear infinite;display:inline-block}
 @keyframes slideIn{from{transform:translateX(100%)}to{transform:translateX(0)}}
 .slide-in{animation:slideIn .25s cubic-bezier(.4,0,.2,1)}
-.msg-user{background:#23232e;border-radius:12px 12px 12px 2px;padding:10px 14px;max-width:85%;font-size:13px;color:#e5e7eb;line-height:1.5;white-space:pre-wrap;word-break:break-word}
-.msg-agent{background:linear-gradient(135deg,#7C3AED18,#0D948818);border:1px solid #7C3AED33;border-radius:12px 12px 2px 12px;padding:10px 14px;max-width:85%;font-size:13px;color:#e5e7eb;line-height:1.5;white-space:pre-wrap;word-break:break-word}
+.msg-user{display:inline-block;background:#23232e;border-radius:12px 12px 12px 2px;padding:10px 14px;max-width:72%;font-size:13px;color:#e5e7eb;line-height:1.5;white-space:pre-wrap;word-break:break-word;text-align:left}
+.msg-agent{display:inline-block;background:linear-gradient(135deg,#7C3AED22,#0D948822);border:1px solid #7C3AED44;border-radius:12px 12px 2px 12px;padding:10px 14px;max-width:72%;font-size:13px;color:#e5e7eb;line-height:1.5;white-space:pre-wrap;word-break:break-word;text-align:left}
 tr.clickable:hover td{background:#1e1e2a;cursor:pointer}
 .tab-pill{padding:6px 18px;border-radius:9999px;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;color:#9CA3AF;background:transparent;border:none}
 .tab-pill.active{background:#7C3AED;color:#fff}
@@ -198,36 +198,32 @@ tr.clickable:hover td{background:#1e1e2a;cursor:pointer}
       <!-- Usuários breakdown por plano -->
       <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 mb-4">
         <div class="card p-4 text-center">
+          <p class="text-gray-500 text-xs mb-1">Total Usuários</p>
           <p class="text-2xl font-bold text-white" x-text="overview?.total_usuarios||0"></p>
-          <p class="text-gray-500 text-xs mt-0.5">Total Usuários</p>
         </div>
         <div class="card p-4 text-center" style="border-color:#fbbf2444">
+          <p class="text-gray-500 text-xs mb-1">Em Trial (7d)</p>
           <p class="text-2xl font-bold" style="color:#fbbf24" x-text="overview?.usuarios_trial||0"></p>
-          <p class="text-gray-500 text-xs mt-0.5">Em Trial (7d)</p>
         </div>
         <div class="card p-4 text-center" style="border-color:#34d39944">
+          <p class="text-gray-500 text-xs mb-1">Pagantes</p>
           <p class="text-2xl font-bold" style="color:#34d399" x-text="overview?.assinantes_pagantes||0"></p>
-          <p class="text-gray-500 text-xs mt-0.5">Pagantes</p>
         </div>
         <div class="card p-4 text-center" style="border-color:#60a5fa44">
+          <p class="text-xs mb-1" style="color:#60a5fa99">Iniciante</p>
           <p class="text-2xl font-bold" style="color:#60a5fa" x-text="overview?.por_plano?.Iniciante||0"></p>
-          <p class="text-xs mt-0.5" style="color:#60a5fa80">Plano 1</p>
-          <p class="text-gray-600 text-xs">Iniciante</p>
         </div>
         <div class="card p-4 text-center" style="border-color:#34d39944">
+          <p class="text-xs mb-1" style="color:#34d39999">Essencial</p>
           <p class="text-2xl font-bold" style="color:#34d399" x-text="overview?.por_plano?.Essencial||0"></p>
-          <p class="text-xs mt-0.5" style="color:#34d39980">Plano 2</p>
-          <p class="text-gray-600 text-xs">Essencial</p>
         </div>
         <div class="card p-4 text-center" style="border-color:#c084fc44">
+          <p class="text-xs mb-1" style="color:#c084fc99">Profissional</p>
           <p class="text-2xl font-bold" style="color:#c084fc" x-text="overview?.por_plano?.Profissional||0"></p>
-          <p class="text-xs mt-0.5" style="color:#c084fc80">Plano 3</p>
-          <p class="text-gray-600 text-xs">Profissional</p>
         </div>
         <div class="card p-4 text-center" style="border-color:#fb923c44">
+          <p class="text-xs mb-1" style="color:#fb923c99">Clínica</p>
           <p class="text-2xl font-bold" style="color:#fb923c" x-text="overview?.por_plano?.Clínica||0"></p>
-          <p class="text-xs mt-0.5" style="color:#fb923c80">Plano 4</p>
-          <p class="text-gray-600 text-xs">Clínica</p>
         </div>
       </div>
 
@@ -327,24 +323,24 @@ tr.clickable:hover td{background:#1e1e2a;cursor:pointer}
       <!-- Stats rápidas -->
       <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-5">
         <div class="card p-4 text-center">
+          <p class="text-gray-500 text-xs mb-1">Total usuários</p>
           <p class="text-2xl font-bold text-white" x-text="(clientes||[]).length"></p>
-          <p class="text-gray-500 text-xs mt-0.5">Total usuários</p>
         </div>
         <div class="card p-4 text-center">
+          <p class="text-gray-500 text-xs mb-1">Assinantes</p>
           <p class="text-2xl font-bold" style="color:#34d399" x-text="(clientes||[]).filter(c=>c.status_assinatura==='ativo').length"></p>
-          <p class="text-gray-500 text-xs mt-0.5">Assinantes</p>
         </div>
         <div class="card p-4 text-center">
+          <p class="text-gray-500 text-xs mb-1">Aguardando código</p>
           <p class="text-2xl font-bold" style="color:#fbbf24" x-text="(clientes||[]).filter(c=>c.estado==='PENDENTE_CODIGO').length"></p>
-          <p class="text-gray-500 text-xs mt-0.5">Aguardando código</p>
         </div>
         <div class="card p-4 text-center">
+          <p class="text-gray-500 text-xs mb-1">Msgs total</p>
           <p class="text-2xl font-bold" style="color:#c084fc" x-text="(clientes||[]).reduce((s,c)=>s+c.total_msgs,0).toLocaleString('pt-BR')"></p>
-          <p class="text-gray-500 text-xs mt-0.5">Msgs total</p>
         </div>
         <div class="card p-4 text-center">
+          <p class="text-gray-500 text-xs mb-1">Msgs este mês</p>
           <p class="text-2xl font-bold" style="color:#fb923c" x-text="(clientes||[]).reduce((s,c)=>s+c.msgs_este_mes,0)"></p>
-          <p class="text-gray-500 text-xs mt-0.5">Msgs este mês</p>
         </div>
       </div>
 
@@ -635,20 +631,20 @@ tr.clickable:hover td{background:#1e1e2a;cursor:pointer}
     <!-- KPI ROW -->
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 px-6 py-4 border-b flex-shrink-0" style="border-color:#2a2a35">
       <div class="card p-4 text-center">
+        <p class="text-gray-500 text-xs mb-1">Total Msgs</p>
         <p class="text-2xl font-bold text-white" x-text="detalhe?.total_msgs||0"></p>
-        <p class="text-gray-500 text-xs mt-0.5">Total Msgs</p>
       </div>
       <div class="card p-4 text-center">
+        <p class="text-gray-500 text-xs mb-1">Este Mês</p>
         <p class="text-2xl font-bold" style="color:#c084fc" x-text="detalhe?.msgs_este_mes||0"></p>
-        <p class="text-gray-500 text-xs mt-0.5">Este Mês</p>
       </div>
       <div class="card p-4 text-center">
+        <p class="text-gray-500 text-xs mb-1">Média/Mês</p>
         <p class="text-2xl font-bold text-gray-300" x-text="detalhe?.media_msgs_mes||0"></p>
-        <p class="text-gray-500 text-xs mt-0.5">Média/Mês</p>
       </div>
       <div class="card p-4 text-center">
+        <p class="text-gray-500 text-xs mb-1">Mapas Gerados</p>
         <p class="text-2xl font-bold" style="color:#0D9488" x-text="(detalhe?.mapas||[]).length"></p>
-        <p class="text-gray-500 text-xs mt-0.5">Mapas Gerados</p>
       </div>
     </div>
 
@@ -773,19 +769,15 @@ tr.clickable:hover td{background:#1e1e2a;cursor:pointer}
                 <span class="text-gray-600 text-xs px-3 py-1 rounded-full" style="background:#18181F;border:1px solid #2a2a35" x-text="formatarData(msg.criado_em)"></span>
                 <div class="flex-1 h-px" style="background:#2a2a35"></div>
               </div>
-              <div x-show="msg.mensagem_paciente" class="flex justify-start mb-2">
-                <div class="max-w-[72%]">
-                  <div class="msg-user" x-text="msg.mensagem_paciente"></div>
-                  <p class="text-gray-600 text-xs mt-1 ml-1" x-text="formatarHora(msg.criado_em)"></p>
-                </div>
+              <div x-show="msg.mensagem_paciente" class="flex flex-col items-start mb-2">
+                <div class="msg-user" x-text="msg.mensagem_paciente"></div>
+                <p class="text-gray-600 text-xs mt-1 ml-1" x-text="formatarHora(msg.criado_em)"></p>
               </div>
-              <div x-show="msg.resposta_agente" class="flex justify-end">
-                <div class="max-w-[72%] text-right">
-                  <div class="msg-agent" x-text="msg.resposta_agente"></div>
-                  <div class="flex items-center justify-end gap-2 mt-1 mr-1">
-                    <span x-show="msg.intencao" class="text-gray-600 text-xs" x-text="msg.intencao"></span>
-                    <p class="text-gray-600 text-xs" x-text="formatarHora(msg.criado_em)"></p>
-                  </div>
+              <div x-show="msg.resposta_agente" class="flex flex-col items-end mb-2">
+                <div class="msg-agent" x-text="msg.resposta_agente"></div>
+                <div class="flex items-center gap-2 mt-1 mr-1">
+                  <span x-show="msg.intencao" class="text-gray-600 text-xs" x-text="msg.intencao"></span>
+                  <p class="text-gray-600 text-xs" x-text="formatarHora(msg.criado_em)"></p>
                 </div>
               </div>
             </div>
