@@ -609,7 +609,9 @@ def extrair_dados_nascimento(texto: str) -> Optional[dict]:
 # ---------------------------------------------------------------------------
 
 _PROMPT_NASC_LLM = """\
-Analise o texto abaixo e extraia dados de nascimento de uma pessoa específica, SE existirem.
+Analise o texto abaixo e extraia dados de nascimento do PACIENTE mencionado, SE existirem.
+
+CONTEXTO: Este texto é uma mensagem de um TERAPEUTA falando sobre um PACIENTE. O terapeuta quer gerar o mapa natal do paciente. Extraia os dados do PACIENTE, NÃO do terapeuta.
 
 Texto:
 \"\"\"{texto}\"\"\"
@@ -618,6 +620,10 @@ Retorne APENAS JSON válido (sem markdown, sem explicação, sem texto extra):
 {{"nome": "Nome Completo", "data": "DD/MM/AAAA", "hora": "HH:MM", "cidade": "Cidade"}}
 
 Regras obrigatórias:
+- PRIORIDADE: Se houver dados de nascimento de MÚLTIPLAS pessoas, extraia os dados da pessoa que o terapeuta está pedindo o mapa (geralmente o paciente, não o próprio terapeuta)
+- Indicadores de que são dados do PACIENTE: nome de terceiro, "meu paciente", "minha cliente", "ele/ela nasceu", "do [Nome]", "para [Nome]"
+- Indicadores de que são dados do TERAPEUTA (ignorar): "eu nasci", "meu mapa", "minha data"
+- Se o texto mencionar "quero o mapa de [Nome]" ou "[Nome], nascido em...", extraia os dados de [Nome]
 - Só extraia se o texto contiver data + hora + cidade de nascimento de alguém
 - Normalize cidade: "SP" → "São Paulo", "São Paulo capital" → "São Paulo",
   "Rio" → "Rio de Janeiro", "BH" → "Belo Horizonte", "BSB" → "Brasília",
@@ -626,6 +632,7 @@ Regras obrigatórias:
 - Hora em HH:MM (24h); "meio-dia"/"12h" = "12:00", "meia-noite" = "00:00", "13 horas e 15 minutos" = "13:15", "8h30" = "08:30", "às 9 e meia" = "09:30"
 - ATENÇÃO: quando a hora vier por extenso com minutos ("X horas e Y minutos"), capture AMBOS — nunca descarte os minutos
 - Nome: extraia se presente no texto; caso contrário use null
+- NUNCA altere o ano de nascimento fornecido. Se o texto diz "nasceu em 2016", use 2016. Não tente corrigir baseado em cálculos de idade
 - Se NÃO há dados de nascimento completos (data + hora + cidade), retorne exatamente:
   {{"nome": null, "data": null, "hora": null, "cidade": null}}
 - Não invente dados que não estão no texto"""
