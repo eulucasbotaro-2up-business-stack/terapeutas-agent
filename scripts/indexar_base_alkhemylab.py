@@ -102,6 +102,8 @@ async def indexar_arquivo(caminho_rel: str, titulo: str) -> None:
         return
 
     conteudo = caminho.read_text(encoding="utf-8")
+    # Remove null bytes que o PostgreSQL não aceita (artefatos de extração de PDF)
+    conteudo = conteudo.replace("\x00", "")
     tamanho = len(conteudo.encode("utf-8"))
 
     print(f"\n{'='*60}")
@@ -155,10 +157,9 @@ async def main():
             print(f"  - {titulo}: {erro}")
     print(f"{'='*60}")
 
-    if erros:
-        print("\n⚠️  ATENÇÃO — Kit Primus (A Aura das Flores) está PENDENTE de OCR.")
-        print("   Veja PENDENCIAS_OCR.md para instruções de como fazer o OCR.")
-        print("   Até lá, o agente usará os princípios gerais do Kit Primus.")
+    print("\n[!] ATENCAO — Kit Primus (A Aura das Flores) esta PENDENTE de OCR.")
+    print("    Veja knowledge_base/PENDENCIAS_OCR.md para instrucoes.")
+    print("    Ate la, o agente usara os principios gerais do Kit Primus.")
 
 
 if __name__ == "__main__":
