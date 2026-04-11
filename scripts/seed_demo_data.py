@@ -246,12 +246,12 @@ CONVERSAS_TEMPLATES = {
         },
         {
             "msg": "Tentei a respiração que vc me ensinou mas minha mente não para. É um pensamento atrás do outro, sem parar.",
-            "resp": "Entendo perfeitamente. A mente acelerada é uma expressão do elemento Ar em desequilíbrio — são os ventos internos soprando sem direção. Não lute contra os pensamentos; observe-os como nuvens passando no céu. Para te apoiar nesse processo, o Floral de Bach White Chestnut é excelente para acalmar a mente repetitiva. Você está usando os florais que combinamos na última sessão?",
+            "resp": "Entendo perfeitamente. A mente acelerada e uma expressao do elemento Ar em desequilibrio — sao os ventos internos soprando sem direcao. Nao lute contra os pensamentos; observe-os como nuvens passando no ceu. Para te apoiar nesse processo, o floral Babosa do Kit Primus trabalha exatamente esse padrao de mente acelerada. Voce esta usando os florais que combinamos na ultima sessao?",
             "intencao": "CONSULTA",
         },
         {
             "msg": "Sim, tô tomando os florais. Sinto que ajudam um pouco mas à noite ainda é difícil dormir.",
-            "resp": "O sono é o portal da transmutação, querida. É durante a noite que o Grande Obra acontece no seu inconsciente. Sugiro adicionar ao seu ritual noturno: apague as luzes 30 minutos antes, faça a respiração que praticamos, e coloque a intenção \"Eu me entrego ao fluxo da noite com confiança\". O floral de Aspen pode complementar, pois trabalha medos difusos que costumam emergir à noite. Vamos observar como você se sente nos próximos 5 dias. 🌙",
+            "resp": "O sono e o portal da transmutacao, querida. E durante a noite que a Grande Obra acontece no seu inconsciente. Sugiro adicionar ao seu ritual noturno: apague as luzes 30 minutos antes, faca a respiracao que praticamos, e coloque a intencao 'Eu me entrego ao fluxo da noite com confianca'. O floral Lantana do Kit Primus trabalha exatamente a questao da insonia. Vamos observar como voce se sente nos proximos 5 dias.",
             "intencao": "CONSULTA",
         },
     ],
@@ -577,7 +577,7 @@ def main():
     resumos_data = {
         "5511900000001": [  # Ana Carolina — ansiedade, água, florais
             {
-                "resumo": "Paciente relatou ansiedade intensa com aperto no peito. Trabalhamos técnica de respiração 4-7-8 e identificamos desequilíbrio no elemento Água. Iniciou uso de florais de Bach. Demonstrou boa receptividade ao processo alquímico.",
+                "resumo": "Paciente relatou ansiedade intensa com aperto no peito. Trabalhamos tecnica de respiracao e identificamos desequilibrio no elemento Agua. Iniciou uso de florais do Kit Primus. Demonstrou boa receptividade ao processo alquimico.",
                 "temas": ["ansiedade", "elemento_agua", "florais", "respiracao"],
                 "total_mensagens": 12,
             },
@@ -758,11 +758,11 @@ def main():
 
     DNA_OPTIONS = ["Abandono", "Rejeição", "Humilhação", "Traição", "Injustiça"]
     SERPENTES_OPTIONS = ["Medo", "Raiva", "Culpa", "Vergonha", "Tristeza", "Ansiedade", "Inveja", "Ciúme"]
-    FLORAIS_BACH = [
-        "Rescue", "Mimulus", "Cherry Plum", "Star of Bethlehem", "Rock Rose",
-        "Impatiens", "Clematis", "White Chestnut", "Agrimony", "Walnut",
-        "Larch", "Pine", "Willow", "Holly", "Gentian",
-        "Olive", "Elm", "Oak", "Crab Apple", "Chicory",
+    FLORAIS_KIT_PRIMUS = [
+        "Abutilom", "Amor-Perfeito", "Assa-Peixe", "Boca-de-Leao", "Cactos",
+        "Carqueja", "Cravo", "Acucena", "Anis", "Azaleia",
+        "Boldo", "Calendula", "Cassia", "Crisantemo", "Agapanto",
+        "Anturio", "Babosa", "Borragem", "Dalia", "Lantana",
     ]
     ELEMENTOS = ["Fogo", "Água", "Ar", "Terra"]
     SETENIOS = {
@@ -786,8 +786,8 @@ def main():
             "dna_comprometido": ["Abandono", "Rejeição"],
             "serpentes_ativas": ["Ansiedade", "Medo", "Tristeza"],
             "setenio_atual": 5,
-            "florais_prescritos": ["White Chestnut", "Mimulus", "Rescue", "Clematis"],
-            "protocolo_texto": "Protocolo de aterramento com elemento Terra: caminhada descalça 10min/dia, respiração 4-7-8 antes de dormir. Florais 4 gotas 4x/dia. Diário emocional noturno focado em gratidão.",
+            "florais_prescritos": ["Babosa", "Lantana", "Camomila", "Alfazema"],
+            "protocolo_texto": "Protocolo de aterramento com elemento Terra: caminhada descalca 10min/dia, respiracao antes de dormir. Florais 4 gotas 4x/dia. Diario emocional noturno focado em gratidao.",
             "sessao_data": "2026-03-10", "status": "finalizado", "fonte": "manual",
         },
         {
@@ -797,8 +797,8 @@ def main():
             "dna_comprometido": ["Abandono"],
             "serpentes_ativas": ["Ansiedade", "Medo"],
             "setenio_atual": 5,
-            "florais_prescritos": ["Aspen", "White Chestnut", "Olive", "Walnut"],
-            "protocolo_texto": "Ajuste de protocolo: retirar Rescue, adicionar Aspen para medos difusos noturnos. Manter aterramento. Adicionar visualização da membrana dourada pela manhã.",
+            "florais_prescritos": ["Hortelã", "Babosa", "Dama-da-Noite", "Boldo"],
+            "protocolo_texto": "Ajuste de protocolo: adicionar Hortela para medos difusos noturnos. Manter aterramento. Adicionar visualizacao da membrana dourada pela manha.",
             "sessao_data": "2026-03-22", "status": "finalizado", "fonte": "manual",
         },
         # Pedro Henrique — fogo, propósito
@@ -989,7 +989,7 @@ def main():
     acompanhamentos = [
         # Ana Carolina — retornos e florais
         {"tel": "5511900000001", "tipo": "retorno", "descricao": "Retorno para avaliação dos florais após 3 semanas de uso", "data_prevista": "2026-03-29", "data_realizado": None, "status": "pendente", "prioridade": 1},
-        {"tel": "5511900000001", "tipo": "floral", "descricao": "Preparar nova fórmula floral — ajuste Aspen + White Chestnut", "data_prevista": "2026-03-29", "data_realizado": None, "status": "pendente", "prioridade": 2},
+        {"tel": "5511900000001", "tipo": "floral", "descricao": "Preparar nova formula floral — ajuste Hortela + Babosa", "data_prevista": "2026-03-29", "data_realizado": None, "status": "pendente", "prioridade": 2},
         {"tel": "5511900000001", "tipo": "tarefa", "descricao": "Verificar diário emocional da paciente — pediu feedback", "data_prevista": "2026-03-31", "data_realizado": None, "status": "pendente", "prioridade": 3},
         # Pedro Henrique
         {"tel": "5511900000002", "tipo": "retorno", "descricao": "Sessão de acompanhamento — verificar prática de exercício físico", "data_prevista": "2026-04-01", "data_realizado": None, "status": "pendente", "prioridade": 2},
@@ -1056,7 +1056,7 @@ def main():
 
     anotacoes = [
         # Ana Carolina
-        {"tel": "5511900000001", "texto": "Paciente chegou muito ansiosa, relatando aperto no peito constante há 2 semanas. Identificado desequilíbrio no elemento Água — emoções represadas. Prescrita técnica de respiração 4-7-8 e florais White Chestnut + Mimulus.", "data": "2026-03-10T10:30:00-03:00"},
+        {"tel": "5511900000001", "texto": "Paciente chegou muito ansiosa, relatando aperto no peito constante ha 2 semanas. Identificado desequilibrio no elemento Agua — emocoes represadas. Prescrito protocolo de aterramento e florais Babosa + Lantana do Kit Primus.", "data": "2026-03-10T10:30:00-03:00"},
         {"tel": "5511900000001", "texto": "Ana relata melhora parcial com florais. Insônia persiste. Adicionado Aspen ao protocolo. Sonhos vívidos indicam início da fase de Nigredo — conteúdos inconscientes emergindo para processamento.", "data": "2026-03-17T14:00:00-03:00"},
         {"tel": "5511900000001", "texto": "Evolução positiva significativa. Sono melhorou, ansiedade reduziu de 8/10 para 5/10. Elemento Água mais fluido. Manter protocolo atual por mais 2 semanas.", "data": "2026-03-22T11:00:00-03:00"},
         # Pedro Henrique
@@ -1165,7 +1165,7 @@ def main():
     print("\n[10/10] Inserindo documentos...")
 
     documentos = [
-        {"nome_arquivo": "Protocolo Florais de Bach.pdf", "titulo": "Protocolo Florais de Bach", "total_chunks": 45, "data": "2026-03-01T10:00:00-03:00"},
+        {"nome_arquivo": "A Aura das Ervas.pdf", "titulo": "A Aura das Ervas — Joel Aleixo", "total_chunks": 768, "data": "2026-03-01T10:00:00-03:00"},
         {"nome_arquivo": "Guia de Alquimia Interior.pdf", "titulo": "Guia de Alquimia Interior", "total_chunks": 78, "data": "2026-03-01T12:00:00-03:00"},
         {"nome_arquivo": "Manual do Terapeuta - Setenios.pdf", "titulo": "Manual do Terapeuta - Setênios", "total_chunks": 52, "data": "2026-03-02T09:00:00-03:00"},
         {"nome_arquivo": "Tabela de Elementos e Temperamentos.pdf", "titulo": "Tabela de Elementos e Temperamentos", "total_chunks": 18, "data": "2026-03-03T14:00:00-03:00"},

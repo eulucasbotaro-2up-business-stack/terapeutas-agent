@@ -23,16 +23,15 @@ TABELAS_PARA_LIMPAR = [
     "diagnosticos_alquimicos",
     "anotacoes_prontuario",
     "acompanhamentos",
-    "embeddings",
     "resumos_sessao",
     "perfil_usuario",
     "chat_estado",
     "conversas",
     "mapas_astrais",
-    "documentos",
     "codigos_liberacao",
     "pacientes",
-    # NÃO limpar terapeutas — precisamos manter o terapeuta demo
+    # NÃO limpar: terapeutas (contas), portal_auth (credenciais),
+    # embeddings (knowledge base), documentos (knowledge base)
 ]
 
 

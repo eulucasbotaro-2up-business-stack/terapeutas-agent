@@ -59,6 +59,9 @@ ARQUIVOS = [
     # FAQ
     ("06_faq/faq_geral.md", "FAQ Geral — Compostos e Florais Sutis"),
     ("06_faq/faq_4_elementos_pletora.md", "FAQ — 4 Elementos e Pletora"),
+
+    # Operacional
+    ("07_operacional/primeiro_passo.md", "PRIMEIRO PASSO — Sistema Floral Joel Aleixo (Módulo 1)"),
 ]
 
 
