@@ -282,7 +282,7 @@ CONVERSAS_TEMPLATES = {
     "elemento_terra": [
         {
             "msg": "Preciso me sentir mais aterrada. Tenho me sentido muito aérea, sem foco.",
-            "resp": "Seu corpo está te pedindo Terra, querida. O elemento Terra é o fundamento, a raiz, o chão sob seus pés. Quando nos sentimos \"aéreas\", é porque perdemos a conexão com essa base. Na Alquimia Interior, o aterramento é o primeiro passo de qualquer Grande Obra. Exercício prático: caminhe descalça na grama por 10 minutos, sinta cada pedra, cada folha. Enquanto caminha, repita: \"Eu sou daqui. Meus pés conhecem este chão.\" O floral de Clematis também ajuda muito nesse aterramento. 🌿",
+            "resp": "Seu corpo está te pedindo Terra, querida. O elemento Terra é o fundamento, a raiz, o chão sob seus pés. Quando nos sentimos \"aéreas\", é porque perdemos a conexão com essa base. Na Alquimia Interior, o aterramento é o primeiro passo de qualquer Grande Obra. Exercício prático: caminhe descalça na grama por 10 minutos, sinta cada pedra, cada folha. Enquanto caminha, repita: \"Eu sou daqui. Meus pés conhecem este chão.\" O floral Trapoeraba do Kit Primus tambem ajuda muito nesse aterramento. 🌿",
             "intencao": "CONSULTA",
         },
     ],
@@ -582,7 +582,7 @@ def main():
                 "total_mensagens": 12,
             },
             {
-                "resumo": "Sessão focada em insônia e mente acelerada. Elemento Ar em desequilíbrio identificado. Adicionado Floral de Aspen ao protocolo. Paciente relata melhora parcial com florais anteriores. Sugerido ritual noturno de aterramento.",
+                "resumo": "Sessão focada em insônia e mente acelerada. Elemento Ar em desequilíbrio identificado. Adicionado floral Lantana ao protocolo. Paciente relata melhora parcial com florais anteriores. Sugerido ritual noturno de aterramento.",
                 "temas": ["ansiedade", "florais", "insonia", "elemento_ar"],
                 "total_mensagens": 8,
             },
@@ -604,7 +604,7 @@ def main():
                 "total_mensagens": 15,
             },
             {
-                "resumo": "Continuação do trabalho com trauma. Juliana conseguiu separar 'o que é dela' do que é da mãe. Momento de grande insight. Florais de Star of Bethlehem prescritos. Humor melhorou significativamente ao final.",
+                "resumo": "Continuação do trabalho com trauma. Juliana conseguiu separar 'o que é dela' do que é da mãe. Momento de grande insight. Florais Paineira prescritos. Humor melhorou significativamente ao final.",
                 "temas": ["trauma", "florais", "insight", "cura"],
                 "total_mensagens": 12,
             },
@@ -631,7 +631,7 @@ def main():
                 "total_mensagens": 9,
             },
             {
-                "resumo": "Análise do mapa natal focada em Saturno e seus desafios atuais. Beatriz compreendeu que a fase de 'peso' é saturnal e temporária. Floral de Larch prescrito para autoconfiança. Boa receptividade.",
+                "resumo": "Análise do mapa natal focada em Saturno e seus desafios atuais. Beatriz compreendeu que a fase de 'peso' é saturnal e temporária. Floral Amor-Perfeito prescrito para autoestima. Boa receptividade.",
                 "temas": ["mapa_natal", "astrologia", "florais", "saturno"],
                 "total_mensagens": 11,
             },
@@ -996,7 +996,7 @@ def main():
         {"tel": "5511900000002", "tipo": "contato", "descricao": "Ligar para verificar como está após última sessão intensa", "data_prevista": "2026-03-29", "data_realizado": None, "status": "pendente", "prioridade": 2},
         # Juliana — acompanhamento de trauma
         {"tel": "5511900000003", "tipo": "retorno", "descricao": "Sessão de re-parentalização — carta à criança interior", "data_prevista": "2026-03-29", "data_realizado": None, "status": "pendente", "prioridade": 1},
-        {"tel": "5511900000003", "tipo": "floral", "descricao": "Renovar fórmula floral — Star of Bethlehem + Walnut + Larch", "data_prevista": "2026-03-30", "data_realizado": None, "status": "pendente", "prioridade": 2},
+        {"tel": "5511900000003", "tipo": "floral", "descricao": "Renovar formula floral — Paineira + Araucaria + Amor-Perfeito", "data_prevista": "2026-03-30", "data_realizado": None, "status": "pendente", "prioridade": 2},
         {"tel": "5511900000003", "tipo": "marco", "descricao": "Juliana completou 15 sessões — preparar avaliação de progresso", "data_prevista": "2026-04-02", "data_realizado": None, "status": "pendente", "prioridade": 2},
         {"tel": "5511900000003", "tipo": "retorno", "descricao": "Sessão sobre limites familiares — evolução do Separatio", "data_prevista": "2026-03-15", "data_realizado": "2026-03-15", "status": "realizado", "prioridade": 1},
         # Marcos — novo paciente
@@ -1004,7 +1004,7 @@ def main():
         {"tel": "5511900000004", "tipo": "tarefa", "descricao": "Enviar material sobre elementos e temperamentos por WhatsApp", "data_prevista": "2026-03-29", "data_realizado": None, "status": "pendente", "prioridade": 3},
         # Beatriz — autoestima e astrologia
         {"tel": "5511900000005", "tipo": "retorno", "descricao": "Acompanhamento do exercício do espelho — verificar consistência", "data_prevista": "2026-03-29", "data_realizado": None, "status": "pendente", "prioridade": 2},
-        {"tel": "5511900000005", "tipo": "floral", "descricao": "Avaliar se manter Larch ou trocar por Wild Oat", "data_prevista": "2026-04-03", "data_realizado": None, "status": "pendente", "prioridade": 2},
+        {"tel": "5511900000005", "tipo": "floral", "descricao": "Avaliar se manter Amor-Perfeito ou trocar por Rosa", "data_prevista": "2026-04-03", "data_realizado": None, "status": "pendente", "prioridade": 2},
         {"tel": "5511900000005", "tipo": "contato", "descricao": "Enviar interpretação complementar do trânsito de Saturno", "data_prevista": "2026-03-20", "data_realizado": "2026-03-20", "status": "realizado", "prioridade": 3},
         # Rafael — meditação e propósito
         {"tel": "5511900000006", "tipo": "retorno", "descricao": "Sessão sobre propósito — explorar dons de cozinhar e curar", "data_prevista": "2026-04-02", "data_realizado": None, "status": "pendente", "prioridade": 1},
@@ -1015,12 +1015,12 @@ def main():
         {"tel": "5511900000007", "tipo": "contato", "descricao": "Mensagem de acolhimento — paciente estava ansiosa na última sessão", "data_prevista": "2026-03-29", "data_realizado": None, "status": "pendente", "prioridade": 2},
         # Lucas Gabriel — depressão
         {"tel": "5511900000008", "tipo": "retorno", "descricao": "Sessão de acompanhamento — monitorar humor e autocuidado", "data_prevista": "2026-03-29", "data_realizado": None, "status": "pendente", "prioridade": 1},
-        {"tel": "5511900000008", "tipo": "floral", "descricao": "Preparar nova fórmula — Mustard + Hornbeam + Larch", "data_prevista": "2026-03-30", "data_realizado": None, "status": "pendente", "prioridade": 1},
+        {"tel": "5511900000008", "tipo": "floral", "descricao": "Preparar nova formula — Mandacaru + Abutilom + Amor-Perfeito", "data_prevista": "2026-03-30", "data_realizado": None, "status": "pendente", "prioridade": 1},
         {"tel": "5511900000008", "tipo": "contato", "descricao": "Contato para verificar como está entre sessões presenciais", "data_prevista": "2026-03-22", "data_realizado": "2026-03-22", "status": "realizado", "prioridade": 1},
         # Fernanda — astrologia
         {"tel": "5511900000009", "tipo": "retorno", "descricao": "Sessão de integração — revisão das 14 sessões e próximo ciclo", "data_prevista": "2026-04-05", "data_realizado": None, "status": "pendente", "prioridade": 1},
         {"tel": "5511900000009", "tipo": "tarefa", "descricao": "Preparar análise dos trânsitos de abril para a paciente", "data_prevista": "2026-03-31", "data_realizado": None, "status": "pendente", "prioridade": 3},
-        {"tel": "5511900000009", "tipo": "floral", "descricao": "Ajuste floral — trocar Cerato por Elm conforme evolução", "data_prevista": "2026-03-18", "data_realizado": "2026-03-18", "status": "realizado", "prioridade": 2},
+        {"tel": "5511900000009", "tipo": "floral", "descricao": "Ajuste floral — trocar Jacaranda por Espinheira-Santa conforme evolucao", "data_prevista": "2026-03-18", "data_realizado": "2026-03-18", "status": "realizado", "prioridade": 2},
         # Thiago — novo
         {"tel": "5511900000010", "tipo": "retorno", "descricao": "Segunda sessão — trabalho com relação paterna e individuação", "data_prevista": "2026-04-03", "data_realizado": None, "status": "pendente", "prioridade": 1},
         {"tel": "5511900000010", "tipo": "tarefa", "descricao": "Enviar áudio explicativo sobre respiração do dragão", "data_prevista": "2026-03-29", "data_realizado": None, "status": "pendente", "prioridade": 3},
@@ -1057,31 +1057,31 @@ def main():
     anotacoes = [
         # Ana Carolina
         {"tel": "5511900000001", "texto": "Paciente chegou muito ansiosa, relatando aperto no peito constante ha 2 semanas. Identificado desequilibrio no elemento Agua — emocoes represadas. Prescrito protocolo de aterramento e florais Babosa + Lantana do Kit Primus.", "data": "2026-03-10T10:30:00-03:00"},
-        {"tel": "5511900000001", "texto": "Ana relata melhora parcial com florais. Insônia persiste. Adicionado Aspen ao protocolo. Sonhos vívidos indicam início da fase de Nigredo — conteúdos inconscientes emergindo para processamento.", "data": "2026-03-17T14:00:00-03:00"},
+        {"tel": "5511900000001", "texto": "Ana relata melhora parcial com florais. Insônia persiste. Adicionado Lantana ao protocolo. Sonhos vívidos indicam início da fase de Nigredo — conteúdos inconscientes emergindo para processamento.", "data": "2026-03-17T14:00:00-03:00"},
         {"tel": "5511900000001", "texto": "Evolução positiva significativa. Sono melhorou, ansiedade reduziu de 8/10 para 5/10. Elemento Água mais fluido. Manter protocolo atual por mais 2 semanas.", "data": "2026-03-22T11:00:00-03:00"},
         # Pedro Henrique
         {"tel": "5511900000002", "texto": "Primeira sessão profunda sobre propósito de vida. Pedro está no Retorno de Saturno (29 anos) — questionando tudo. Elemento Fogo forte mas sem direção. Prescrito exercício físico como canal.", "data": "2026-03-18T09:00:00-03:00"},
         {"tel": "5511900000002", "texto": "Pedro descobriu que cozinhar e ajudar os outros são seus dons naturais. Conexão com propósito começando a se clarear. Momento de Separatio — separar o essencial do supérfluo.", "data": "2026-03-25T10:00:00-03:00"},
         # Juliana
-        {"tel": "5511900000003", "texto": "Sessão delicada. Juliana trouxe memórias de abandono materno. Choro intenso. Ferida de Abandono claramente ativa no primeiro setênio. Acolhimento foi prioridade. Prescrito Star of Bethlehem.", "data": "2026-03-05T15:00:00-03:00"},
-        {"tel": "5511900000003", "texto": "Juliana conseguiu fazer a separação 'eu vs. mãe' pela primeira vez. Momento de grande insight terapêutico. Culpa diminuindo. Retirado Pine do protocolo floral.", "data": "2026-03-12T14:30:00-03:00"},
+        {"tel": "5511900000003", "texto": "Sessão delicada. Juliana trouxe memórias de abandono materno. Choro intenso. Ferida de Abandono claramente ativa no primeiro setênio. Acolhimento foi prioridade. Prescrito Paineira.", "data": "2026-03-05T15:00:00-03:00"},
+        {"tel": "5511900000003", "texto": "Juliana conseguiu fazer a separação 'eu vs. mãe' pela primeira vez. Momento de grande insight terapêutico. Culpa diminuindo. Retirado Serralha do protocolo floral.", "data": "2026-03-12T14:30:00-03:00"},
         {"tel": "5511900000003", "texto": "Progresso notável nos limites familiares. Juliana estabeleceu conversa firme e amorosa com a mãe. Processo de individuação avançando. Elemento Terra estabilizando.", "data": "2026-03-20T16:00:00-03:00"},
         # Marcos
         {"tel": "5511900000004", "texto": "Avaliação inicial. Marcos é paciente novo, veio por indicação. Queixa principal: término recente e ciúme. Elemento Ar dominante com dispersão. Ferida de Traição identificada preliminarmente.", "data": "2026-03-25T11:00:00-03:00"},
         # Beatriz
-        {"tel": "5511900000005", "texto": "Beatriz apresenta quadro clássico de Espelho Distorcido — autoimagem muito abaixo da realidade. Comparação constante com outros. Prescrito exercício do espelho + Larch.", "data": "2026-03-12T10:00:00-03:00"},
+        {"tel": "5511900000005", "texto": "Beatriz apresenta quadro clássico de Espelho Distorcido — autoimagem muito abaixo da realidade. Comparação constante com outros. Prescrito exercicio do espelho + Amor-Perfeito.", "data": "2026-03-12T10:00:00-03:00"},
         {"tel": "5511900000005", "texto": "Análise do mapa natal revelou Saturno transitando sobre Vênus — período de reconstrução da autoestima. Beatriz compreendeu e se sentiu acolhida pela explicação astrológica.", "data": "2026-03-19T09:30:00-03:00"},
-        {"tel": "5511900000005", "texto": "Melhora visível na autoestima. Beatriz faz exercício do espelho todos os dias. Relata que a comparação com outros diminuiu. Ajuste de florais: retirar Crab Apple.", "data": "2026-03-26T11:00:00-03:00"},
+        {"tel": "5511900000005", "texto": "Melhora visível na autoestima. Beatriz faz exercício do espelho todos os dias. Relata que a comparação com outros diminuiu. Ajuste de florais: retirar Boldo.", "data": "2026-03-26T11:00:00-03:00"},
         # Rafael
         {"tel": "5511900000006", "texto": "Rafael iniciou meditação — 3 minutos com contagem de respirações. Muita resistência mental inicial. Orientado sobre expectativas realistas. Conceito do Athanor introduzido.", "data": "2026-03-14T08:30:00-03:00"},
         {"tel": "5511900000006", "texto": "Conseguiu meditar 5 minutos! Progresso no exercício de observação. Trabalhamos Mercúrio como consciência observadora. Prática ficando mais natural.", "data": "2026-03-21T09:00:00-03:00"},
         {"tel": "5511900000006", "texto": "Sessão profunda sobre propósito. Vazio existencial em processamento. Separatio em andamento — Rafael começando a distinguir desejos próprios de expectativas externas.", "data": "2026-03-28T10:00:00-03:00"},
         # Camila
-        {"tel": "5511900000007", "texto": "Camila apresenta ansiedade com componente de vergonha social forte. Elemento Terra dominante traz rigidez. Ar carente dificulta expressão. Prescrito Agrimony para máscara social.", "data": "2026-03-19T14:00:00-03:00"},
+        {"tel": "5511900000007", "texto": "Camila apresenta ansiedade com componente de vergonha social forte. Elemento Terra dominante traz rigidez. Ar carente dificulta expressão. Prescrito Beldroega para impulso de vida.", "data": "2026-03-19T14:00:00-03:00"},
         {"tel": "5511900000007", "texto": "Observação: Camila tende a minimizar o que sente ('não é nada demais'). Padrão de Humilhação ativo. Trabalho de validação emocional sendo priorizado nas sessões.", "data": "2026-03-26T15:00:00-03:00"},
         # Lucas Gabriel
-        {"tel": "5511900000008", "texto": "Lucas em fase depressiva — Nigredo. Falta de energia, visão cinza. Confirmado acompanhamento com psicólogo presencial. Autocuidado básico: sol, água, movimento mínimo. Florais Mustard + Olive.", "data": "2026-03-16T10:00:00-03:00"},
-        {"tel": "5511900000008", "texto": "Melhora sutil no humor. Lucas saiu de casa 3 vezes na semana. Pequenas conquistas sendo celebradas. Troca de Olive por Hornbeam para motivação matinal.", "data": "2026-03-23T11:00:00-03:00"},
+        {"tel": "5511900000008", "texto": "Lucas em fase depressiva — Nigredo. Falta de energia, visão cinza. Confirmado acompanhamento com psicólogo presencial. Autocuidado básico: sol, água, movimento mínimo. Florais Mandacaru + Dama-da-Noite.", "data": "2026-03-16T10:00:00-03:00"},
+        {"tel": "5511900000008", "texto": "Melhora sutil no humor. Lucas saiu de casa 3 vezes na semana. Pequenas conquistas sendo celebradas. Troca de Dama-da-Noite por Abutilom para motivacao matinal.", "data": "2026-03-23T11:00:00-03:00"},
         {"tel": "5511900000008", "texto": "ATENÇÃO: Lucas relatou episódio de choro intenso entre sessões. Orientado a contatar psicólogo presencial. Reforçada a rede de apoio. Monitorar de perto.", "data": "2026-03-28T16:00:00-03:00"},
         # Fernanda
         {"tel": "5511900000009", "texto": "Fernanda tem excelente conhecimento astrológico prévio. Sessão produtiva sobre Saturno e elemento Ar. Muitas ideias mas pouca materialização — aterramento necessário.", "data": "2026-03-08T10:00:00-03:00"},
