@@ -32,8 +32,11 @@ KB_ROOT = Path(__file__).parent.parent / "knowledge_base"
 
 # Arquivos a indexar: (caminho_relativo, titulo_para_o_banco)
 ARQUIVOS = [
-    # Florais — placeholder enquanto o OCR do "A Aura das Flores" está pendente
-    ("02_florais/kit_primus_status.md", "Kit Primus — Status e Princípios (A Aura das Flores)"),
+    # Florais — conteúdo oficial do Joel Aleixo
+    ("02_florais/aura_das_ervas.md", "A Aura das Ervas — Joel Aleixo (42 ervas medicinais)"),
+    ("02_florais/significado_kit_primus.md", "Significado Kit Primus — Nomes e Indicações (99 flores)"),
+    ("02_florais/manual_kit_primus.md", "Manual do Kit Primus — Joel Aleixo"),
+    ("02_florais/kit_primus_status.md", "Kit Primus — Princípios e Regras de Uso"),
 
     # Protocolos clínicos
     ("03_protocolos/como_usar_protocolos.md", "Protocolos AlkhemyLab — Como Usar"),
@@ -44,9 +47,14 @@ ARQUIVOS = [
     ("04_fundamentos/dna_heranca_energetica.md", "DNA — Herança Energética"),
     ("04_fundamentos/matrix_e_traumas.md", "Matrix e Traumas"),
     ("04_fundamentos/astrologia.md", "Astrologia Aplicada ao Sistema AlkhemyLab"),
+    ("04_fundamentos/miasmas.md", "Miasmas — Toxinas e Padrões Ancestrais"),
+    ("04_fundamentos/biorritmos.md", "Biorritmos"),
+    ("04_fundamentos/referencia_dna.md", "Referência do DNA"),
 
     # Apostilas
     ("05_apostilas/fluxus_continuum_john_dee.md", "O Fluxus Continuum de John Dee"),
+    ("05_apostilas/rubedo.md", "Apostila Rubedo — 1ª Edição"),
+    ("05_apostilas/trindade_tartarus_nigredo.md", "Apostila Trindade e Tartarus — Nigredo"),
 
     # FAQ
     ("06_faq/faq_geral.md", "FAQ Geral — Compostos e Florais Sutis"),
