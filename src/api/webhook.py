@@ -4,6 +4,7 @@ Processa a mensagem com RAG e responde automaticamente ao paciente.
 """
 
 import asyncio
+import hmac
 import base64
 import io
 import logging
@@ -11,8 +12,9 @@ import time
 from collections import OrderedDict
 from datetime import datetime, timezone
 from uuid import uuid4
+from typing import Optional
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Request
+from fastapi import APIRouter, BackgroundTasks, Header, HTTPException, Query, Request
 
 from src.core.config import get_settings
 from src.core.supabase_client import get_supabase
@@ -554,25 +556,13 @@ def _extrair_texto_para_codigo(texto: str) -> str:
 
 
 def _contar_tentativas_codigo(terapeuta_id: str, numero_paciente: str) -> int:
-    """Conta quantas tentativas inválidas de código este número já fez."""
+    """Retorna o total de tentativas de código do estado do chat."""
     try:
-        sb = get_supabase()
-        res = sb.table("conversas").select("id", count="exact").eq(
-            "terapeuta_id", terapeuta_id
-        ).eq(
-            "paciente_numero", numero_paciente
-        ).eq(
-            "intencao", "CODIGO_INVALIDO"
-        ).execute()
-        return res.count or 0
+        from src.core.estado import obter_ou_criar_estado
+        estado, _ = obter_ou_criar_estado(terapeuta_id, numero_paciente)
+        return (estado.tentativas_codigo or 0) + 1
     except Exception:
-        return 0
-
-
-async def _extrair_nome_com_llm(texto: str, settings) -> str:
-    """
-    Usa Claude Haiku para extrair o nome próprio de uma mensagem conversacional.
-    Ex: "Oi, bom dia! Meu nome é Fulana de Tal" → "Fulana de Tal"
+        return 1
     Ex: "Lucas" → "Lucas"
     Retorna string vazia se não encontrar nome claro.
     """
@@ -1673,7 +1663,7 @@ async def _processar_mensagem(payload: dict) -> None:
                             f"imagem_urls={len(_mapa_img_urls)}"
                         )
                         mapa_prefixo = (
-                            "MAPA NATAL CALCULADO AUTOMATICAMENTE (Swiss Ephemeris — dado preciso, nao alucinado):\n"
+                            "MAPA NATAL (Swiss Ephemeris — PROIBIDO ALUCINAR):\n"
                             f"{_mapa_json_cache}\n\n"
                         )
                         chunks_texto = mapa_prefixo + chunks_texto
@@ -1764,7 +1754,7 @@ async def _processar_mensagem(payload: dict) -> None:
                         _nota_imagem_sp = (
                             "\n\nINSTRUCAO INTERNA — nao reproduza este aviso na resposta: "
                             "A imagem do mapa alquimico ja foi enviada como arquivo separado. "
-                            "NAO mencione a imagem, NAO diga que foi enviada, NAO diga que houve instabilidade. "
+                            "PROIBIDO ALUCINAR SIGNOS. USE APENAS OS DADOS ABAIXO. "
                             "Entregue a leitura do campo astrologico do mapa (elementos, posicoes, ascendente). NAO entregue diagnostico, protocolo ou posologia ainda. Termine com UMA pergunta investigativa sobre o comportamento do paciente na consulta."
                             if imagem_enviada else
                             "\n\nINSTRUCAO INTERNA — nao reproduza este aviso na resposta: "
@@ -1774,7 +1764,7 @@ async def _processar_mensagem(payload: dict) -> None:
                             "Se o terapeuta pedir para reenviar a imagem, diga que ele deve digitar 'refazer mapa'."
                         )
                         mapa_prefixo = (
-                            f"MAPA NATAL CALCULADO AUTOMATICAMENTE (Swiss Ephemeris — dado preciso, nao alucinado):\n"
+                            f"MAPA NATAL (Swiss Ephemeris — PROIBIDO ALUCINAR):\n"
                             f"{mapa_resultado}\n\n"
                         )
                         chunks_texto = mapa_prefixo + chunks_texto
@@ -1803,7 +1793,7 @@ async def _processar_mensagem(payload: dict) -> None:
                                 _nota_imagem_sp = (
                                     "\n\nINSTRUCAO INTERNA — nao reproduza este aviso na resposta: "
                                     "A imagem do mapa alquimico ja foi enviada como arquivo separado. "
-                                    "NAO mencione a imagem, NAO diga que foi enviada, NAO diga que houve instabilidade. "
+                                    "PROIBIDO ALUCINAR SIGNOS. USE APENAS OS DADOS ABAIXO. "
                                     "Entregue a leitura do campo astrologico do mapa (elementos, posicoes, ascendente). NAO entregue diagnostico, protocolo ou posologia ainda. Termine com UMA pergunta investigativa sobre o comportamento do paciente na consulta."
                                 )
                             # chunks_texto pode não ter o mapa_prefixo, mas o LLM ainda gera a leitura
@@ -2275,6 +2265,15 @@ def _salvar_mapa(
 
 @router.post("/whatsapp", summary="Recebe webhook da Evolution API")
 async def receber_webhook_whatsapp(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    apikey: Optional[str] = Header(None),
+):
+    """Recebe webhook da Evolution API."""
+    settings = get_settings()
+    if settings.EVOLUTION_API_KEY and apikey:
+        if not hmac.compare_digest(apikey, settings.EVOLUTION_API_KEY):
+            raise HTTPException(status_code=401, detail="API Key inválida")
     request: Request,
     background_tasks: BackgroundTasks,
 ):
@@ -3306,7 +3305,7 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                             f"imagem_urls={len(_mapa_img_urls)}"
                         )
                         mapa_prefixo = (
-                            "MAPA NATAL CALCULADO AUTOMATICAMENTE (Swiss Ephemeris — dado preciso, nao alucinado):\n"
+                            "MAPA NATAL (Swiss Ephemeris — PROIBIDO ALUCINAR):\n"
                             f"{_mapa_json_cache}\n\n"
                         )
                         chunks_texto = mapa_prefixo + chunks_texto
@@ -3334,7 +3333,7 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                             _nota_imagem_sp = (
                                 "\n\nINSTRUCAO INTERNA — nao reproduza este aviso na resposta: "
                                 "A imagem do mapa alquimico ja foi enviada como arquivo separado. "
-                                "NAO mencione a imagem, NAO diga que foi enviada, NAO diga que houve instabilidade. "
+                                "PROIBIDO ALUCINAR SIGNOS. USE APENAS OS DADOS ABAIXO. "
                                 "Entregue a leitura do campo astrologico do mapa (elementos, posicoes, ascendente). NAO entregue diagnostico, protocolo ou posologia ainda. Termine com UMA pergunta investigativa sobre o comportamento do paciente na consulta."
                             )
                         else:
@@ -3425,7 +3424,7 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                         _nota_imagem_sp = (
                             "\n\nINSTRUCAO INTERNA — nao reproduza este aviso na resposta: "
                             "A imagem do mapa alquimico ja foi enviada como arquivo separado. "
-                            "NAO mencione a imagem, NAO diga que foi enviada, NAO diga que houve instabilidade. "
+                            "PROIBIDO ALUCINAR SIGNOS. USE APENAS OS DADOS ABAIXO. "
                             "Entregue a leitura do campo astrologico do mapa (elementos, posicoes, ascendente). NAO entregue diagnostico, protocolo ou posologia ainda. Termine com UMA pergunta investigativa sobre o comportamento do paciente na consulta."
                             if imagem_enviada else
                             "\n\nINSTRUCAO INTERNA — nao reproduza este aviso na resposta: "
@@ -3434,7 +3433,7 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                             "Entregue a leitura do campo astrologico. NAO entregue diagnostico completo, protocolo ou posologia ainda. Termine com UMA pergunta sobre como o paciente se comportava na consulta."
                         )
                         mapa_prefixo = (
-                            f"MAPA NATAL CALCULADO AUTOMATICAMENTE (Swiss Ephemeris — dado preciso, nao alucinado):\n"
+                            f"MAPA NATAL (Swiss Ephemeris — PROIBIDO ALUCINAR):\n"
                             f"{mapa_resultado}\n\n"
                         )
                         chunks_texto = mapa_prefixo + chunks_texto
@@ -3465,7 +3464,7 @@ async def _processar_mensagem_meta(payload: dict) -> None:
                                 _nota_imagem_sp = (
                                     "\n\nINSTRUCAO INTERNA — nao reproduza este aviso na resposta: "
                                     "A imagem do mapa alquimico ja foi enviada como arquivo separado. "
-                                    "NAO mencione a imagem, NAO diga que foi enviada, NAO diga que houve instabilidade. "
+                                    "PROIBIDO ALUCINAR SIGNOS. USE APENAS OS DADOS ABAIXO. "
                                     "Entregue a leitura do campo astrologico do mapa (elementos, posicoes, ascendente). NAO entregue diagnostico, protocolo ou posologia ainda. Termine com UMA pergunta investigativa sobre o comportamento do paciente na consulta."
                                 )
                             # chunks_texto pode não ter o mapa_prefixo, mas o LLM ainda gera a leitura

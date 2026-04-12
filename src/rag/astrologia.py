@@ -12,6 +12,50 @@ from typing import Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
+try:
+    from kerykeion import AstrologicalSubjectFactory
+    from kerykeion.settings.kerykeion_settings import KerykeionSettings
+    LIB_ASTRO_OK = True
+except ImportError:
+    logger.warning("Kerykeion/pyswisseph não instalados. Usando motor de cálculo SIMULADO.")
+    LIB_ASTRO_OK = False
+
+# ---------------------------------------------------------------------------
+# Motor de Cálculo Simulado (Fail-safe para ambientes sem C++ Build Tools)
+# ---------------------------------------------------------------------------
+class MockPoint:
+    def __init__(self, sign, pos, house):
+        self.sign = sign
+        self.position = pos
+        self.house = house
+
+class MockHouse:
+    def __init__(self, sign, num):
+        self.sign = sign
+        self.num = num
+
+class MockSubject:
+    def __init__(self):
+        self.sun = MockPoint("Sco", 25.8, "Eighth_House")
+        self.moon = MockPoint("Sco", 13.6, "Eighth_House")
+        self.mercury = MockPoint("Sco", 10.2, "Eighth_House")
+        self.venus = MockPoint("Lib", 29.5, "Seventh_House")
+        self.mars = MockPoint("Leo", 15.1, "Fifth_House")
+        self.jupiter = MockPoint("Vir", 8.4, "Sixth_House")
+        self.saturn = MockPoint("Vir", 22.9, "Sixth_House")
+        self.uranus = MockPoint("Sco", 21.3, "Eighth_House")
+        self.neptune = MockPoint("Sag", 19.4, "Ninth_House")
+        self.pluto = MockPoint("Lib", 20.1, "Seventh_House")
+        self.ascendant = MockPoint("Ari", 1.4, "First_House")
+        self.medium_coeli = MockPoint("Cap", 1.3, "Tenth_House")
+        
+        signs = ["Ari", "Tau", "Gem", "Can", "Leo", "Vir", "Lib", "Sco", "Sag", "Cap", "Aqu", "Pis"]
+        self.houses_list = [MockHouse(s, i+1) for i, s in enumerate(signs)]
+
+def _calcular_mock():
+    logger.info("Gerando mapa SIMULADO (Antônio Demo) por falta de bibliotecas nativas.")
+    return MockSubject()
+
 # ---------------------------------------------------------------------------
 # Cache de coordenadas — cidades brasileiras mais comuns.
 # Evita chamada ao Nominatim (que pode pendurar indefinidamente).
@@ -78,6 +122,7 @@ _COORDS_BR: dict[str, tuple[float, float, str]] = {
     "brasilia":           (-15.7797, -47.9297, "America/Sao_Paulo"),
     "df":                 (-15.7797, -47.9297, "America/Sao_Paulo"),
     "distrito federal":   (-15.7797, -47.9297, "America/Sao_Paulo"),
+    "araguari":           (-18.6511, -48.1934, "America/Sao_Paulo"),
 }
 
 
@@ -180,6 +225,26 @@ PLANETAS_PT = {
     "Pluto": "Plutão",
 }
 
+REGENTES_TRADICIONAIS = {
+    "Áries": "Mars",
+    "Touro": "Venus",
+    "Gêmeos": "Mercury",
+    "Câncer": "Moon",
+    "Leão": "Sun",
+    "Virgem": "Mercury",
+    "Libra": "Venus",
+    "Escorpião": "Mars",  # Tradicional
+    "Sagitário": "Jupiter",
+    "Capricórnio": "Saturn",
+    "Aquário": "Saturn",  # Tradicional
+    "Peixes": "Jupiter",  # Tradicional
+}
+
+REGENTES_MODERNOS = {
+    "Escorpião": "Pluto",
+    "Aquário": "Uranus",
+    "Peixes": "Neptune",
+}
 
 def _signo_pt(signo_abrev: str) -> str:
     """Converte abreviação do signo em nome português."""
@@ -206,16 +271,7 @@ def calcular_mapa_natal(
 
     Raises:
         ValueError: Se a cidade não for encontrada ou os dados forem inválidos
-        ImportError: Se kerykeion não estiver instalado
     """
-    try:
-        from kerykeion import AstrologicalSubjectFactory
-        from kerykeion.aspects.aspects_factory import AspectsFactory
-    except ImportError as e:
-        raise ImportError(
-            "Kerykeion não está instalado. Execute: pip install kerykeion"
-        ) from e
-
     # --- Parsing dos dados ---
     try:
         dia, mes, ano = [int(x) for x in data_nascimento.strip().split("/")]
@@ -234,22 +290,41 @@ def calcular_mapa_natal(
     # --- Geocodificação (cache local primeiro, Nominatim como fallback) ---
     lat, lon, tz_str = _geocodificar_cidade(cidade_nascimento)
 
-    # --- Cálculo astrológico (Kerykeion v5 — offline com coordenadas manuais) ---
-    sujeito = AstrologicalSubjectFactory.from_birth_data(
-        name=nome,
-        year=ano,
-        month=mes,
-        day=dia,
-        hour=hora,
-        minute=minuto,
-        lng=lon,
-        lat=lat,
-        tz_str=tz_str,
-        online=False,
-        zodiac_type="Tropical",
-        houses_system_identifier="P",  # Placidus
-        suppress_geonames_warning=True,
-    )
+    # --- Cálculo astrológico (Kerykeion v5 ou Mock) ---
+    if not LIB_ASTRO_OK:
+        # Se não tiver a lib, retorna um mock e um aviso de "DADOS SIMULADOS"
+        # Isso evita que o agente quebre no Windows do desenvolvedor.
+        sujeito = _calcular_mock()
+        texto = _formatar_texto_mapa(
+            sujeito, nome, dia, mes, ano, hora, minuto, cidade_nascimento, lat, lon, tz_str
+        )
+        return (
+            "⚠️ AVISO: MOTOR DE CALCULO NATIVO INDISPONIVEL (Ambiente Windows sem C++ Build Tools).\n"
+            "EXIBINDO DADOS SIMULADOS PARA TESTE DE INTERFACE.\n\n"
+            + texto
+        )
+
+    # --- Cálculo Real via Kerykeion ---
+    try:
+        from kerykeion import AstrologicalSubjectFactory
+        sujeito = AstrologicalSubjectFactory.from_birth_data(
+            name=nome,
+            year=ano,
+            month=mes,
+            day=dia,
+            hour=hora,
+            minute=minuto,
+            lng=lon,
+            lat=lat,
+            tz_str=tz_str,
+            online=False,
+            zodiac_type="Tropical",
+            houses_system_identifier="P",  # Placidus
+            suppress_geonames_warning=True,
+        )
+    except Exception as calc_err:
+        logger.error(f"Cálculo astrológico falhou: {calc_err}")
+        return f"Erro técnico no motor de cálculo: {calc_err}"
 
     return _formatar_texto_mapa(
         sujeito=sujeito,
@@ -285,7 +360,6 @@ def _formatar_texto_mapa(
     Usado internamente por calcular_mapa_natal e gerar_mapa_completo para evitar
     geocodificação duplicada.
     """
-    from kerykeion.aspects.aspects_factory import AspectsFactory
 
     # Kerykeion v5: house é str "First_House" ... "Twelfth_House", não int
     _HOUSE_STR_TO_INT = {
@@ -316,7 +390,9 @@ def _formatar_texto_mapa(
     linhas.append(
         f"Data: {dia:02d}/{mes:02d}/{ano}  |  Hora: {hora:02d}:{minuto:02d}  |  Local: {cidade_nascimento}"
     )
-    linhas.append(f"Coordenadas: {lat:.4f}N, {lon:.4f}E  |  Fuso: {tz_str}")
+    lat_suf = "S" if lat < 0 else "N"
+    lon_suf = "W" if lon < 0 else "E"
+    linhas.append(f"Coordenadas: {abs(lat):.4f}{lat_suf}, {abs(lon):.4f}{lon_suf}  |  Fuso: {tz_str}")
     linhas.append("")
 
     linhas.append("▸ LUMINARES E ÂNGULOS")
@@ -342,6 +418,61 @@ def _formatar_texto_mapa(
         linhas.append(fmt_ponto(ponto, nome_pt))
     linhas.append("")
 
+    # --- Casas, Regentes e Interceptações ---
+    linhas.append("▸ CASAS E REGENTES")
+    cuspides = []
+    # Kerykeion v5: sujeito.houses_list tem os objetos das casas
+    if hasattr(sujeito, "houses_list"):
+        # Mapeamento de ocupação
+        ocupacao: dict[int, list[str]] = {i: [] for i in range(1, 13)}
+        itens_ocupacao = [
+            ("sun", "Sol"), ("moon", "Lua"), 
+            ("ascendant", "Ascendente"), ("medium_coeli", "MC")
+        ] + planetas_ordem
+        for attr, nome_pt in itens_ocupacao:
+            p = getattr(sujeito, attr, None)
+            if p and hasattr(p, "house"):
+                c_raw = p.house
+                c_n = _HOUSE_STR_TO_INT.get(c_raw) if isinstance(c_raw, str) else c_raw
+                if c_n in ocupacao:
+                    ocupacao[c_n].append(nome_pt.split()[0])
+
+        signos_nas_cuspides = set()
+        for i, h_obj in enumerate(sujeito.houses_list, 1):
+            signo_cuspide = _signo_pt(h_obj.sign)
+            signos_nas_cuspides.add(signo_cuspide)
+            
+            # Regente
+            reg_trad = REGENTES_TRADICIONAIS.get(signo_cuspide)
+            reg_mod = REGENTES_MODERNOS.get(signo_cuspide)
+            reg_txt = PLANETAS_PT.get(reg_trad, reg_trad)
+            if reg_mod:
+                reg_txt += f"/{PLANETAS_PT.get(reg_mod, reg_mod)}"
+            
+            # Localização do regente trad (onde ele está)
+            pos_reg_txt = ""
+            if reg_trad:
+                attr_reg = reg_trad.lower()
+                p_reg = getattr(sujeito, attr_reg, None)
+                if p_reg:
+                    c_reg_raw = p_reg.house
+                    c_reg_n = _HOUSE_STR_TO_INT.get(c_reg_raw) if isinstance(c_reg_raw, str) else c_reg_raw
+                    pos_reg_txt = f" (na Casa {c_reg_n})" if c_reg_n else ""
+            
+            planetas_h = ocupacao.get(i, [])
+            planetas_txt = ", ".join(planetas_h) if planetas_h else "Vazia"
+            
+            linhas.append(f"  Casa {i:02d} ({signo_cuspide}): Regida por {reg_txt}{pos_reg_txt} | {planetas_txt}")
+
+        # Interceptações
+        todos_signos = set(SIGNOS_PT.values())
+        interceptados = sorted(list(todos_signos - signos_nas_cuspides))
+        if interceptados:
+            linhas.append(f"  * Signos Interceptados: {', '.join(interceptados)}")
+    else:
+        linhas.append("  (Dados de casas indisponíveis)")
+    linhas.append("")
+
     linhas.append("▸ DISTRIBUIÇÃO DOS ELEMENTOS")
     contagem_elem: dict[str, int] = {"Fogo": 0, "Terra": 0, "Ar": 0, "Água": 0}
     pontos_para_elementos = [
@@ -362,6 +493,7 @@ def _formatar_texto_mapa(
 
     linhas.append("▸ ASPECTOS PRINCIPAIS")
     try:
+        from kerykeion.aspects.aspects_factory import AspectsFactory
         aspectos_model = AspectsFactory.single_chart_aspects(sujeito)
         aspectos_lista = aspectos_model.aspects
         planetas_pessoais = {

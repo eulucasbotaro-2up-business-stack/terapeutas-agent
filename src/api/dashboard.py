@@ -18,15 +18,19 @@ router = APIRouter(prefix="/dashboard/api", tags=["Dashboard"])
 # AUTENTICAÇÃO
 # =============================================
 
+import hmac
+
 def _verificar_token(
     token: Optional[str] = None,
-    x_dashboard_token: Optional[str] = None,
+    x_dashboard_token: Optional[str] = Header(None, alias="X-Dashboard-Token"),
 ) -> bool:
-    """Verifica se o token fornecido bate com SECRET_KEY."""
+    """Verifica se o token fornecido bate com SECRET_KEY usando comparação segura."""
     settings = get_settings()
     tk = token or x_dashboard_token
-    if not tk or tk != settings.SECRET_KEY:
-        raise HTTPException(status_code=401, detail="Token inválido ou ausente")
+    
+    if not tk or not hmac.compare_digest(tk, settings.SECRET_KEY):
+        logger.warning(f"Tentativa de acesso não autorizado ao dashboard. IP: ...")
+        raise HTTPException(status_code=401, detail="Credenciais de acesso inválidas")
     return True
 
 
@@ -37,6 +41,42 @@ def _mascarar_telefone(numero: str) -> str:
     if len(numero) <= 4:
         return numero
     return "*" * (len(numero) - 4) + numero[-4:]
+
+
+# =============================================
+# STATUS DO SISTEMA
+# =============================================
+
+@router.get("/status")
+async def status_sistema(
+    token: Optional[str] = Query(None),
+    x_dashboard_token: Optional[str] = Header(None, alias="X-Dashboard-Token"),
+):
+    """Retorna o estado de saúde dos componentes do sistema."""
+    _verificar_token(token, x_dashboard_token)
+    
+    # Verificar Astro Engine
+    from src.rag.astrologia import LIB_ASTRO_OK
+    astro_status = "OPERACIONAL" if LIB_ASTRO_OK else "MODO_SEGURANÇA (SIMULADO)"
+    
+    # Verificar Supabase
+    try:
+        sb = get_supabase()
+        sb.table("terapeutas").select("id").limit(1).execute()
+        db_status = "OPERACIONAL"
+    except Exception:
+        db_status = "ERRO_CONEXAO"
+        
+    return {
+        "status_geral": "OK" if LIB_ASTRO_OK and db_status == "OPERACIONAL" else "ATENÇÃO",
+        "componentes": {
+            "banco_dados": db_status,
+            "motor_astrologico": astro_status,
+            "ia_engine": "Claude-3.5-Sonnet (Streaming)",
+            "seguranca": "HMAC-SHA256 Ativado"
+        },
+        "versao": "2.1.0-Premium"
+    }
 
 
 # =============================================

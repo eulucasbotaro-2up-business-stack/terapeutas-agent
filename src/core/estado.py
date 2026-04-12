@@ -110,32 +110,31 @@ _REGEX_NONSENSE = re.compile(r"^[^a-záàâãéèêíìîóòôõúùûçA-Z\s]{
 # NOTA: Este assistente é posicionado como ferramenta especializada do consultório
 # (não como IA de propósito geral) — conformidade com política Meta jan/2026.
 MSGS_ONBOARDING: list[str] = [
-    "Olá! Seja bem-vindo(a) ao Alquimista Interior — o assistente especializado da Escola de Alquimia do Joel Aleixo 🙏",
+    "Olá! Seja muito bem-vindo ao *TerapeutasAgent* — seu parceiro inteligente para a prática alquímica do Joel Aleixo. 🌿",
     (
-        "Aqui você encontra apoio em quatro frentes do método alquímico:\n\n"
-        "• Dúvidas e pesquisas sobre os ensinamentos da escola\n"
-        "• Discussão e análise de casos clínicos com base nos materiais do Joel\n"
-        "• Produção de conteúdo (posts, materiais, roteiros)\n"
-        "• Criação de Mapa Natal Completo com gráfico visual\n\n"
-        "Este assistente não substitui atendimento clínico. Para consultas terapêuticas, agende com o Joel."
+        "Este assistente foi treinado com toda a base de conhecimento da escola para te apoiar em:\n\n"
+        "• *Análise de Casos Clínicos:* Discussão profunda baseada no método.\n"
+        "• *Mapas Astrais Alquímicos:* Geração e interpretação de mapas natais.\n"
+        "• *Dúvidas do Método:* Pesquisa rápida em toda a biblioteca do Joel.\n"
+        "• *Acompanhamento de Pacientes:* Gestão e evolução do tratamento."
     ),
     (
-        "Para iniciar, confirme seu acesso com o código de liberação "
-        "enviado após a compra. 🔑\n\n"
-        "É só digitar o código aqui."
+        "Para começar, por favor, me envie o *código de acesso* que você recebeu por e-mail ou WhatsApp após a assinatura. 🔑\n\n"
+        "Basta digitar o código exatamente como recebeu."
     ),
 ]
 
 # --- Código inválido (tentativas 1-4) ---
 MSG_CODIGO_INVALIDO = (
-    "Esse código não é válido. 🔑\n\n"
-    "Verifique o código enviado após a compra e coloque o código novamente:"
+    "Hum, este código não parece estar correto. 🤔\n\n"
+    "Por favor, verifique se digitou certinho (letras e números) e tente novamente.\n"
+    "Lembrando que você tem *5 tentativas* por segurança."
 )
 
 # --- Código inválido (5ª tentativa em diante) ---
 MSG_CODIGO_INVALIDO_FINAL = (
-    "Você atingiu o limite de tentativas. ❌\n\n"
-    "Por favor, entre em contato com o administrador para regularizar seu acesso."
+    "Infelizmente, atingimos o limite de tentativas de segurança para este número. 🔒\n\n"
+    "Para sua proteção, o acesso foi bloqueado. Por favor, entre em contato com nosso suporte para regularizar sua situação."
 )
 
 # --- Acesso suspenso por assinatura ---
@@ -155,16 +154,11 @@ MSG_ASSINATURA_CANCELADA = (
     "Para reativar o acesso, entre em contato com o suporte."
 )
 
-# --- Código válido: acesso liberado ---
+# --- Acesso liberado: iniciar coleta de nome ---
 MSGS_ACESSO_LIBERADO: list[str] = [
-    "Código confirmado! Acesso liberado ✨",
-    (
-        "A partir de agora você tem acesso completo à base de conhecimento "
-        "do método alquímico do Joel Aleixo.\n\n"
-        "Pode perguntar sobre o método, trazer casos clínicos, fazer mapa natal completo com gráfico "
-        "ou pedir ajuda para produção de conteúdo — por texto ou áudio, como preferir."
-    ),
-    "Antes de começar, como posso te chamar?",
+    "🎉 *Acesso Confirmado!* É uma honra ter você conosco nesta jornada alquímica.",
+    "A partir de agora, eu serei o seu braço direito aqui no WhatsApp, ajudando você a elevar o nível do seu atendimento clínico.",
+    "Para começarmos a configurar seu perfil, como você gostaria de ser chamado(a) aqui na plataforma? Por favor, me diga seu *nome completo*.",
 ]
 
 # --- Confirmação de nome ---
@@ -327,6 +321,7 @@ class EstadoChat:
         self.nome_usuario: Optional[str] = row.get("nome_usuario")
         self.codigo_usado: Optional[str] = row.get("codigo_usado")
         self.violacoes_conteudo: int = row.get("violacoes_conteudo", 0)
+        self.tentativas_codigo: int = row.get("tentativas_codigo", 0)
         self.motivo_bloqueio: Optional[str] = row.get("motivo_bloqueio")
         self.criado_em: str = row.get("criado_em", "")
         self.atualizado_em: str = row.get("atualizado_em", "")
@@ -628,6 +623,42 @@ def validar_codigo(
         return False
 
 
+def incrementar_tentativa_codigo(
+    terapeuta_id: str,
+    numero_telefone: str,
+) -> int:
+    """
+    Incrementa o contador de tentativas de código.
+    Se atingir 5, bloqueia automaticamente.
+    Returns: total de tentativas após o incremento.
+    """
+    supabase = get_supabase()
+    # 1. Ler tentativas atuais
+    res = supabase.table("chat_estado").select("tentativas_codigo").eq(
+        "terapeuta_id", terapeuta_id
+    ).eq("numero_telefone", numero_telefone).limit(1).execute()
+
+    if not res.data:
+        return 0
+
+    total = (res.data[0].get("tentativas_codigo") or 0) + 1
+    update = {
+        "tentativas_codigo": total,
+        "atualizado_em": datetime.now(timezone.utc).isoformat(),
+    }
+
+    if total >= 5:
+        update["estado"] = "BLOQUEADO"
+        update["motivo_bloqueio"] = "LIMITE_TENTATIVAS_CODIGO"
+        logger.warning(f"Número BLOQUEADO por excesso de tentativas (5): {numero_telefone}")
+
+    supabase.table("chat_estado").update(update).eq(
+        "terapeuta_id", terapeuta_id
+    ).eq("numero_telefone", numero_telefone).execute()
+
+    return total
+
+
 def liberar_acesso(
     terapeuta_id: str,
     numero_telefone: str,
@@ -637,12 +668,14 @@ def liberar_acesso(
     Muda o estado do número para ATIVO após código válido.
     Limpa nome_usuario para garantir que o passo de coleta de nome
     sempre aconteça após cada nova validação de código.
+    Reseta o contador de tentativas.
     """
     supabase = get_supabase()
     supabase.table("chat_estado").update({
         "estado": "ATIVO",
         "codigo_usado": codigo_usado.strip().lower()[:200],
         "nome_usuario": None,  # Sempre re-coleta o nome após nova validação
+        "tentativas_codigo": 0, # Reseta tentativas
         "atualizado_em": datetime.now(timezone.utc).isoformat(),
     }).eq("terapeuta_id", terapeuta_id).eq(
         "numero_telefone", numero_telefone

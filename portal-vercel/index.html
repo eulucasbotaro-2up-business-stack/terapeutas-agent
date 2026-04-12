@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Portal do Terapeuta</title>
+    <title>Portal Alquimista</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -24,7 +25,7 @@
                             200: '#DDD6FE',
                             300: '#C4B5FD',
                             400: '#A78BFA',
-                            500: '#7C3AED',
+                            500: '#f59e0b',
                             600: '#6D28D9',
                             700: '#5B21B6',
                             800: '#4C1D95',
@@ -36,7 +37,7 @@
                             200: '#99F6E4',
                             300: '#5EEAD4',
                             400: '#2DD4BF',
-                            500: '#0D9488',
+                            500: '#d97706',
                             600: '#0F766E',
                         },
                         warm: {
@@ -56,7 +57,7 @@
 
         /* Onboarding Tour */
         .tour-highlight {
-            outline: 3px solid #7C3AED !important;
+            outline: 3px solid #f59e0b !important;
             outline-offset: 4px;
             border-radius: 8px;
             z-index: 9997 !important;
@@ -66,7 +67,7 @@
 
         :root {
             --brand-primary: #6D28D9;
-            --brand-secondary: #0D9488;
+            --brand-secondary: #d97706;
             --brand-accent: #D4AF37;
         }
 
@@ -175,7 +176,7 @@
 
         /* Buttons */
         .btn-primary {
-            background: linear-gradient(135deg, #7C3AED, #6D28D9);
+            background: linear-gradient(135deg, #f59e0b, #6D28D9);
             color: white; padding: 10px 20px; border-radius: 10px;
             font-weight: 600; font-size: 0.875rem;
             transition: all 0.25s ease;
@@ -238,7 +239,7 @@
             font-family: 'Inter', sans-serif;
         }
         .input:focus {
-            border-color: #7C3AED;
+            border-color: #f59e0b;
             box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
         }
         .input::placeholder { color: #A8A29E; }
@@ -271,9 +272,9 @@
         .timeline-item::after {
             content: ''; position: absolute; left: 3px; top: 8px;
             width: 12px; height: 12px; border-radius: 50%;
-            background: linear-gradient(135deg, #7C3AED, #6D28D9);
+            background: linear-gradient(135deg, #f59e0b, #6D28D9);
             border: 2.5px solid white;
-            box-shadow: 0 0 0 2px #7C3AED;
+            box-shadow: 0 0 0 2px #f59e0b;
         }
 
         /* Priority borders */
@@ -376,7 +377,7 @@
             .code-input { width: 52px; height: 60px; font-size: 1.5rem; }
         }
         .code-input:focus {
-            border-color: #7C3AED;
+            border-color: #f59e0b;
             box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
         }
 
@@ -387,11 +388,11 @@
             font-size: 0.75rem; font-weight: 700;
             transition: all 0.3s; font-family: 'Poppins', sans-serif;
         }
-        .step-dot.active { background: linear-gradient(135deg, #7C3AED, #6D28D9); color: white; box-shadow: 0 2px 8px rgba(109,40,217,0.3); }
-        .step-dot.completed { background: linear-gradient(135deg, #0D9488, #0F766E); color: white; }
+        .step-dot.active { background: linear-gradient(135deg, #f59e0b, #6D28D9); color: white; box-shadow: 0 2px 8px rgba(109,40,217,0.3); }
+        .step-dot.completed { background: linear-gradient(135deg, #d97706, #0F766E); color: white; }
         .step-dot.pending { background: #F5F5F4; color: #A8A29E; }
         .step-line { height: 2px; flex: 1; transition: background 0.3s; }
-        .step-line.active { background: linear-gradient(90deg, #0D9488, #7C3AED); }
+        .step-line.active { background: linear-gradient(90deg, #d97706, #f59e0b); }
         .step-line.pending { background: #E7E5E4; }
 
         /* Stats card gradient borders */
@@ -406,8 +407,8 @@
             height: 3px;
             border-radius: 16px 16px 0 0;
         }
-        .stat-card.stat-purple::before { background: linear-gradient(90deg, #7C3AED, #A78BFA); }
-        .stat-card.stat-teal::before { background: linear-gradient(90deg, #0D9488, #2DD4BF); }
+        .stat-card.stat-purple::before { background: linear-gradient(90deg, #f59e0b, #A78BFA); }
+        .stat-card.stat-teal::before { background: linear-gradient(90deg, #d97706, #2DD4BF); }
         .stat-card.stat-amber::before { background: linear-gradient(90deg, #D4AF37, #FCD34D); }
         .stat-card.stat-rose::before { background: linear-gradient(90deg, #F43F5E, #FB7185); }
 
@@ -439,7 +440,7 @@
 
         /* Gradient text */
         .gradient-text {
-            background: linear-gradient(135deg, #7C3AED, #0D9488);
+            background: linear-gradient(135deg, #f59e0b, #d97706);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -466,7 +467,7 @@
 <!-- =============================================
      TELA DE LOGIN
 ============================================= -->
-<div x-show="!autenticado" class="fixed inset-0 z-50 flex items-center justify-center" style="background: linear-gradient(135deg, #2E1065 0%, #1e1b4b 40%, #134e4a 100%);">
+<div x-show="!autenticado" class="fixed inset-0 z-50 flex items-center justify-center" style="background: #09090b;">
     <!-- Decorative elements -->
     <div class="absolute inset-0 overflow-hidden pointer-events-none">
         <div class="absolute top-20 left-10 w-72 h-72 bg-purple-500/10 rounded-full blur-3xl"></div>
@@ -474,30 +475,30 @@
         <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-brand-500/5 rounded-full blur-3xl"></div>
     </div>
 
-    <div class="relative bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl p-8 w-full max-w-md mx-4 fade-in border border-white/50">
+    <div class="relative bg-zinc-900/60 backdrop-blur-md rounded-2xl shadow-2xl p-8 w-full max-w-md mx-4 fade-in border border-white/50">
 
         <!-- Login Form -->
         <div x-show="recuperarSenhaStep === 0">
             <div class="text-center mb-8">
-                <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4 shadow-lg" style="background: linear-gradient(135deg, #7C3AED, #0D9488);">
+                <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4 shadow-lg" style="background: linear-gradient(135deg, #f59e0b, #d97706);">
                     <span class="text-white text-3xl">&#9883;</span>
                 </div>
-                <h1 class="text-2xl font-heading font-bold text-gray-900">Portal do Terapeuta</h1>
+                <h1 class="text-2xl font-serif tracking-widest uppercase text-white">Portal Alquimista</h1>
                 <p class="text-warm-200 mt-1 text-sm" style="color: #78716C;">Acesse sua pratica clinica</p>
             </div>
             <form @submit.prevent="login()">
                 <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-1.5">E-mail</label>
+                    <label class="block text-sm font-medium text-zinc-300 mb-1.5">E-mail</label>
                     <div class="relative">
-                        <i data-lucide="mail" class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"></i>
-                        <input type="email" x-model="loginForm.email" class="input pl-10" placeholder="seu@email.com" autofocus required>
+                        <i data-lucide="mail" class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500"></i>
+                        <input type="email" x-model="loginForm.email" class="input pl-10 border-zinc-800 bg-zinc-950/50 text-white" placeholder="seu@email.com" autofocus required>
                     </div>
                 </div>
                 <div class="mb-2">
-                    <label class="block text-sm font-medium text-gray-700 mb-1.5">Senha</label>
+                    <label class="block text-sm font-medium text-zinc-300 mb-1.5">Senha</label>
                     <div class="relative">
-                        <i data-lucide="lock" class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"></i>
-                        <input type="password" x-model="loginForm.senha" class="input pl-10" placeholder="Sua senha" required>
+                        <i data-lucide="lock" class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500"></i>
+                        <input type="password" x-model="loginForm.senha" class="input pl-10 border-zinc-800 bg-zinc-950/50 text-white" placeholder="Sua senha" required>
                     </div>
                 </div>
                 <p x-show="loginErro" x-text="loginErro" class="text-red-500 text-sm mt-2"></p>
@@ -520,7 +521,7 @@
                 <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-3 bg-brand-50">
                     <i data-lucide="key-round" class="w-6 h-6 text-brand-500"></i>
                 </div>
-                <h2 class="text-xl font-heading font-bold text-gray-900">Recuperar Senha</h2>
+                <h2 class="text-xl font-serif tracking-widest uppercase text-white">Recuperar Senha</h2>
                 <p class="text-gray-500 text-sm mt-1">Informe seu e-mail para receber um codigo de verificacao via WhatsApp</p>
             </div>
             <div class="flex items-center justify-center gap-2 mb-6">
@@ -532,10 +533,10 @@
             </div>
             <form @submit.prevent="enviarCodigoRecuperacao()">
                 <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-1.5">E-mail cadastrado</label>
+                    <label class="block text-sm font-medium text-zinc-300 mb-1.5">E-mail cadastrado</label>
                     <div class="relative">
-                        <i data-lucide="mail" class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"></i>
-                        <input type="email" x-model="recuperarForm.email" class="input pl-10" placeholder="seu@email.com" required>
+                        <i data-lucide="mail" class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500"></i>
+                        <input type="email" x-model="recuperarForm.email" class="input pl-10 border-zinc-800 bg-zinc-950/50 text-white" placeholder="seu@email.com" required>
                     </div>
                 </div>
                 <p x-show="recuperarErro" x-text="recuperarErro" class="text-red-500 text-sm mb-3"></p>
@@ -544,7 +545,7 @@
                     <span x-show="recuperarLoading" class="inline-flex items-center gap-2"><span class="spinner" style="width:18px;height:18px;border-width:2px;border-top-color:white;"></span> Enviando...</span>
                 </button>
             </form>
-            <button @click="recuperarSenhaStep = 0" class="w-full text-center text-sm text-gray-500 hover:text-gray-700 mt-4 transition min-h-[44px] py-2 flex items-center justify-center gap-1">
+            <button @click="recuperarSenhaStep = 0" class="w-full text-center text-sm text-gray-500 hover:text-zinc-300 mt-4 transition min-h-[44px] py-2 flex items-center justify-center gap-1">
                 <i data-lucide="arrow-left" class="w-4 h-4"></i> Voltar ao login
             </button>
         </div>
@@ -555,7 +556,7 @@
                 <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-3 bg-teal-50">
                     <i data-lucide="smartphone" class="w-6 h-6 text-teal-500"></i>
                 </div>
-                <h2 class="text-xl font-heading font-bold text-gray-900">Verificar Codigo</h2>
+                <h2 class="text-xl font-serif tracking-widest uppercase text-white">Verificar Codigo</h2>
                 <p class="text-gray-500 text-sm mt-1">Digite o codigo de 6 digitos enviado para seu WhatsApp</p>
             </div>
             <div class="flex items-center justify-center gap-2 mb-6">
@@ -585,7 +586,7 @@
             <div class="text-center mt-4">
                 <button @click="enviarCodigoRecuperacao()" class="text-sm text-brand-500 hover:underline min-h-[44px] px-4 py-2 font-medium" :disabled="recuperarLoading">Reenviar codigo</button>
             </div>
-            <button @click="recuperarSenhaStep = 1" class="w-full text-center text-sm text-gray-500 hover:text-gray-700 mt-2 transition min-h-[44px] py-2 flex items-center justify-center gap-1">
+            <button @click="recuperarSenhaStep = 1" class="w-full text-center text-sm text-gray-500 hover:text-zinc-300 mt-2 transition min-h-[44px] py-2 flex items-center justify-center gap-1">
                 <i data-lucide="arrow-left" class="w-4 h-4"></i> Alterar e-mail
             </button>
         </div>
@@ -596,7 +597,7 @@
                 <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-3" style="background: #FEF3C7;">
                     <i data-lucide="shield-check" class="w-6 h-6" style="color: #D4AF37;"></i>
                 </div>
-                <h2 class="text-xl font-heading font-bold text-gray-900">Nova Senha</h2>
+                <h2 class="text-xl font-serif tracking-widest uppercase text-white">Nova Senha</h2>
                 <p class="text-gray-500 text-sm mt-1">Defina sua nova senha de acesso</p>
             </div>
             <div class="flex items-center justify-center gap-2 mb-6">
@@ -608,17 +609,17 @@
             </div>
             <form @submit.prevent="redefinirSenhaRecuperacao()">
                 <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-1.5">Nova senha</label>
+                    <label class="block text-sm font-medium text-zinc-300 mb-1.5">Nova senha</label>
                     <div class="relative">
-                        <i data-lucide="lock" class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"></i>
-                        <input type="password" x-model="recuperarForm.novaSenha" class="input pl-10" placeholder="Minimo 8 caracteres" required>
+                        <i data-lucide="lock" class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500"></i>
+                        <input type="password" x-model="recuperarForm.novaSenha" class="input pl-10 border-zinc-800 bg-zinc-950/50 text-white" placeholder="Minimo 8 caracteres" required>
                     </div>
                 </div>
                 <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-1.5">Confirmar nova senha</label>
+                    <label class="block text-sm font-medium text-zinc-300 mb-1.5">Confirmar nova senha</label>
                     <div class="relative">
-                        <i data-lucide="lock" class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"></i>
-                        <input type="password" x-model="recuperarForm.confirmarSenha" class="input pl-10" placeholder="Repita a senha" required>
+                        <i data-lucide="lock" class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500"></i>
+                        <input type="password" x-model="recuperarForm.confirmarSenha" class="input pl-10 border-zinc-800 bg-zinc-950/50 text-white" placeholder="Repita a senha" required>
                     </div>
                 </div>
                 <p x-show="recuperarErro" x-text="recuperarErro" class="text-red-500 text-sm mb-3"></p>
@@ -645,11 +646,11 @@
         <!-- Logo section -->
         <div class="p-5 border-b border-white/10">
             <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg" style="background: linear-gradient(135deg, #7C3AED, #0D9488);">
+                <div class="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg" style="background: linear-gradient(135deg, #f59e0b, #d97706);">
                     <span class="text-white text-lg">&#9883;</span>
                 </div>
                 <div>
-                    <span class="text-base font-heading font-bold" x-text="terapeuta?.nome_agente || 'Portal'"></span>
+                    <span class="text-base font-serif tracking-widest uppercase" x-text="terapeuta?.nome_agente || 'Portal'"></span>
                     <p class="text-purple-300/70 text-xs truncate max-w-[160px]" x-text="terapeuta?.email || ''"></p>
                 </div>
             </div>
@@ -685,21 +686,21 @@
     <main class="flex-1 ml-[260px] min-h-screen main-content">
 
         <!-- TOPBAR -->
-        <header class="bg-white/80 backdrop-blur-xl border-b border-gray-100/80 px-4 md:px-6 py-3.5 flex items-center justify-between sticky top-0 z-30">
+        <header class="bg-white/80 backdrop-blur-md border-b border-gray-100/80 px-4 md:px-6 py-3.5 flex items-center justify-between sticky top-0 z-30">
             <div class="flex items-center gap-3">
                 <!-- Mobile menu -->
                 <button @click="sidebarOpen = !sidebarOpen" class="md:hidden text-gray-600 hover:text-brand-600 p-2 -ml-2 rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-brand-50 transition">
                     <i data-lucide="menu" class="w-5 h-5"></i>
                 </button>
                 <div>
-                    <h2 class="font-heading font-semibold text-gray-900 text-base" x-text="tituloSecao"></h2>
-                    <p class="text-xs text-gray-400 hidden sm:block" x-text="new Date().toLocaleDateString('pt-BR', {weekday:'long', day:'numeric', month:'long'})"></p>
+                    <h2 class="font-heading font-semibold text-white text-base" x-text="tituloSecao"></h2>
+                    <p class="text-xs text-zinc-500 hidden sm:block" x-text="new Date().toLocaleDateString('pt-BR', {weekday:'long', day:'numeric', month:'long'})"></p>
                 </div>
             </div>
             <div class="flex items-center gap-2">
                 <span x-show="loading" class="spinner"></span>
                 <!-- Notification bell -->
-                <button id="tour-notificacoes" class="relative p-2.5 text-gray-400 hover:text-brand-500 transition rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-brand-50" @click="navegar('acompanhamentos')">
+                <button id="tour-notificacoes" class="relative p-2.5 text-zinc-500 hover:text-brand-500 transition rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-brand-50" @click="navegar('acompanhamentos')">
                     <i data-lucide="bell" class="w-5 h-5"></i>
                     <span x-show="notificationCount > 0"
                         class="absolute top-1.5 right-1.5 bg-red-500 text-white text-[10px] rounded-full w-4.5 h-4.5 flex items-center justify-center font-bold" style="width:18px;height:18px;font-size:10px;"
@@ -708,9 +709,9 @@
                 <!-- User avatar -->
                 <div id="tour-perfil" class="flex items-center gap-2.5 pl-2 border-l border-gray-100 ml-1">
                     <div class="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-md"
-                        style="background: linear-gradient(135deg, #7C3AED, #0D9488);"
+                        style="background: linear-gradient(135deg, #f59e0b, #d97706);"
                         x-text="terapeuta?.nome?.charAt(0)?.toUpperCase() || 'T'"></div>
-                    <span class="text-sm font-medium text-gray-700 hidden sm:inline" x-text="terapeuta?.nome?.split(' ')[0] || ''"></span>
+                    <span class="text-sm font-medium text-zinc-300 hidden sm:inline" x-text="terapeuta?.nome?.split(' ')[0] || ''"></span>
                 </div>
             </div>
         </header>
@@ -721,7 +722,7 @@
         <div x-show="secao === 'dashboard'" class="fade-in">
             <!-- Welcome greeting -->
             <div class="mb-6">
-                <h1 class="text-xl sm:text-2xl font-heading font-bold text-gray-900">
+                <h1 class="text-xl sm:text-2xl font-serif tracking-widest uppercase text-white">
                     Ola, <span class="gradient-text" x-text="terapeuta?.nome?.split(' ')[0] || 'Terapeuta'"></span>
                 </h1>
                 <p class="text-sm text-gray-500 mt-0.5">Aqui esta o resumo da sua pratica hoje.</p>
@@ -736,8 +737,8 @@
                             <i data-lucide="users" class="w-4 h-4 text-brand-500"></i>
                         </div>
                     </div>
-                    <p class="text-2xl sm:text-3xl font-heading font-bold text-gray-900" x-text="stats.pacientes_ativos ?? '—'"></p>
-                    <p class="text-xs text-gray-400 mt-1">total cadastrados</p>
+                    <p class="text-2xl sm:text-3xl font-serif tracking-widest uppercase text-white" x-text="stats.pacientes_ativos ?? '—'"></p>
+                    <p class="text-xs text-zinc-500 mt-1">total cadastrados</p>
                 </div>
                 <div class="glass-card-static p-4 sm:p-5 stat-card stat-teal">
                     <div class="flex items-center justify-between mb-2">
@@ -746,8 +747,8 @@
                             <i data-lucide="calendar-check" class="w-4 h-4 text-teal-500"></i>
                         </div>
                     </div>
-                    <p class="text-2xl sm:text-3xl font-heading font-bold text-teal-600" x-text="stats.sessoes_hoje ?? '—'"></p>
-                    <p class="text-xs text-gray-400 mt-1">acompanhamentos</p>
+                    <p class="text-2xl sm:text-3xl font-serif tracking-widest uppercase text-teal-600" x-text="stats.sessoes_hoje ?? '—'"></p>
+                    <p class="text-xs text-zinc-500 mt-1">acompanhamentos</p>
                 </div>
                 <div class="glass-card-static p-4 sm:p-5 stat-card stat-amber">
                     <div class="flex items-center justify-between mb-2">
@@ -756,8 +757,8 @@
                             <i data-lucide="clock" class="w-4 h-4 text-amber-500"></i>
                         </div>
                     </div>
-                    <p class="text-2xl sm:text-3xl font-heading font-bold text-amber-500" x-text="stats.pendencias ?? '—'"></p>
-                    <p class="text-xs text-gray-400 mt-1">follow-ups abertos</p>
+                    <p class="text-2xl sm:text-3xl font-serif tracking-widest uppercase text-amber-500" x-text="stats.pendencias ?? '—'"></p>
+                    <p class="text-xs text-zinc-500 mt-1">follow-ups abertos</p>
                 </div>
                 <div class="glass-card-static p-4 sm:p-5 stat-card stat-rose">
                     <div class="flex items-center justify-between mb-2">
@@ -766,8 +767,8 @@
                             <i data-lucide="clipboard-list" class="w-4 h-4 text-rose-500"></i>
                         </div>
                     </div>
-                    <p class="text-2xl sm:text-3xl font-heading font-bold text-rose-500" x-text="stats.diagnosticos ?? '—'"></p>
-                    <p class="text-xs text-gray-400 mt-1">registros clinicos</p>
+                    <p class="text-2xl sm:text-3xl font-serif tracking-widest uppercase text-rose-500" x-text="stats.diagnosticos ?? '—'"></p>
+                    <p class="text-xs text-zinc-500 mt-1">registros clinicos</p>
                 </div>
             </div>
 
@@ -785,7 +786,7 @@
                             <i data-lucide="calendar-off" class="w-6 h-6 text-brand-400"></i>
                         </div>
                         <p class="text-gray-600 font-medium text-sm">Agenda livre hoje</p>
-                        <p class="text-gray-400 text-xs mt-1">Nenhum acompanhamento agendado</p>
+                        <p class="text-zinc-500 text-xs mt-1">Nenhum acompanhamento agendado</p>
                         <button @click="abrirModalAcomp()" class="btn-primary text-xs mt-4 px-4">+ Agendar follow-up</button>
                     </div>
                     <div class="space-y-2.5">
@@ -814,18 +815,18 @@
                             <i data-lucide="check-circle-2" class="w-6 h-6 text-teal-400"></i>
                         </div>
                         <p class="text-gray-600 font-medium text-sm">Sem retornos pendentes</p>
-                        <p class="text-gray-400 text-xs mt-1">Seus pacientes estao em dia</p>
+                        <p class="text-zinc-500 text-xs mt-1">Seus pacientes estao em dia</p>
                     </div>
                     <div class="space-y-2">
                         <template x-for="msg in ultimasMsgs" :key="msg.id">
                             <div class="flex items-start gap-3 hover:bg-warm-50 rounded-xl p-2.5 transition">
                                 <div class="w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold text-white shadow-sm"
-                                    style="background: linear-gradient(135deg, #7C3AED, #0D9488);" x-text="(msg.pacientes?.nome||'?').charAt(0)"></div>
+                                    style="background: linear-gradient(135deg, #f59e0b, #d97706);" x-text="(msg.pacientes?.nome||'?').charAt(0)"></div>
                                 <div class="flex-1 min-w-0">
                                     <p class="text-sm font-medium text-gray-800" x-text="msg.pacientes?.nome || 'Paciente'"></p>
                                     <p class="text-xs text-gray-500 truncate" x-text="msg.descricao || 'Sem descricao'"></p>
                                 </div>
-                                <span class="text-xs text-gray-400 flex-shrink-0 font-medium" x-text="formatarDataCurta(msg.data_prevista)"></span>
+                                <span class="text-xs text-zinc-500 flex-shrink-0 font-medium" x-text="formatarDataCurta(msg.data_prevista)"></span>
                             </div>
                         </template>
                     </div>
@@ -839,9 +840,9 @@
             <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-5">
                 <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full sm:w-auto">
                     <div class="relative w-full sm:w-auto">
-                        <i data-lucide="search" class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"></i>
+                        <i data-lucide="search" class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500"></i>
                         <input x-model="buscaPaciente" @input="filtrarPacientes()"
-                            class="input pl-10 w-full sm:max-w-xs" placeholder="Buscar pacientes...">
+                            class="input pl-10 border-zinc-800 bg-zinc-950/50 text-white w-full sm:max-w-xs" placeholder="Buscar pacientes...">
                     </div>
                     <select x-model="filtroPacienteStatus" @change="filtrarPacientes()" class="input w-full sm:max-w-[150px]">
                         <option value="">Todos</option>
@@ -863,14 +864,14 @@
             <div class="glass-card-static overflow-hidden p-0">
                 <div x-show="loading && pacientesFiltrados.length === 0" class="text-center py-12">
                     <span class="spinner"></span>
-                    <p class="text-gray-400 text-sm mt-3">Carregando pacientes...</p>
+                    <p class="text-zinc-500 text-sm mt-3">Carregando pacientes...</p>
                 </div>
                 <div x-show="!loading && pacientesFiltrados.length === 0" class="text-center py-12 px-4">
                     <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-brand-50 flex items-center justify-center">
                         <i data-lucide="users" class="w-7 h-7 text-brand-400"></i>
                     </div>
                     <p class="font-heading font-semibold text-gray-600">Nenhum paciente encontrado</p>
-                    <p class="text-sm text-gray-400 mt-1">Importe do WhatsApp ou cadastre manualmente</p>
+                    <p class="text-sm text-zinc-500 mt-1">Importe do WhatsApp ou cadastre manualmente</p>
                     <div class="flex flex-col sm:flex-row justify-center gap-2 mt-4">
                         <button @click="importarWhatsApp()" class="btn-ghost text-xs min-h-[44px] px-4 flex items-center gap-1.5 justify-center"><i data-lucide="download" class="w-3.5 h-3.5"></i> Importar WhatsApp</button>
                         <button @click="abrirModalPaciente()" class="btn-primary text-xs min-h-[44px] px-4 flex items-center gap-1.5 justify-center"><i data-lucide="user-plus" class="w-3.5 h-3.5"></i> Novo Paciente</button>
@@ -893,11 +894,11 @@
                                 <td>
                                     <div class="flex items-center gap-3">
                                         <div class="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0 shadow-sm"
-                                            style="background: linear-gradient(135deg, #7C3AED, #0D9488);"
+                                            style="background: linear-gradient(135deg, #f59e0b, #d97706);"
                                             x-text="p.nome.charAt(0)"></div>
                                         <div class="min-w-0">
                                             <p class="text-sm font-medium text-gray-800 truncate" x-text="p.nome"></p>
-                                            <p class="text-xs text-gray-400 truncate" x-text="p.email || ''"></p>
+                                            <p class="text-xs text-zinc-500 truncate" x-text="p.email || ''"></p>
                                         </div>
                                     </div>
                                 </td>
@@ -911,7 +912,7 @@
                                         <button @click="abrirProntuario(p)" class="text-brand-500 hover:text-brand-700 hover:bg-brand-50 px-3 py-2 rounded-lg text-xs font-semibold transition min-h-[44px] flex items-center justify-center whitespace-nowrap gap-1">
                                             <i data-lucide="file-text" class="w-3.5 h-3.5"></i> Prontuario
                                         </button>
-                                        <button @click="abrirModalPaciente(p)" class="text-gray-400 hover:text-brand-500 px-2 py-2 rounded-lg text-xs transition min-h-[44px] min-w-[44px] flex items-center justify-center hover:bg-brand-50">
+                                        <button @click="abrirModalPaciente(p)" class="text-zinc-500 hover:text-brand-500 px-2 py-2 rounded-lg text-xs transition min-h-[44px] min-w-[44px] flex items-center justify-center hover:bg-brand-50">
                                             <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
                                         </button>
                                     </div>
@@ -932,9 +933,9 @@
                     </button>
                     <div class="flex items-center gap-2.5 min-w-0">
                         <div class="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0 shadow-md"
-                            style="background: linear-gradient(135deg, #7C3AED, #0D9488);"
+                            style="background: linear-gradient(135deg, #f59e0b, #d97706);"
                             x-text="pacienteContexto?.nome?.charAt(0) || '?'"></div>
-                        <h2 class="text-base sm:text-lg font-heading font-bold text-gray-800 truncate" x-text="'Prontuario de ' + (pacienteContexto?.nome || '')"></h2>
+                        <h2 class="text-base sm:text-lg font-serif tracking-widest uppercase text-gray-800 truncate" x-text="'Prontuario de ' + (pacienteContexto?.nome || '')"></h2>
                     </div>
                 </div>
 
@@ -944,10 +945,10 @@
                     <div class="flex flex-col sm:flex-row items-start justify-between gap-3 sm:gap-4">
                         <div class="flex items-start gap-3 sm:gap-4 min-w-0">
                             <div class="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center text-lg sm:text-xl font-bold text-white flex-shrink-0 shadow-lg"
-                                style="background: linear-gradient(135deg, #7C3AED, #0D9488);"
+                                style="background: linear-gradient(135deg, #f59e0b, #d97706);"
                                 x-text="prontuario?.paciente?.nome?.charAt(0) || '?'"></div>
                             <div class="min-w-0">
-                                <h3 class="text-base sm:text-lg font-heading font-bold text-gray-900 truncate" x-text="prontuario?.paciente?.nome"></h3>
+                                <h3 class="text-base sm:text-lg font-serif tracking-widest uppercase text-white truncate" x-text="prontuario?.paciente?.nome"></h3>
                                 <p x-show="prontuario?.paciente?.numero_telefone && prontuario.paciente.numero_telefone !== 'sem-numero'" class="text-sm text-gray-500 flex items-center gap-1">
                                     <i data-lucide="phone" class="w-3.5 h-3.5"></i>
                                     <span x-text="prontuario?.paciente?.numero_telefone"></span>
@@ -970,15 +971,15 @@
                 <!-- Stats clickable -->
                 <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 mb-5 stat-grid-mobile">
                     <button @click="abaProntuario = 'conversas'" class="glass-card-static text-center py-3 sm:py-4 px-2 cursor-pointer transition hover:shadow-md border-2" :class="abaProntuario === 'conversas' ? 'border-brand-400 bg-brand-50/50' : 'border-transparent hover:border-brand-100'">
-                        <p class="text-lg sm:text-2xl font-heading font-bold text-brand-500" x-text="(prontuario?.conversas || []).length"></p>
+                        <p class="text-lg sm:text-2xl font-serif tracking-widest uppercase text-brand-500" x-text="(prontuario?.conversas || []).length"></p>
                         <p class="text-[11px] sm:text-xs text-gray-500 mt-0.5 font-medium">Mensagens</p>
                     </button>
                     <button @click="abaProntuario = 'diagnosticos'" class="glass-card-static text-center py-3 sm:py-4 px-2 cursor-pointer transition hover:shadow-md border-2" :class="abaProntuario === 'diagnosticos' ? 'border-amber-400 bg-amber-50/50' : 'border-transparent hover:border-amber-100'">
-                        <p class="text-lg sm:text-2xl font-heading font-bold" style="color:#D4AF37" x-text="(prontuario?.diagnosticos || []).length"></p>
+                        <p class="text-lg sm:text-2xl font-serif tracking-widest uppercase" style="color:#D4AF37" x-text="(prontuario?.diagnosticos || []).length"></p>
                         <p class="text-[11px] sm:text-xs text-gray-500 mt-0.5 font-medium">Diagnosticos</p>
                     </button>
                     <div class="glass-card-static text-center py-3 sm:py-4 px-2 border-2 border-transparent">
-                        <p class="text-lg sm:text-2xl font-heading font-bold text-teal-500" x-text="(() => { const convs = prontuario?.conversas || []; if (!convs.length) return '—'; const last = convs.reduce((a,b) => new Date(a.criado_em) > new Date(b.criado_em) ? a : b); const diff = Math.floor((Date.now() - new Date(last.criado_em)) / 86400000); return diff === 0 ? 'hoje' : diff === 1 ? 'ontem' : diff + 'd'; })()"></p>
+                        <p class="text-lg sm:text-2xl font-serif tracking-widest uppercase text-teal-500" x-text="(() => { const convs = prontuario?.conversas || []; if (!convs.length) return '—'; const last = convs.reduce((a,b) => new Date(a.criado_em) > new Date(b.criado_em) ? a : b); const diff = Math.floor((Date.now() - new Date(last.criado_em)) / 86400000); return diff === 0 ? 'hoje' : diff === 1 ? 'ontem' : diff + 'd'; })()"></p>
                         <p class="text-[11px] sm:text-xs text-gray-500 mt-0.5 font-medium">Ultima Interacao</p>
                     </div>
                 </div>
@@ -989,7 +990,7 @@
                     <template x-for="aba in abasProntuario" :key="aba.id">
                         <button @click="abaProntuario = aba.id"
                             class="flex-shrink-0 sm:flex-1 py-2 sm:py-2.5 text-[11px] sm:text-xs font-semibold rounded-lg transition whitespace-nowrap px-2.5 sm:px-4 min-h-[40px] sm:min-h-[44px] flex items-center justify-center gap-1 tab-mobile"
-                            :class="abaProntuario === aba.id ? 'bg-white text-brand-600 shadow-sm border border-brand-100' : 'text-gray-400 hover:text-gray-600 hover:bg-white/50'">
+                            :class="abaProntuario === aba.id ? 'bg-white text-brand-600 shadow-sm border border-brand-100' : 'text-zinc-500 hover:text-gray-600 hover:bg-white/50'">
                             <span x-text="aba.icon || ''"></span>
                             <span x-text="aba.label"></span>
                         </button>
@@ -999,7 +1000,7 @@
 
                 <!-- Timeline -->
                 <div x-show="abaProntuario === 'timeline'" class="space-y-3">
-                    <div x-show="(prontuario?.timeline || []).length === 0" class="text-center py-8 text-gray-400 text-sm">Sem registros na timeline</div>
+                    <div x-show="(prontuario?.timeline || []).length === 0" class="text-center py-8 text-zinc-500 text-sm">Sem registros na timeline</div>
                     <template x-for="ev in (prontuario?.timeline || [])" :key="(ev.id || '') + ev.tipo + ev.data">
                         <div class="timeline-item glass-card ml-4 p-4">
                             <div class="flex items-start justify-between">
@@ -1021,7 +1022,7 @@
                                                 ev.tipo"></span>
                                     <div class="min-w-0">
                                         <span class="text-sm font-medium text-gray-800" x-text="ev.titulo || ev.resumo || ''"></span>
-                                        <p class="text-[11px] text-gray-400 mt-0.5" x-text="ev.data ? new Date(ev.data).toLocaleDateString('pt-BR', {day:'2-digit', month:'long', year:'numeric'}) + ' as ' + new Date(ev.data).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}) : ''"></p>
+                                        <p class="text-[11px] text-zinc-500 mt-0.5" x-text="ev.data ? new Date(ev.data).toLocaleDateString('pt-BR', {day:'2-digit', month:'long', year:'numeric'}) + ' as ' + new Date(ev.data).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}) : ''"></p>
                                     </div>
                                 </div>
                             </div>
@@ -1031,7 +1032,7 @@
 
                 <!-- Diagnostics -->
                 <div x-show="abaProntuario === 'diagnosticos'" class="space-y-3">
-                    <div x-show="(prontuario?.diagnosticos || []).length === 0" class="text-center py-8 text-gray-400 text-sm">Nenhum diagnostico registrado</div>
+                    <div x-show="(prontuario?.diagnosticos || []).length === 0" class="text-center py-8 text-zinc-500 text-sm">Nenhum diagnostico registrado</div>
                     <template x-for="d in (prontuario?.diagnosticos || [])" :key="d.id">
                         <div class="glass-card p-4">
                             <div class="flex items-center justify-between mb-2">
@@ -1066,7 +1067,7 @@
 
                 <!-- Notes -->
                 <div x-show="abaProntuario === 'anotacoes'" class="space-y-0">
-                    <div x-show="(prontuario?.anotacoes || []).length === 0" class="text-center py-8 text-gray-400 text-sm">Nenhuma anotacao registrada</div>
+                    <div x-show="(prontuario?.anotacoes || []).length === 0" class="text-center py-8 text-zinc-500 text-sm">Nenhuma anotacao registrada</div>
                     <template x-for="(nota, idx) in (prontuario?.anotacoes || [])" :key="nota.id">
                         <div class="flex gap-2 sm:gap-4 relative">
                             <div class="hidden sm:flex flex-col items-center" style="min-width: 90px;">
@@ -1080,7 +1081,7 @@
                                 <div class="flex items-center gap-2 mb-1.5 flex-wrap">
                                     <span class="badge bg-warm-100 text-gray-600" x-text="nota.tipo"></span>
                                     <span class="text-sm font-semibold text-gray-800" x-text="nota.titulo || 'Nota'"></span>
-                                    <span class="text-xs text-gray-400 ml-auto" x-text="'#' + (idx + 1)"></span>
+                                    <span class="text-xs text-zinc-500 ml-auto" x-text="'#' + (idx + 1)"></span>
                                 </div>
                                 <p class="text-xs sm:hidden text-brand-500 font-medium mb-1" x-text="nota.data_anotacao ? new Date(nota.data_anotacao + 'T12:00:00').toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit', year:'numeric'}) : ''"></p>
                                 <p class="text-sm text-gray-600 leading-relaxed" x-text="nota.conteudo"></p>
@@ -1091,12 +1092,12 @@
 
                 <!-- Conversations (chat style) -->
                 <div x-show="abaProntuario === 'conversas'">
-                    <div x-show="(prontuario?.conversas || []).length === 0" class="text-center py-8 text-gray-400 text-sm">Nenhuma conversa registrada</div>
+                    <div x-show="(prontuario?.conversas || []).length === 0" class="text-center py-8 text-zinc-500 text-sm">Nenhuma conversa registrada</div>
                     <div class="space-y-1 max-h-[60vh] overflow-y-auto rounded-2xl p-4 sm:p-5 border border-gray-200/60" style="background: linear-gradient(180deg, #f8f6f2 0%, #f0ede8 100%);">
                         <template x-for="(c, ci) in [...(prontuario?.conversas || [])].reverse()" :key="c.id">
                             <div class="space-y-1.5 mb-3">
                                 <div x-show="ci === 0 || new Date(c.criado_em).toLocaleDateString('pt-BR') !== new Date([...(prontuario?.conversas || [])].reverse()[ci-1]?.criado_em).toLocaleDateString('pt-BR')" class="flex justify-center my-3">
-                                    <span class="bg-white/95 backdrop-blur text-[10px] text-gray-500 px-3 py-1 rounded-full shadow-sm font-medium border border-gray-100" x-text="new Date(c.criado_em).toLocaleDateString('pt-BR', {day:'2-digit', month:'long', year:'numeric'})"></span>
+                                    <span class="bg-zinc-900/60 backdrop-blur text-[10px] text-gray-500 px-3 py-1 rounded-full shadow-sm font-medium border border-gray-100" x-text="new Date(c.criado_em).toLocaleDateString('pt-BR', {day:'2-digit', month:'long', year:'numeric'})"></span>
                                 </div>
                                 <!-- Terapeuta (esquerda) -->
                                 <div x-show="c.mensagem_paciente" class="flex items-end gap-2 justify-start">
@@ -1106,8 +1107,8 @@
                                         <p class="text-[10px] font-bold text-teal-700 mb-0.5 ml-1" x-text="terapeuta?.nome || 'Terapeuta'"></p>
                                         <div class="bg-white rounded-2xl rounded-bl-md px-3.5 py-2.5 shadow-sm border border-gray-100/80" x-data="{ expanded: false }">
                                             <p class="text-sm text-gray-800 leading-relaxed whitespace-pre-line" x-text="expanded || (c.mensagem_paciente||'').length <= 200 ? c.mensagem_paciente : c.mensagem_paciente.substring(0, 200) + '...'"></p>
-                                            <button x-show="(c.mensagem_paciente||'').length > 200" @click="expanded = !expanded" class="text-[11px] font-semibold mt-1 hover:underline" :class="expanded ? 'text-gray-400' : 'text-teal-600'" x-text="expanded ? 'ver menos' : 'ver mais'"></button>
-                                            <p class="text-[10px] text-gray-400 text-right mt-1" x-text="new Date(c.criado_em).toLocaleString('pt-BR', {hour:'2-digit',minute:'2-digit'})"></p>
+                                            <button x-show="(c.mensagem_paciente||'').length > 200" @click="expanded = !expanded" class="text-[11px] font-semibold mt-1 hover:underline" :class="expanded ? 'text-zinc-500' : 'text-teal-600'" x-text="expanded ? 'ver menos' : 'ver mais'"></button>
+                                            <p class="text-[10px] text-zinc-500 text-right mt-1" x-text="new Date(c.criado_em).toLocaleString('pt-BR', {hour:'2-digit',minute:'2-digit'})"></p>
                                         </div>
                                     </div>
                                 </div>
@@ -1117,16 +1118,16 @@
                                         <p class="text-[10px] font-bold text-brand-600 mb-0.5 mr-1 text-right" x-text="terapeuta?.nome_agente || 'Agente IA'"></p>
                                         <div class="rounded-2xl rounded-br-md px-3.5 py-2.5 shadow-sm" style="background: linear-gradient(135deg, #f3edff 0%, #ede5ff 100%); border: 1px solid rgba(123,47,190,0.12);" x-data="{ expanded: false }">
                                             <p class="text-sm text-gray-800 leading-relaxed whitespace-pre-line" x-text="expanded || (c.resposta_agente||'').length <= 200 ? c.resposta_agente : c.resposta_agente.substring(0, 200) + '...'"></p>
-                                            <button x-show="(c.resposta_agente||'').length > 200" @click="expanded = !expanded" class="text-[11px] font-semibold mt-1 hover:underline" :class="expanded ? 'text-gray-400' : 'text-brand-600'" x-text="expanded ? 'ver menos' : 'ver mais'"></button>
+                                            <button x-show="(c.resposta_agente||'').length > 200" @click="expanded = !expanded" class="text-[11px] font-semibold mt-1 hover:underline" :class="expanded ? 'text-zinc-500' : 'text-brand-600'" x-text="expanded ? 'ver menos' : 'ver mais'"></button>
                                             <div class="flex items-center justify-end gap-2 mt-1">
                                                 <span x-show="c.intencao" class="text-[10px] text-brand-400 font-semibold uppercase tracking-wide px-1.5 py-0.5 bg-brand-50 rounded" x-text="c.intencao"></span>
-                                                <p class="text-[10px] text-gray-400" x-text="new Date(c.criado_em).toLocaleString('pt-BR', {hour:'2-digit',minute:'2-digit'})"></p>
+                                                <p class="text-[10px] text-zinc-500" x-text="new Date(c.criado_em).toLocaleString('pt-BR', {hour:'2-digit',minute:'2-digit'})"></p>
                                                 <span class="text-[10px] text-teal-500">&#10003;&#10003;</span>
                                             </div>
                                         </div>
                                     </div>
                                     <div class="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0"
-                                        style="background: linear-gradient(135deg, #7C3AED, #6D28D9);"
+                                        style="background: linear-gradient(135deg, #f59e0b, #6D28D9);"
                                         x-text="(terapeuta?.nome_agente || 'S').charAt(0)"></div>
                                 </div>
                             </div>
@@ -1136,7 +1137,7 @@
 
                 <!-- Maps -->
                 <div x-show="abaProntuario === 'mapas'" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div x-show="(prontuario?.mapas_natais || []).length === 0" class="col-span-full text-center py-8 text-gray-400 text-sm">Nenhum mapa natal gerado</div>
+                    <div x-show="(prontuario?.mapas_natais || []).length === 0" class="col-span-full text-center py-8 text-zinc-500 text-sm">Nenhum mapa natal gerado</div>
                     <template x-for="mapa in (prontuario?.mapas_natais || [])" :key="mapa.id">
                         <div class="glass-card cursor-pointer hover:shadow-lg transition relative p-4" @click="verMapa(mapa)">
                             <div class="relative">
@@ -1154,7 +1155,7 @@
                 <!-- Elementos Alquimicos -->
                 <div x-show="abaProntuario === 'elementos'" class="space-y-4">
                     <template x-if="!getLatestDiag() || !getLatestDiag().elementos_detalhes">
-                        <div class="text-center py-8 text-gray-400 text-sm">
+                        <div class="text-center py-8 text-zinc-500 text-sm">
                             <span class="text-3xl block mb-2">&#x1F702;</span>
                             Nenhum dado de elementos registrado. Crie um diagnostico com detalhes dos elementos.
                         </div>
@@ -1193,7 +1194,7 @@
                                         </div>
                                         <!-- Cross-reference com mapa astral -->
                                         <template x-if="(prontuario?.mapas_natais || []).length > 0">
-                                            <p class="text-xs text-gray-400 mt-2 flex items-center gap-1">
+                                            <p class="text-xs text-zinc-500 mt-2 flex items-center gap-1">
                                                 <span>⭐</span>
                                                 <span>Mapa astral disponível para cruzamento</span>
                                             </p>
@@ -1202,7 +1203,7 @@
                                 </template>
                             </div>
 
-                            <p class="text-xs text-gray-400 mt-3 text-right" x-text="'Baseado no diagnostico de ' + formatarDataCurta(getLatestDiag()?.sessao_data)"></p>
+                            <p class="text-xs text-zinc-500 mt-3 text-right" x-text="'Baseado no diagnostico de ' + formatarDataCurta(getLatestDiag()?.sessao_data)"></p>
 
                             <!-- Cross-reference com Mapa Natal -->
                             <div class="glass-card p-3 mt-4 border border-indigo-100 bg-indigo-50/50">
@@ -1236,7 +1237,7 @@
                 <!-- Substancias Alquimicas -->
                 <div x-show="abaProntuario === 'substancias'" class="space-y-4">
                     <template x-if="!getLatestDiag()">
-                        <div class="text-center py-8 text-gray-400 text-sm">
+                        <div class="text-center py-8 text-zinc-500 text-sm">
                             <span class="text-3xl block mb-2">&#x2697;&#xFE0F;</span>
                             Nenhum diagnostico encontrado. Crie um diagnostico para visualizar as substâncias.
                         </div>
@@ -1250,7 +1251,7 @@
                                         <span class="text-xl">🔥</span>
                                         <div>
                                             <p class="text-sm font-semibold text-gray-800">Enxofre</p>
-                                            <p class="text-xs text-gray-400">Terra + Fogo</p>
+                                            <p class="text-xs text-zinc-500">Terra + Fogo</p>
                                         </div>
                                     </div>
                                     <p class="text-xs text-gray-500 mb-3">Agressivo, possessivo, impulsivo</p>
@@ -1271,7 +1272,7 @@
                                         <span class="text-xl">💎</span>
                                         <div>
                                             <p class="text-sm font-semibold text-gray-800">Sal</p>
-                                            <p class="text-xs text-gray-400">Ponte entre elementos</p>
+                                            <p class="text-xs text-zinc-500">Ponte entre elementos</p>
                                         </div>
                                     </div>
                                     <p class="text-xs text-gray-500 mb-3">Melancólico, sem identidade, neutro</p>
@@ -1292,7 +1293,7 @@
                                         <span class="text-xl">🌊</span>
                                         <div>
                                             <p class="text-sm font-semibold text-gray-800">Mercúrio</p>
-                                            <p class="text-xs text-gray-400">Ar + Água</p>
+                                            <p class="text-xs text-zinc-500">Ar + Água</p>
                                         </div>
                                     </div>
                                     <p class="text-xs text-gray-500 mb-3">Fluído, comunicativo, adaptativo</p>
@@ -1310,12 +1311,12 @@
 
                             <div class="glass-card p-3 mt-3 bg-warm-50 border border-gray-200">
                                 <p class="text-xs text-gray-500">
-                                    <span class="font-semibold text-gray-700">Como ler:</span> As substâncias são combinações dos 4 elementos. Quando uma substância está predominante, indica o padrão comportamental dominante do paciente.
+                                    <span class="font-semibold text-zinc-300">Como ler:</span> As substâncias são combinações dos 4 elementos. Quando uma substância está predominante, indica o padrão comportamental dominante do paciente.
                                 </p>
                                 <p x-show="!getLatestDiag()?.substancias" class="text-xs text-amber-600 mt-1">&#x26A0;&#xFE0F; Valores estimados a partir dos elementos (sem dados diretos de substâncias)</p>
                             </div>
 
-                            <p class="text-xs text-gray-400 mt-3 text-right" x-text="'Baseado no diagnostico de ' + formatarDataCurta(getLatestDiag()?.sessao_data)"></p>
+                            <p class="text-xs text-zinc-500 mt-3 text-right" x-text="'Baseado no diagnostico de ' + formatarDataCurta(getLatestDiag()?.sessao_data)"></p>
                         </div>
                     </template>
                 </div>
@@ -1323,7 +1324,7 @@
                 <!-- DNA Alquimico -->
                 <div x-show="abaProntuario === 'dna_alquimico'" class="space-y-4">
                     <template x-if="!getLatestDiag()">
-                        <div class="text-center py-8 text-gray-400 text-sm">
+                        <div class="text-center py-8 text-zinc-500 text-sm">
                             <span class="text-3xl block mb-2">🧬</span>
                             Nenhum diagnostico com dados de DNA encontrado.
                         </div>
@@ -1341,7 +1342,7 @@
                                         <span class="text-lg font-bold text-brand-700" x-text="'#' + getLatestDiag()?.setenio_atual"></span>
                                     </div>
                                     <div>
-                                        <p class="text-sm text-gray-700 font-medium" x-text="'Ciclo de ' + ((getLatestDiag()?.setenio_atual - 1) * 7) + ' a ' + (getLatestDiag()?.setenio_atual * 7) + ' anos'"></p>
+                                        <p class="text-sm text-zinc-300 font-medium" x-text="'Ciclo de ' + ((getLatestDiag()?.setenio_atual - 1) * 7) + ' a ' + (getLatestDiag()?.setenio_atual * 7) + ' anos'"></p>
                                         <p x-show="getLatestDiag()?.setenio_descricao" class="text-xs text-gray-500 mt-0.5" x-text="getLatestDiag()?.setenio_descricao"></p>
                                     </div>
                                 </div>
@@ -1355,7 +1356,7 @@
                                         <span class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-sm">🐍</span>
                                         <div>
                                             <p class="text-sm font-semibold text-gray-800">Serpente do Pai</p>
-                                            <p class="text-xs text-gray-400">Herança paterna</p>
+                                            <p class="text-xs text-zinc-500">Herança paterna</p>
                                         </div>
                                     </div>
                                     <div x-show="(getLatestDiag()?.dna_comprometido || []).length > 0">
@@ -1370,7 +1371,7 @@
                                         <p class="text-xs text-gray-500 mb-1">Descrição:</p>
                                         <p class="text-xs text-gray-600 leading-relaxed" x-text="getLatestDiag()?.serpentes_descricao"></p>
                                     </div>
-                                    <div x-show="!(getLatestDiag()?.dna_comprometido || []).length && !getLatestDiag()?.serpentes_descricao" class="text-xs text-gray-400 italic">
+                                    <div x-show="!(getLatestDiag()?.dna_comprometido || []).length && !getLatestDiag()?.serpentes_descricao" class="text-xs text-zinc-500 italic">
                                         Sem dados registrados
                                     </div>
                                 </div>
@@ -1381,7 +1382,7 @@
                                         <span class="w-8 h-8 rounded-full bg-pink-100 flex items-center justify-center text-sm">🐍</span>
                                         <div>
                                             <p class="text-sm font-semibold text-gray-800">Serpente da Mãe</p>
-                                            <p class="text-xs text-gray-400">Herança materna</p>
+                                            <p class="text-xs text-zinc-500">Herança materna</p>
                                         </div>
                                     </div>
                                     <div x-show="(getLatestDiag()?.serpentes_ativas || []).length > 0">
@@ -1396,13 +1397,13 @@
                                         <p class="text-xs text-gray-500 mb-1">Descrição:</p>
                                         <p class="text-xs text-gray-600 leading-relaxed" x-text="getLatestDiag()?.dna_descricao"></p>
                                     </div>
-                                    <div x-show="!(getLatestDiag()?.serpentes_ativas || []).length && !getLatestDiag()?.dna_descricao" class="text-xs text-gray-400 italic">
+                                    <div x-show="!(getLatestDiag()?.serpentes_ativas || []).length && !getLatestDiag()?.dna_descricao" class="text-xs text-zinc-500 italic">
                                         Sem dados registrados
                                     </div>
                                 </div>
                             </div>
 
-                            <p class="text-xs text-gray-400 mt-3 text-right" x-text="'Baseado no diagnostico de ' + formatarDataCurta(getLatestDiag()?.sessao_data)"></p>
+                            <p class="text-xs text-zinc-500 mt-3 text-right" x-text="'Baseado no diagnostico de ' + formatarDataCurta(getLatestDiag()?.sessao_data)"></p>
                         </div>
                     </template>
                 </div>
@@ -1410,7 +1411,7 @@
                 <!-- Progresso -->
                 <div x-show="abaProntuario === 'progresso'" class="space-y-4">
                     <template x-if="(prontuario?.diagnosticos || []).length === 0">
-                        <div class="text-center py-8 text-gray-400 text-sm">
+                        <div class="text-center py-8 text-zinc-500 text-sm">
                             <span class="text-3xl block mb-2">📈</span>
                             Nenhum diagnostico para avaliar progresso. Crie diagnosticos para acompanhar a evolução.
                         </div>
@@ -1452,7 +1453,7 @@
                                         <div class="flex items-center justify-between mb-2">
                                             <div class="flex items-center gap-2">
                                                 <span class="w-6 h-6 rounded-full bg-brand-100 flex items-center justify-center text-[10px] font-bold text-brand-700" x-text="idx + 1"></span>
-                                                <span class="text-xs font-medium text-gray-700" x-text="formatarDataCurta(d.sessao_data || d.criado_em)"></span>
+                                                <span class="text-xs font-medium text-zinc-300" x-text="formatarDataCurta(d.sessao_data || d.criado_em)"></span>
                                             </div>
                                             <span class="badge text-[10px]" :class="'badge-' + d.status" x-text="d.status"></span>
                                         </div>
@@ -1460,7 +1461,7 @@
                                         <div x-show="d.elementos_detalhes" class="grid grid-cols-4 gap-1 mt-2">
                                             <template x-for="el in [{key:'terra',cor:'#8B6914',label:'Te'},{key:'ar',cor:'#38BDF8',label:'Ar'},{key:'fogo',cor:'#EF4444',label:'Fo'},{key:'agua',cor:'#3B82F6',label:'Ag'}]" :key="el.key">
                                                 <div>
-                                                    <div class="text-[9px] text-gray-400 text-center mb-0.5" x-text="el.label"></div>
+                                                    <div class="text-[9px] text-zinc-500 text-center mb-0.5" x-text="el.label"></div>
                                                     <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
                                                         <div class="h-full rounded-full" :style="'width:' + (_getElVal(d.elementos_detalhes, el.key) || 0) + '%;background-color:' + el.cor"></div>
                                                     </div>
@@ -1486,15 +1487,15 @@
             <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
                 <div class="flex items-center gap-3 min-w-0">
                     <div class="w-10 h-10 rounded-xl flex items-center justify-center text-lg font-bold text-white flex-shrink-0 shadow-lg"
-                        style="background: linear-gradient(135deg, #7C3AED, #0D9488);">&#9883;</div>
+                        style="background: linear-gradient(135deg, #f59e0b, #d97706);">&#9883;</div>
                     <div class="min-w-0">
-                        <h3 class="text-sm font-heading font-bold text-gray-800 truncate" x-text="(terapeuta?.nome_agente || 'Agente IA') + ' — Historico WhatsApp'"></h3>
-                        <p class="text-xs text-gray-400" x-text="conversasWhats.length + ' mensagens no total'"></p>
+                        <h3 class="text-sm font-serif tracking-widest uppercase text-gray-800 truncate" x-text="(terapeuta?.nome_agente || 'Agente IA') + ' — Historico WhatsApp'"></h3>
+                        <p class="text-xs text-zinc-500" x-text="conversasWhats.length + ' mensagens no total'"></p>
                     </div>
                 </div>
                 <div class="w-full sm:max-w-xs relative">
-                    <i data-lucide="search" class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"></i>
-                    <input type="text" x-model="buscaConversas" @input="$nextTick()" placeholder="Buscar na conversa..." class="input pl-10">
+                    <i data-lucide="search" class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500"></i>
+                    <input type="text" x-model="buscaConversas" @input="$nextTick()" placeholder="Buscar na conversa..." class="input pl-10 border-zinc-800 bg-zinc-950/50 text-white">
                 </div>
             </div>
 
@@ -1508,7 +1509,7 @@
                             <i data-lucide="message-circle" class="w-7 h-7 text-brand-400"></i>
                         </div>
                         <p class="text-gray-600 font-heading font-semibold">Nenhuma conversa ainda</p>
-                        <p class="text-gray-400 text-sm mt-1">Envie uma mensagem para sua IA pelo WhatsApp</p>
+                        <p class="text-zinc-500 text-sm mt-1">Envie uma mensagem para sua IA pelo WhatsApp</p>
                     </div>
                 </div>
                 <div x-show="!loading && conversasMensagensIA.length > 0" x-ref="chatContainerIA" class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-1" style="background: linear-gradient(180deg, #f8f6f2 0%, #f0ede8 100%); max-height: 70vh;">
@@ -1517,7 +1518,7 @@
                             <!-- Separador de data -->
                             <div x-show="idx === 0 || new Date(msg.criado_em).toLocaleDateString('pt-BR') !== new Date(conversasMensagensIA[idx-1]?.criado_em).toLocaleDateString('pt-BR')"
                                 class="flex justify-center my-4">
-                                <span class="bg-white/95 backdrop-blur text-xs text-gray-500 px-4 py-1.5 rounded-full shadow-sm font-medium border border-gray-100"
+                                <span class="bg-zinc-900/60 backdrop-blur text-xs text-gray-500 px-4 py-1.5 rounded-full shadow-sm font-medium border border-gray-100"
                                     x-text="new Date(msg.criado_em).toLocaleDateString('pt-BR', {day:'2-digit', month:'long', year:'numeric'})"></span>
                             </div>
                             <!-- Separador de paciente -->
@@ -1534,8 +1535,8 @@
                                     <p class="text-[11px] font-bold text-teal-700 mb-0.5 ml-1" x-text="terapeuta?.nome || 'Terapeuta'"></p>
                                     <div class="bg-white rounded-2xl rounded-bl-md px-4 py-3 shadow-sm border border-gray-100/80" x-data="{ expanded: false }">
                                         <p class="text-sm text-gray-800 leading-relaxed whitespace-pre-line" x-text="expanded || (msg.mensagem_paciente||'').length <= 250 ? msg.mensagem_paciente : msg.mensagem_paciente.substring(0, 250) + '...'"></p>
-                                        <button x-show="(msg.mensagem_paciente||'').length > 250" @click="expanded = !expanded" class="text-[11px] font-semibold mt-1 hover:underline" :class="expanded ? 'text-gray-400' : 'text-teal-600'" x-text="expanded ? 'ver menos' : 'ver mais'"></button>
-                                        <p class="text-[10px] text-gray-400 text-right mt-1.5" x-text="new Date(msg.criado_em).toLocaleString('pt-BR', {hour:'2-digit',minute:'2-digit'})"></p>
+                                        <button x-show="(msg.mensagem_paciente||'').length > 250" @click="expanded = !expanded" class="text-[11px] font-semibold mt-1 hover:underline" :class="expanded ? 'text-zinc-500' : 'text-teal-600'" x-text="expanded ? 'ver menos' : 'ver mais'"></button>
+                                        <p class="text-[10px] text-zinc-500 text-right mt-1.5" x-text="new Date(msg.criado_em).toLocaleString('pt-BR', {hour:'2-digit',minute:'2-digit'})"></p>
                                     </div>
                                 </div>
                             </div>
@@ -1545,16 +1546,16 @@
                                     <p class="text-[11px] font-bold text-brand-600 mb-0.5 mr-1 text-right" x-text="terapeuta?.nome_agente || 'Agente IA'"></p>
                                     <div class="rounded-2xl rounded-br-md px-4 py-3 shadow-sm" style="background: linear-gradient(135deg, #f3edff 0%, #ede5ff 100%); border: 1px solid rgba(123,47,190,0.12);" x-data="{ expanded: false }">
                                         <p class="text-sm text-gray-800 leading-relaxed whitespace-pre-line" x-text="expanded || (msg.resposta_agente||'').length <= 250 ? msg.resposta_agente : msg.resposta_agente.substring(0, 250) + '...'"></p>
-                                        <button x-show="(msg.resposta_agente||'').length > 250" @click="expanded = !expanded" class="text-[11px] font-semibold mt-1 hover:underline" :class="expanded ? 'text-gray-400' : 'text-brand-600'" x-text="expanded ? 'ver menos' : 'ver mais'"></button>
+                                        <button x-show="(msg.resposta_agente||'').length > 250" @click="expanded = !expanded" class="text-[11px] font-semibold mt-1 hover:underline" :class="expanded ? 'text-zinc-500' : 'text-brand-600'" x-text="expanded ? 'ver menos' : 'ver mais'"></button>
                                         <div class="flex items-center justify-end gap-2 mt-1.5">
                                             <span x-show="msg.intencao" class="text-[10px] text-brand-400 font-semibold uppercase tracking-wide px-1.5 py-0.5 bg-brand-50 rounded" x-text="msg.intencao?.split('|')[0]"></span>
-                                            <p class="text-[10px] text-gray-400" x-text="new Date(msg.criado_em).toLocaleString('pt-BR', {hour:'2-digit',minute:'2-digit'})"></p>
+                                            <p class="text-[10px] text-zinc-500" x-text="new Date(msg.criado_em).toLocaleString('pt-BR', {hour:'2-digit',minute:'2-digit'})"></p>
                                             <span class="text-[10px] text-teal-500">&#10003;&#10003;</span>
                                         </div>
                                     </div>
                                 </div>
                                 <div class="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 shadow-sm"
-                                    style="background: linear-gradient(135deg, #7C3AED, #6D28D9);"
+                                    style="background: linear-gradient(135deg, #f59e0b, #6D28D9);"
                                     x-text="(terapeuta?.nome_agente || 'S').charAt(0)"></div>
                             </div>
                         </div>
@@ -1582,14 +1583,14 @@
             <div class="space-y-3">
                 <div x-show="loading && diagnosticos.length === 0" class="text-center py-12">
                     <span class="spinner"></span>
-                    <p class="text-gray-400 text-sm mt-3">Carregando diagnosticos...</p>
+                    <p class="text-zinc-500 text-sm mt-3">Carregando diagnosticos...</p>
                 </div>
                 <div x-show="!loading && diagnosticos.length === 0" class="text-center py-12">
                     <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-brand-50 flex items-center justify-center">
                         <i data-lucide="clipboard-list" class="w-7 h-7 text-brand-400"></i>
                     </div>
                     <p class="font-heading font-semibold text-gray-600">Nenhum diagnostico encontrado</p>
-                    <p class="text-sm text-gray-400 mt-1">Crie um diagnostico para comecar</p>
+                    <p class="text-sm text-zinc-500 mt-1">Crie um diagnostico para comecar</p>
                     <button @click="abrirModalDiagnostico()" class="btn-primary mt-4 text-sm min-h-[44px] px-4 inline-flex items-center gap-1.5"><i data-lucide="plus" class="w-4 h-4"></i> Novo Diagnostico</button>
                 </div>
                 <template x-for="d in diagnosticos" :key="d.id">
@@ -1599,23 +1600,23 @@
                                 <div class="flex items-center gap-2 mb-2 flex-wrap">
                                     <span class="badge" :class="'badge-' + d.status" x-text="d.status"></span>
                                     <span class="text-sm font-semibold text-gray-800" x-text="d.pacientes?.nome || 'Paciente'"></span>
-                                    <span class="text-xs text-gray-400" x-text="formatarDataCurta(d.sessao_data)"></span>
+                                    <span class="text-xs text-zinc-500" x-text="formatarDataCurta(d.sessao_data)"></span>
                                 </div>
                                 <div class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-2 text-xs mt-2">
                                     <div x-show="d.elemento_dominante" class="bg-orange-50 rounded-lg px-3 py-2">
-                                        <span class="text-gray-400">Elemento</span>
+                                        <span class="text-zinc-500">Elemento</span>
                                         <p class="font-semibold text-orange-700" x-text="d.elemento_dominante"></p>
                                     </div>
                                     <div x-show="d.setenio_atual" class="bg-brand-50 rounded-lg px-3 py-2">
-                                        <span class="text-gray-400">Setenio</span>
+                                        <span class="text-zinc-500">Setenio</span>
                                         <p class="font-semibold text-brand-600" x-text="'#' + d.setenio_atual"></p>
                                     </div>
                                     <div x-show="d.dna_comprometido?.length" class="bg-red-50 rounded-lg px-3 py-2">
-                                        <span class="text-gray-400">DNA</span>
+                                        <span class="text-zinc-500">DNA</span>
                                         <p class="font-semibold text-red-700 truncate" x-text="(d.dna_comprometido||[]).join(', ')"></p>
                                     </div>
                                     <div x-show="d.florais_prescritos?.length" class="bg-green-50 rounded-lg px-3 py-2">
-                                        <span class="text-gray-400">Florais</span>
+                                        <span class="text-zinc-500">Florais</span>
                                         <p class="font-semibold text-green-700 truncate" x-text="(d.florais_prescritos||[]).join(', ')"></p>
                                     </div>
                                 </div>
@@ -1638,17 +1639,17 @@
         <div x-show="secao === 'acompanhamentos'" class="fade-in">
             <!-- Stats summary -->
             <div class="glass-card-static px-3 sm:px-5 py-3 sm:py-3.5 mb-5 flex items-center gap-2 sm:gap-6 text-xs sm:text-sm flex-wrap">
-                <span class="font-semibold text-gray-700" x-show="agenda7dias.filter(g => g.data < new Date().toISOString().split('T')[0]).reduce((a, g) => a + g.itens.length, 0) > 0">
+                <span class="font-semibold text-zinc-300" x-show="agenda7dias.filter(g => g.data < new Date().toISOString().split('T')[0]).reduce((a, g) => a + g.itens.length, 0) > 0">
                     <span class="text-red-500 font-bold" x-text="agenda7dias.filter(g => g.data < new Date().toISOString().split('T')[0]).reduce((a, g) => a + g.itens.length, 0)"></span>
                     <span class="text-red-400">atrasados</span>
                 </span>
                 <span class="text-gray-200" x-show="agenda7dias.filter(g => g.data < new Date().toISOString().split('T')[0]).reduce((a, g) => a + g.itens.length, 0) > 0">|</span>
-                <span class="font-semibold text-gray-700">
+                <span class="font-semibold text-zinc-300">
                     <span class="text-amber-500" x-text="agenda7dias.filter(g => g.data === new Date().toISOString().split('T')[0]).reduce((a, g) => a + g.itens.filter(i => i.status !== 'realizado').length, 0)"></span>
                     <span class="text-gray-500">para hoje</span>
                 </span>
                 <span class="text-gray-200">|</span>
-                <span class="font-semibold text-gray-700">
+                <span class="font-semibold text-zinc-300">
                     <span class="text-brand-500" x-text="agenda7dias.reduce((acc, g) => acc + g.itens.length, 0)"></span>
                     <span class="text-gray-500">total semana</span>
                 </span>
@@ -1670,7 +1671,7 @@
             <div x-show="agenda7dias.length > 0" class="mb-6 space-y-5">
                 <!-- OVERDUE -->
                 <div x-show="agenda7dias.filter(g => g.data < new Date().toISOString().split('T')[0]).length > 0">
-                    <h3 class="text-sm font-heading font-bold text-red-600 uppercase tracking-wide mb-3 flex items-center gap-2">
+                    <h3 class="text-sm font-serif tracking-widest uppercase text-red-600 uppercase tracking-wide mb-3 flex items-center gap-2">
                         <span class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span> Atrasados
                     </h3>
                     <template x-for="grupo in agenda7dias.filter(g => g.data < new Date().toISOString().split('T')[0])" :key="grupo.data">
@@ -1688,7 +1689,7 @@
                                                 <p class="text-xs text-gray-500 mt-0.5" x-text="item.pacientes?.nome || 'Paciente'"></p>
                                             </div>
                                             <span x-show="item.hora_prevista" class="text-sm font-bold text-red-600 tabular-nums flex-shrink-0 bg-red-50 border border-red-200 rounded-lg px-2.5 py-1" x-text="item.hora_prevista"></span>
-                                            <span x-show="!item.hora_prevista" class="text-xs text-gray-400 flex-shrink-0 bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1">--:--</span>
+                                            <span x-show="!item.hora_prevista" class="text-xs text-zinc-500 flex-shrink-0 bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1">--:--</span>
                                             <span class="badge hidden sm:inline-flex" :class="'badge-' + item.tipo">
                                                 <span x-text="item.tipo === 'retorno' ? '\u{1F504}' : item.tipo === 'floral' ? '\u{1F338}' : item.tipo === 'tarefa' ? '\u2705' : item.tipo === 'contato' ? '\u{1F4DE}' : '\u2B50'"></span>
                                                 <span class="ml-1" x-text="item.tipo"></span>
@@ -1711,7 +1712,7 @@
 
                 <!-- TODAY -->
                 <div x-show="agenda7dias.filter(g => g.data === new Date().toISOString().split('T')[0]).length > 0">
-                    <h3 class="text-sm font-heading font-bold text-brand-600 uppercase tracking-wide mb-3 flex items-center gap-2">
+                    <h3 class="text-sm font-serif tracking-widest uppercase text-brand-600 uppercase tracking-wide mb-3 flex items-center gap-2">
                         <span class="w-2 h-2 bg-brand-500 rounded-full"></span> Hoje
                         <span class="badge bg-brand-50 text-brand-600" x-text="agenda7dias.filter(g => g.data === new Date().toISOString().split('T')[0]).reduce((a, g) => a + g.itens.length, 0) + ' atividades'"></span>
                     </h3>
@@ -1729,7 +1730,7 @@
                                             <p class="text-xs text-gray-500 mt-0.5" x-text="item.pacientes?.nome || 'Paciente'"></p>
                                         </div>
                                         <span x-show="item.hora_prevista" class="text-sm font-bold tabular-nums flex-shrink-0 rounded-lg px-2.5 py-1" :class="item.hora_prevista < new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit', hour12:false}) ? 'text-red-600 bg-red-50 border border-red-200' : 'text-brand-600 bg-brand-50 border border-brand-200'" x-text="item.hora_prevista"></span>
-                                        <span x-show="!item.hora_prevista" class="text-xs text-gray-400 flex-shrink-0 bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1">--:--</span>
+                                        <span x-show="!item.hora_prevista" class="text-xs text-zinc-500 flex-shrink-0 bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1">--:--</span>
                                         <span class="badge hidden sm:inline-flex" :class="'badge-' + item.tipo">
                                             <span x-text="item.tipo === 'retorno' ? '\u{1F504}' : item.tipo === 'floral' ? '\u{1F338}' : item.tipo === 'tarefa' ? '\u2705' : item.tipo === 'contato' ? '\u{1F4DE}' : '\u2B50'"></span>
                                             <span class="ml-1" x-text="item.tipo"></span>
@@ -1755,7 +1756,7 @@
 
                 <!-- UPCOMING -->
                 <div x-show="agenda7dias.filter(g => g.data > new Date().toISOString().split('T')[0]).length > 0">
-                    <h3 class="text-sm font-heading font-bold text-gray-500 uppercase tracking-wide mb-3 flex items-center gap-2">
+                    <h3 class="text-sm font-serif tracking-widest uppercase text-gray-500 uppercase tracking-wide mb-3 flex items-center gap-2">
                         <span class="w-2 h-2 bg-gray-400 rounded-full"></span> Proximos Dias
                     </h3>
                     <template x-for="grupo in agenda7dias.filter(g => g.data > new Date().toISOString().split('T')[0])" :key="grupo.data">
@@ -1771,7 +1772,7 @@
                                                 <p class="text-xs text-gray-500 mt-0.5" x-text="item.pacientes?.nome || 'Paciente'"></p>
                                             </div>
                                             <span x-show="item.hora_prevista" class="text-sm font-bold text-gray-600 tabular-nums flex-shrink-0 bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1" x-text="item.hora_prevista"></span>
-                                            <span x-show="!item.hora_prevista" class="text-xs text-gray-400 flex-shrink-0 bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1">--:--</span>
+                                            <span x-show="!item.hora_prevista" class="text-xs text-zinc-500 flex-shrink-0 bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1">--:--</span>
                                             <span class="badge hidden sm:inline-flex" :class="'badge-' + item.tipo">
                                                 <span x-text="item.tipo === 'retorno' ? '\u{1F504}' : item.tipo === 'floral' ? '\u{1F338}' : item.tipo === 'tarefa' ? '\u2705' : item.tipo === 'contato' ? '\u{1F4DE}' : '\u2B50'"></span>
                                                 <span class="ml-1" x-text="item.tipo"></span>
@@ -1808,7 +1809,7 @@
                         <i data-lucide="check-circle-2" class="w-6 h-6 text-teal-400"></i>
                     </div>
                     <p class="font-heading font-semibold text-gray-600">Nenhum acompanhamento</p>
-                    <p class="text-sm text-gray-400 mt-1">Crie um follow-up para acompanhar seus pacientes</p>
+                    <p class="text-sm text-zinc-500 mt-1">Crie um follow-up para acompanhar seus pacientes</p>
                     <button @click="abrirModalAcomp()" class="btn-primary mt-4 text-xs min-h-[44px] px-4 inline-flex items-center gap-1.5"><i data-lucide="plus" class="w-4 h-4"></i> Novo Follow-up</button>
                 </div>
                 <template x-for="item in acompanhamentos" :key="item.id">
@@ -1857,9 +1858,9 @@
             <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-5">
                 <p class="text-sm text-gray-500">Galeria de mapas natais agrupados por paciente</p>
                 <div class="relative w-full sm:w-72">
-                    <i data-lucide="search" class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"></i>
+                    <i data-lucide="search" class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500"></i>
                     <input type="text" x-model="buscaMapas" placeholder="Buscar paciente..."
-                        class="input pl-10">
+                        class="input pl-10 border-zinc-800 bg-zinc-950/50 text-white">
                 </div>
             </div>
             <div x-show="loading && mapas.length === 0" class="text-center py-16">
@@ -1870,21 +1871,21 @@
                     <i data-lucide="globe-2" class="w-7 h-7 text-brand-400"></i>
                 </div>
                 <p class="font-heading font-semibold text-gray-600">Nenhum mapa natal gerado</p>
-                <p class="text-sm text-gray-400 mt-1">Os mapas sao gerados automaticamente pelo agente WhatsApp</p>
+                <p class="text-sm text-zinc-500 mt-1">Os mapas sao gerados automaticamente pelo agente WhatsApp</p>
             </div>
             <div x-show="!loading && mapas.length > 0 && getMapasAgrupados().length === 0" class="text-center py-16">
                 <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-warm-100 flex items-center justify-center">
-                    <i data-lucide="search-x" class="w-7 h-7 text-gray-400"></i>
+                    <i data-lucide="search-x" class="w-7 h-7 text-zinc-500"></i>
                 </div>
                 <p class="font-heading font-semibold text-gray-600">Nenhum paciente encontrado</p>
-                <p class="text-sm text-gray-400 mt-1">Tente buscar por outro nome</p>
+                <p class="text-sm text-zinc-500 mt-1">Tente buscar por outro nome</p>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                 <template x-for="grupo in getMapasAgrupados()" :key="grupo.tel">
                     <div class="glass-card p-4 sm:p-5 hover:shadow-lg transition">
                         <div class="mb-3">
-                            <h3 class="text-base font-heading font-bold text-gray-800 truncate" x-text="grupo.nome"></h3>
-                            <p class="text-xs text-gray-400 mt-0.5">
+                            <h3 class="text-base font-serif tracking-widest uppercase text-gray-800 truncate" x-text="grupo.nome"></h3>
+                            <p class="text-xs text-zinc-500 mt-0.5">
                                 <span x-show="grupo.data_nascimento" x-text="formatarDataBR(grupo.data_nascimento)"></span>
                                 <span x-show="grupo.data_nascimento && grupo.cidade_nascimento"> &middot; </span>
                                 <span x-show="grupo.cidade_nascimento" x-text="grupo.cidade_nascimento"></span>
@@ -1906,10 +1907,10 @@
                         </div>
                         <div x-show="grupo.mapas.length > 0" class="mt-3 bg-warm-50 rounded-xl p-3 border border-gray-100">
                             <p class="text-xs text-gray-500 font-semibold mb-1 flex items-center gap-1"><i data-lucide="scroll" class="w-3 h-3"></i> Resumo</p>
-                            <p class="text-xs text-gray-700 leading-relaxed line-clamp-3" x-text="gerarResumoSigno(typeof grupo.mapas[0].mapa_json === 'object' ? grupo.mapas[0].mapa_json : null)"></p>
+                            <p class="text-xs text-zinc-300 leading-relaxed line-clamp-3" x-text="gerarResumoSigno(typeof grupo.mapas[0].mapa_json === 'object' ? grupo.mapas[0].mapa_json : null)"></p>
                         </div>
                         <button class="w-full mt-3 py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition text-white shadow-sm hover:shadow min-h-[44px]"
-                            style="background: linear-gradient(135deg, #D4AF37, #7C3AED);"
+                            style="background: linear-gradient(135deg, #D4AF37, #f59e0b);"
                             @click="let m = grupo.mapas[0]; if(m) verMapa(m);">
                             <i data-lucide="scroll" class="w-4 h-4"></i> Ver Leitura Completa
                         </button>
@@ -1931,19 +1932,19 @@
                     <div x-show="relatorioGeral" class="grid grid-cols-2 gap-3 sm:gap-4">
                         <div class="bg-brand-50 rounded-xl p-4">
                             <p class="text-xs text-brand-500 font-semibold">Pacientes Ativos</p>
-                            <p class="text-2xl sm:text-3xl font-heading font-bold text-brand-600 mt-1" x-text="relatorioGeral?.pacientes_ativos ?? 0"></p>
+                            <p class="text-2xl sm:text-3xl font-serif tracking-widest uppercase text-brand-600 mt-1" x-text="relatorioGeral?.pacientes_ativos ?? 0"></p>
                         </div>
                         <div class="bg-amber-50 rounded-xl p-4">
                             <p class="text-xs text-amber-600 font-semibold">Diagnosticos (este mes)</p>
-                            <p class="text-2xl sm:text-3xl font-heading font-bold text-amber-700 mt-1" x-text="relatorioGeral?.diagnosticos_este_mes ?? 0"></p>
+                            <p class="text-2xl sm:text-3xl font-serif tracking-widest uppercase text-amber-700 mt-1" x-text="relatorioGeral?.diagnosticos_este_mes ?? 0"></p>
                         </div>
                         <div class="bg-teal-50 rounded-xl p-4">
                             <p class="text-xs text-teal-500 font-semibold">Mensagens Total</p>
-                            <p class="text-2xl sm:text-3xl font-heading font-bold text-teal-600 mt-1" x-text="relatorioGeral?.total_conversas ?? 0"></p>
+                            <p class="text-2xl sm:text-3xl font-serif tracking-widest uppercase text-teal-600 mt-1" x-text="relatorioGeral?.total_conversas ?? 0"></p>
                         </div>
                         <div class="bg-blue-50 rounded-xl p-4">
                             <p class="text-xs text-blue-500 font-semibold">Mensagens (este mes)</p>
-                            <p class="text-2xl sm:text-3xl font-heading font-bold text-blue-600 mt-1" x-text="relatorioGeral?.conversas_este_mes ?? 0"></p>
+                            <p class="text-2xl sm:text-3xl font-serif tracking-widest uppercase text-blue-600 mt-1" x-text="relatorioGeral?.conversas_este_mes ?? 0"></p>
                         </div>
                     </div>
                 </div>
@@ -1952,7 +1953,7 @@
                     <h3 class="font-heading font-semibold text-gray-800 mb-4 flex items-center gap-2">
                         <i data-lucide="flame" class="w-5 h-5 text-amber-500"></i> Top Elementos
                     </h3>
-                    <div x-show="!relatorioGeral" class="text-center py-6 text-gray-400 text-sm">Carregue o relatorio</div>
+                    <div x-show="!relatorioGeral" class="text-center py-6 text-zinc-500 text-sm">Carregue o relatorio</div>
                     <div x-show="relatorioGeral" class="space-y-3">
                         <template x-for="[elem, count] in Object.entries(relatorioGeral?.elementos_distribuicao || {})" :key="elem">
                             <div class="flex items-center gap-3">
@@ -1961,7 +1962,7 @@
                                 <span class="text-sm font-medium text-gray-800 w-16" x-text="elem"></span>
                                 <div class="flex-1 bg-gray-100 rounded-full h-5 overflow-hidden">
                                     <div class="h-5 rounded-full flex items-center justify-end pr-2 transition-all duration-500"
-                                        :style="'width:' + Math.max(8, Math.min(100, (count / Math.max(...Object.values(relatorioGeral?.elementos_distribuicao || {1:1})) * 100))) + '%; background: linear-gradient(90deg, ' + (elem.toLowerCase().includes('agua') || elem.toLowerCase().includes('\u00e1gua') ? '#93C5FD, #3B82F6' : elem.toLowerCase().includes('fogo') ? '#FCA5A5, #EF4444' : elem.toLowerCase().includes('terra') ? '#6EE7B7, #10B981' : elem.toLowerCase().includes('ar') ? '#FCD34D, #F59E0B' : '#C4B5FD, #7C3AED') + ')'">
+                                        :style="'width:' + Math.max(8, Math.min(100, (count / Math.max(...Object.values(relatorioGeral?.elementos_distribuicao || {1:1})) * 100))) + '%; background: linear-gradient(90deg, ' + (elem.toLowerCase().includes('agua') || elem.toLowerCase().includes('\u00e1gua') ? '#93C5FD, #3B82F6' : elem.toLowerCase().includes('fogo') ? '#FCA5A5, #EF4444' : elem.toLowerCase().includes('terra') ? '#6EE7B7, #10B981' : elem.toLowerCase().includes('ar') ? '#FCD34D, #F59E0B' : '#C4B5FD, #f59e0b') + ')'">
                                         <span class="text-xs font-bold text-white drop-shadow" x-text="count"></span>
                                     </div>
                                 </div>
@@ -1982,7 +1983,7 @@
                     <div x-show="relatoriosDiag" class="space-y-2">
                         <template x-for="[floral, count] in (relatoriosDiag?.florais_ranking || [])" :key="floral">
                             <div class="flex items-center justify-between text-sm py-1">
-                                <span class="text-gray-700" x-text="floral"></span>
+                                <span class="text-zinc-300" x-text="floral"></span>
                                 <span class="badge bg-green-100 text-green-700" x-text="count + 'x'"></span>
                             </div>
                         </template>
@@ -1998,7 +1999,7 @@
                     <div x-show="relatoriosDiag" class="space-y-2">
                         <template x-for="[dna, count] in (relatoriosDiag?.dna_ranking || [])" :key="dna">
                             <div class="flex items-center justify-between text-sm py-1">
-                                <span class="text-gray-700" x-text="dna"></span>
+                                <span class="text-zinc-300" x-text="dna"></span>
                                 <span class="badge bg-red-100 text-red-700" x-text="count + 'x'"></span>
                             </div>
                         </template>
@@ -2012,7 +2013,7 @@
             <!-- Header com ações -->
             <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
                 <div>
-                    <h3 class="text-lg font-heading font-bold text-gray-900">Financeiro</h3>
+                    <h3 class="text-lg font-serif tracking-widest uppercase text-white">Financeiro</h3>
                     <p class="text-sm text-gray-500">Visão geral das receitas e métricas</p>
                 </div>
                 <div class="flex gap-2 w-full sm:w-auto">
@@ -2035,7 +2036,7 @@
                         </div>
                         <div class="min-w-0">
                             <p class="text-xs text-gray-500 font-medium">Receita Mensal</p>
-                            <p class="text-xl font-heading font-bold text-gray-900" x-text="'R$ ' + ((financeiroData?.pacientes_ativos || stats?.pacientes_ativos || 0) * 297).toLocaleString('pt-BR')"></p>
+                            <p class="text-xl font-serif tracking-widest uppercase text-white" x-text="'R$ ' + ((financeiroData?.pacientes_ativos || stats?.pacientes_ativos || 0) * 297).toLocaleString('pt-BR')"></p>
                         </div>
                     </div>
                     <div class="flex items-center gap-1 text-xs text-green-600">
@@ -2052,7 +2053,7 @@
                         </div>
                         <div class="min-w-0">
                             <p class="text-xs text-gray-500 font-medium">Pacientes Ativos</p>
-                            <p class="text-xl font-heading font-bold text-gray-900" x-text="financeiroData?.pacientes_ativos || stats?.pacientes_ativos || 0"></p>
+                            <p class="text-xl font-serif tracking-widest uppercase text-white" x-text="financeiroData?.pacientes_ativos || stats?.pacientes_ativos || 0"></p>
                         </div>
                     </div>
                     <div class="flex items-center gap-1 text-xs text-brand-600">
@@ -2069,7 +2070,7 @@
                         </div>
                         <div class="min-w-0">
                             <p class="text-xs text-gray-500 font-medium">Receita / Paciente</p>
-                            <p class="text-xl font-heading font-bold text-gray-900">R$ 297</p>
+                            <p class="text-xl font-serif tracking-widest uppercase text-white">R$ 297</p>
                         </div>
                     </div>
                     <div class="flex items-center gap-1 text-xs text-teal-600">
@@ -2086,7 +2087,7 @@
                         </div>
                         <div class="min-w-0">
                             <p class="text-xs text-gray-500 font-medium">Taxa de Ocupação</p>
-                            <p class="text-xl font-heading font-bold text-gray-900" x-text="((financeiroData?.pacientes_ativos || stats?.pacientes_ativos || 0) > 0 ? Math.min(100, Math.round(((financeiroData?.diagnosticos_mes || 0) / (financeiroData?.pacientes_ativos || stats?.pacientes_ativos || 1)) * 100)) : 0) + '%'"></p>
+                            <p class="text-xl font-serif tracking-widest uppercase text-white" x-text="((financeiroData?.pacientes_ativos || stats?.pacientes_ativos || 0) > 0 ? Math.min(100, Math.round(((financeiroData?.diagnosticos_mes || 0) / (financeiroData?.pacientes_ativos || stats?.pacientes_ativos || 1)) * 100)) : 0) + '%'"></p>
                         </div>
                     </div>
                     <div class="flex items-center gap-1 text-xs text-amber-600">
@@ -2119,8 +2120,8 @@
                         </div>
                     </template>
                     <div class="flex items-center justify-between p-3 bg-brand-50 rounded-xl border-2 border-brand-200">
-                        <span class="font-heading font-bold text-gray-900">Total</span>
-                        <span class="font-heading font-bold text-gray-900" x-text="'R$ ' + ((pacientes || []).filter(p => p.ativo !== false).length * 297).toLocaleString('pt-BR')"></span>
+                        <span class="font-serif tracking-widest uppercase text-white">Total</span>
+                        <span class="font-serif tracking-widest uppercase text-white" x-text="'R$ ' + ((pacientes || []).filter(p => p.ativo !== false).length * 297).toLocaleString('pt-BR')"></span>
                     </div>
                 </div>
                 <!-- Desktop table layout -->
@@ -2156,8 +2157,8 @@
                         </tbody>
                         <tfoot>
                             <tr class="border-t-2 border-gray-200">
-                                <td class="py-3 px-3 font-heading font-bold text-gray-900" colspan="2">Total</td>
-                                <td class="py-3 px-3 text-right font-heading font-bold text-gray-900" x-text="'R$ ' + ((pacientes || []).filter(p => p.ativo !== false).length * 297).toLocaleString('pt-BR')"></td>
+                                <td class="py-3 px-3 font-serif tracking-widest uppercase text-white" colspan="2">Total</td>
+                                <td class="py-3 px-3 text-right font-serif tracking-widest uppercase text-white" x-text="'R$ ' + ((pacientes || []).filter(p => p.ativo !== false).length * 297).toLocaleString('pt-BR')"></td>
                                 <td></td>
                             </tr>
                         </tfoot>
@@ -2166,7 +2167,7 @@
                 <template x-if="!pacientes || pacientes.filter(p => p.ativo !== false).length === 0">
                     <div class="text-center py-8">
                         <i data-lucide="inbox" class="w-8 h-8 text-gray-300 mx-auto mb-2"></i>
-                        <p class="text-sm text-gray-400">Nenhum paciente ativo encontrado</p>
+                        <p class="text-sm text-zinc-500">Nenhum paciente ativo encontrado</p>
                     </div>
                 </template>
             </div>
@@ -2180,7 +2181,7 @@
                         </div>
                         <div>
                             <p class="text-xs text-gray-500 font-medium">Conversas este mês</p>
-                            <p class="text-2xl font-heading font-bold text-gray-900" x-text="financeiroData?.conversas_mes || 0"></p>
+                            <p class="text-2xl font-serif tracking-widest uppercase text-white" x-text="financeiroData?.conversas_mes || 0"></p>
                         </div>
                     </div>
                     <div class="mt-3 pt-3 border-t border-gray-100">
@@ -2198,7 +2199,7 @@
                         </div>
                         <div>
                             <p class="text-xs text-gray-500 font-medium">Diagnósticos este mês</p>
-                            <p class="text-2xl font-heading font-bold text-gray-900" x-text="financeiroData?.diagnosticos_mes || 0"></p>
+                            <p class="text-2xl font-serif tracking-widest uppercase text-white" x-text="financeiroData?.diagnosticos_mes || 0"></p>
                         </div>
                     </div>
                     <div class="mt-3 pt-3 border-t border-gray-100">
@@ -2217,7 +2218,7 @@
                         <i data-lucide="wallet" class="w-7 h-7 text-brand-600"></i>
                     </div>
                     <div class="flex-1 min-w-0">
-                        <h4 class="font-heading font-bold text-gray-900 mb-1">Integração com Asaas</h4>
+                        <h4 class="font-serif tracking-widest uppercase text-white mb-1">Integração com Asaas</h4>
                         <p class="text-sm text-gray-600 leading-relaxed">Automatize cobranças, acompanhe pagamentos recebidos e controle inadimplência diretamente pelo portal. Configure sua conta Asaas para começar.</p>
                     </div>
                     <div class="flex gap-2 w-full sm:w-auto flex-shrink-0">
@@ -2242,7 +2243,7 @@
         <div x-show="secao === 'assinatura'" class="fade-in max-w-3xl">
             <div x-show="assinaturaLoading" class="text-center py-16">
                 <span class="spinner"></span>
-                <p class="text-gray-400 text-sm mt-3">Carregando dados da assinatura...</p>
+                <p class="text-zinc-500 text-sm mt-3">Carregando dados da assinatura...</p>
             </div>
 
             <div x-show="!assinaturaLoading">
@@ -2255,13 +2256,13 @@
                                    class="w-7 h-7" :class="assinatura.status === 'ativo' ? 'text-teal-500' : assinatura.status === 'trial' ? 'text-blue-500' : 'text-red-500'"></i>
                             </div>
                             <div>
-                                <h3 class="text-lg font-heading font-bold text-gray-900">Plano Terapeutas Agent</h3>
+                                <h3 class="text-lg font-serif tracking-widest uppercase text-white">Plano Terapeutas Agent</h3>
                                 <div class="flex items-center gap-2 mt-1">
                                     <span class="badge" :class="'badge-' + assinatura.status"
                                         x-text="assinatura.status === 'ativo' ? 'Ativo' : assinatura.status === 'trial' ? 'Trial' : 'Vencido'"></span>
                                     <span class="text-sm text-gray-500" x-text="assinatura.status === 'trial' ? ('Expira em ' + assinatura.dias_restantes + ' dias') : ''"></span>
                                 </div>
-                                <p class="text-2xl font-heading font-bold mt-2 text-brand-600">
+                                <p class="text-2xl font-serif tracking-widest uppercase mt-2 text-brand-600">
                                     R$ <span x-text="assinatura.valor || '297'"></span><span class="text-sm font-normal text-gray-500">/mes</span>
                                 </p>
                             </div>
@@ -2276,7 +2277,7 @@
                     <div x-show="assinatura.status === 'trial'" class="mt-5 pt-4 border-t border-gray-100">
                         <div class="flex items-center justify-between text-sm mb-2">
                             <span class="text-gray-600">Periodo de teste</span>
-                            <span class="font-medium" :class="assinatura.dias_restantes <= 2 ? 'text-red-600' : 'text-gray-700'"
+                            <span class="font-medium" :class="assinatura.dias_restantes <= 2 ? 'text-red-600' : 'text-zinc-300'"
                                 x-text="assinatura.dias_restantes + ' de 7 dias restantes'"></span>
                         </div>
                         <div class="w-full bg-gray-200 rounded-full h-2.5">
@@ -2294,27 +2295,27 @@
                     <div class="grid sm:grid-cols-2 gap-3">
                         <div class="flex items-center gap-3 p-3 bg-warm-50 rounded-xl">
                             <i data-lucide="check" class="w-4 h-4 text-teal-500 flex-shrink-0"></i>
-                            <span class="text-sm text-gray-700">Agente WhatsApp dedicado</span>
+                            <span class="text-sm text-zinc-300">Agente WhatsApp dedicado</span>
                         </div>
                         <div class="flex items-center gap-3 p-3 bg-warm-50 rounded-xl">
                             <i data-lucide="check" class="w-4 h-4 text-teal-500 flex-shrink-0"></i>
-                            <span class="text-sm text-gray-700">Base de conhecimento ilimitada</span>
+                            <span class="text-sm text-zinc-300">Base de conhecimento ilimitada</span>
                         </div>
                         <div class="flex items-center gap-3 p-3 bg-warm-50 rounded-xl">
                             <i data-lucide="check" class="w-4 h-4 text-teal-500 flex-shrink-0"></i>
-                            <span class="text-sm text-gray-700">Portal completo do terapeuta</span>
+                            <span class="text-sm text-zinc-300">Portal completo do terapeuta</span>
                         </div>
                         <div class="flex items-center gap-3 p-3 bg-warm-50 rounded-xl">
                             <i data-lucide="check" class="w-4 h-4 text-teal-500 flex-shrink-0"></i>
-                            <span class="text-sm text-gray-700">Relatorios e diagnosticos IA</span>
+                            <span class="text-sm text-zinc-300">Relatorios e diagnosticos IA</span>
                         </div>
                         <div class="flex items-center gap-3 p-3 bg-warm-50 rounded-xl">
                             <i data-lucide="check" class="w-4 h-4 text-teal-500 flex-shrink-0"></i>
-                            <span class="text-sm text-gray-700">Gestao de pacientes</span>
+                            <span class="text-sm text-zinc-300">Gestao de pacientes</span>
                         </div>
                         <div class="flex items-center gap-3 p-3 bg-warm-50 rounded-xl">
                             <i data-lucide="check" class="w-4 h-4 text-teal-500 flex-shrink-0"></i>
-                            <span class="text-sm text-gray-700">Suporte prioritario</span>
+                            <span class="text-sm text-zinc-300">Suporte prioritario</span>
                         </div>
                     </div>
                 </div>
@@ -2325,10 +2326,10 @@
                     </h3>
                     <div x-show="(assinatura.pagamentos || []).length === 0" class="text-center py-8">
                         <div class="w-14 h-14 mx-auto mb-3 rounded-full bg-warm-100 flex items-center justify-center">
-                            <i data-lucide="receipt" class="w-6 h-6 text-gray-400"></i>
+                            <i data-lucide="receipt" class="w-6 h-6 text-zinc-500"></i>
                         </div>
                         <p class="text-gray-500 font-medium text-sm">Nenhum pagamento registrado</p>
-                        <p class="text-gray-400 text-xs mt-1">Os pagamentos aparecerao aqui apos a primeira cobranca</p>
+                        <p class="text-zinc-500 text-xs mt-1">Os pagamentos aparecerao aqui apos a primeira cobranca</p>
                     </div>
                     <div x-show="(assinatura.pagamentos || []).length > 0" class="overflow-x-auto table-scroll-mobile">
                         <table class="w-full text-sm min-w-[360px] sm:min-w-[420px] table-modern">
@@ -2343,7 +2344,7 @@
                             <tbody class="divide-y divide-gray-50">
                                 <template x-for="pag in (assinatura.pagamentos || [])" :key="pag.id">
                                     <tr>
-                                        <td class="text-gray-700" x-text="formatarDataBR(pag.data)"></td>
+                                        <td class="text-zinc-300" x-text="formatarDataBR(pag.data)"></td>
                                         <td class="font-medium text-gray-800" x-text="'R$ ' + (pag.valor || '0,00')"></td>
                                         <td>
                                             <span class="badge" :class="'badge-' + pag.status" x-text="pag.status"></span>
@@ -2367,26 +2368,26 @@
                 <div class="space-y-4">
                     <div class="grid sm:grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1.5">Nome</label>
+                            <label class="block text-sm font-medium text-zinc-300 mb-1.5">Nome</label>
                             <input class="input" x-model="configForm.nome" placeholder="Seu nome completo">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1.5">E-mail</label>
+                            <label class="block text-sm font-medium text-zinc-300 mb-1.5">E-mail</label>
                             <input class="input bg-warm-50 text-gray-500 cursor-not-allowed" :value="terapeuta?.email || ''" disabled>
                         </div>
                     </div>
                     <div class="grid sm:grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1.5">Telefone</label>
+                            <label class="block text-sm font-medium text-zinc-300 mb-1.5">Telefone</label>
                             <input class="input" x-model="configForm.telefone" placeholder="5511999999999">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1.5">Nome do Agente WhatsApp</label>
+                            <label class="block text-sm font-medium text-zinc-300 mb-1.5">Nome do Agente WhatsApp</label>
                             <input class="input" x-model="configForm.nome_agente" placeholder="Ex: Dra. Sofia">
                         </div>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1.5">URL da Foto de Perfil</label>
+                        <label class="block text-sm font-medium text-zinc-300 mb-1.5">URL da Foto de Perfil</label>
                         <input class="input" x-model="configForm.foto_url" placeholder="https://exemplo.com/foto.jpg">
                     </div>
                     <button @click="salvarConfig()" class="btn-primary w-full sm:w-auto inline-flex items-center gap-1.5 justify-center" :disabled="loading">
@@ -2403,7 +2404,7 @@
                 </h3>
                 <div class="space-y-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Tom de Voz</label>
+                        <label class="block text-sm font-medium text-zinc-300 mb-1.5">Tom de Voz</label>
                         <select class="input" x-model="configForm.tom_de_voz">
                             <option value="acolhedor">Acolhedor</option>
                             <option value="profissional">Profissional</option>
@@ -2414,16 +2415,16 @@
                     </div>
                     <div class="grid sm:grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1.5">Horario Inicio</label>
+                            <label class="block text-sm font-medium text-zinc-300 mb-1.5">Horario Inicio</label>
                             <input type="time" class="input" x-model="configForm.horario_inicio">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1.5">Horario Fim</label>
+                            <label class="block text-sm font-medium text-zinc-300 mb-1.5">Horario Fim</label>
                             <input type="time" class="input" x-model="configForm.horario_fim">
                         </div>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Mensagem de Boas-vindas</label>
+                        <label class="block text-sm font-medium text-zinc-300 mb-1.5">Mensagem de Boas-vindas</label>
                         <textarea class="input min-h-[80px]" x-model="configForm.mensagem_boas_vindas" placeholder="Mensagem enviada automaticamente quando um novo paciente inicia conversa..." rows="3"></textarea>
                     </div>
                     <button @click="salvarPreferencias()" class="btn-primary w-full sm:w-auto inline-flex items-center gap-1.5 justify-center" :disabled="loading">
@@ -2448,11 +2449,11 @@
                 </h3>
                 <div class="space-y-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Nova Senha</label>
+                        <label class="block text-sm font-medium text-zinc-300 mb-1.5">Nova Senha</label>
                         <input type="password" class="input" x-model="senhaForm.nova" placeholder="Minimo 8 caracteres">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Confirmar Senha</label>
+                        <label class="block text-sm font-medium text-zinc-300 mb-1.5">Confirmar Senha</label>
                         <input type="password" class="input" x-model="senhaForm.confirmar" placeholder="Repita a senha">
                     </div>
                     <p x-show="senhaMsg" x-text="senhaMsg" :class="senhaMsgOk ? 'text-teal-600' : 'text-red-500'" class="text-sm"></p>
@@ -2480,7 +2481,7 @@
         <div style="display:flex;gap:6px;margin-bottom:16px;">
             <template x-for="(s, i) in tourSteps" :key="i">
                 <div style="width:8px;height:8px;border-radius:50%;transition:all 0.2s;"
-                    :style="i === tourStep ? 'background:#7C3AED;transform:scale(1.3)' : i < tourStep ? 'background:#C4B5FD' : 'background:#E5E7EB'"></div>
+                    :style="i === tourStep ? 'background:#f59e0b;transform:scale(1.3)' : i < tourStep ? 'background:#C4B5FD' : 'background:#E5E7EB'"></div>
             </template>
         </div>
 
@@ -2500,7 +2501,7 @@
                     Anterior
                 </button>
                 <button @click="nextTourStep()"
-                    style="background:linear-gradient(135deg,#7C3AED,#6D28D9);color:white;border:none;border-radius:8px;padding:8px 20px;cursor:pointer;font-size:0.85rem;font-weight:600;min-height:44px;">
+                    style="background:linear-gradient(135deg,#f59e0b,#6D28D9);color:white;border:none;border-radius:8px;padding:8px 20px;cursor:pointer;font-size:0.85rem;font-weight:600;min-height:44px;">
                     <span x-text="tourStep === tourSteps.length - 1 ? 'Começar!' : 'Próximo'"></span>
                 </button>
             </div>
@@ -2519,28 +2520,28 @@
             <div class="w-10 h-10 rounded-xl bg-brand-50 flex items-center justify-center">
                 <i data-lucide="user" class="w-5 h-5 text-brand-500"></i>
             </div>
-            <h3 class="text-lg font-heading font-bold text-gray-900" x-text="editandoPaciente?.id ? 'Editar Paciente' : 'Novo Paciente'"></h3>
+            <h3 class="text-lg font-serif tracking-widest uppercase text-white" x-text="editandoPaciente?.id ? 'Editar Paciente' : 'Novo Paciente'"></h3>
         </div>
         <div class="space-y-3">
-            <div><label class="block text-sm font-medium text-gray-700 mb-1.5">Nome *</label>
+            <div><label class="block text-sm font-medium text-zinc-300 mb-1.5">Nome *</label>
                 <input class="input" x-model="editandoPaciente.nome" placeholder="Nome completo"></div>
-            <div><label class="block text-sm font-medium text-gray-700 mb-1.5">Telefone *</label>
+            <div><label class="block text-sm font-medium text-zinc-300 mb-1.5">Telefone *</label>
                 <input class="input" x-model="editandoPaciente.numero_telefone" placeholder="5511999999999"></div>
-            <div><label class="block text-sm font-medium text-gray-700 mb-1.5">E-mail</label>
+            <div><label class="block text-sm font-medium text-zinc-300 mb-1.5">E-mail</label>
                 <input class="input" type="email" x-model="editandoPaciente.email" placeholder="email@exemplo.com"></div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div><label class="block text-sm font-medium text-gray-700 mb-1.5">Data Nascimento</label>
+                <div><label class="block text-sm font-medium text-zinc-300 mb-1.5">Data Nascimento</label>
                     <input class="input" type="date" x-model="editandoPaciente.data_nascimento"></div>
-                <div><label class="block text-sm font-medium text-gray-700 mb-1.5">Hora Nascimento</label>
+                <div><label class="block text-sm font-medium text-zinc-300 mb-1.5">Hora Nascimento</label>
                     <input class="input" type="time" x-model="editandoPaciente.hora_nascimento"></div>
             </div>
-            <div><label class="block text-sm font-medium text-gray-700 mb-1.5">Cidade de Nascimento</label>
+            <div><label class="block text-sm font-medium text-zinc-300 mb-1.5">Cidade de Nascimento</label>
                 <input class="input" x-model="editandoPaciente.cidade_nascimento" placeholder="Cidade, Estado, Pais"></div>
-            <div><label class="block text-sm font-medium text-gray-700 mb-1.5">Tags (separadas por virgula)</label>
+            <div><label class="block text-sm font-medium text-zinc-300 mb-1.5">Tags (separadas por virgula)</label>
                 <input class="input" x-model="editandoPacienteTagsStr" placeholder="ansiosa, florais, meditacao"></div>
-            <div><label class="block text-sm font-medium text-gray-700 mb-1.5">Notas Gerais</label>
+            <div><label class="block text-sm font-medium text-zinc-300 mb-1.5">Notas Gerais</label>
                 <textarea class="input" rows="3" x-model="editandoPaciente.notas_gerais" placeholder="Observacoes sobre o paciente..."></textarea></div>
-            <div><label class="block text-sm font-medium text-gray-700 mb-1.5">Status</label>
+            <div><label class="block text-sm font-medium text-zinc-300 mb-1.5">Status</label>
                 <select class="input" x-model="editandoPaciente.status">
                     <option value="ativo">Ativo</option>
                     <option value="inativo">Inativo</option>
@@ -2565,7 +2566,7 @@
                 <div class="w-10 h-10 rounded-xl bg-brand-50 flex items-center justify-center">
                     <i data-lucide="clipboard-list" class="w-5 h-5 text-brand-500"></i>
                 </div>
-                <h3 class="text-lg font-heading font-bold text-gray-900" x-text="editandoDiag?.id ? 'Editar Diagnostico' : 'Novo Diagnostico'"></h3>
+                <h3 class="text-lg font-serif tracking-widest uppercase text-white" x-text="editandoDiag?.id ? 'Editar Diagnostico' : 'Novo Diagnostico'"></h3>
             </div>
             <button x-show="!editandoDiag?.id && pacienteContexto" @click="autoExtrair(pacienteContexto?.id)"
                 class="btn-accent text-xs flex items-center gap-1.5 w-full sm:w-auto justify-center">
@@ -2574,7 +2575,7 @@
         </div>
         <div class="space-y-3">
             <div x-show="!editandoDiag?.id">
-                <label class="block text-sm font-medium text-gray-700 mb-1.5">Paciente *</label>
+                <label class="block text-sm font-medium text-zinc-300 mb-1.5">Paciente *</label>
                 <select class="input" x-model="editandoDiag.paciente_id">
                     <option value="">Selecione...</option>
                     <template x-for="p in pacientes" :key="p.id">
@@ -2583,24 +2584,24 @@
                 </select>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div><label class="block text-sm font-medium text-gray-700 mb-1.5">Elemento Dominante</label>
+                <div><label class="block text-sm font-medium text-zinc-300 mb-1.5">Elemento Dominante</label>
                     <input class="input" x-model="editandoDiag.elemento_dominante" placeholder="Ex: Fogo"></div>
-                <div><label class="block text-sm font-medium text-gray-700 mb-1.5">Elemento Carente</label>
+                <div><label class="block text-sm font-medium text-zinc-300 mb-1.5">Elemento Carente</label>
                     <input class="input" x-model="editandoDiag.elemento_carente" placeholder="Ex: Agua"></div>
             </div>
-            <div><label class="block text-sm font-medium text-gray-700 mb-1.5">DNA Comprometido (virgula)</label>
+            <div><label class="block text-sm font-medium text-zinc-300 mb-1.5">DNA Comprometido (virgula)</label>
                 <input class="input" x-model="editandoDiagDNAStr" placeholder="Ex: Yin, Ancestral"></div>
-            <div><label class="block text-sm font-medium text-gray-700 mb-1.5">Serpentes Ativas (virgula)</label>
+            <div><label class="block text-sm font-medium text-zinc-300 mb-1.5">Serpentes Ativas (virgula)</label>
                 <input class="input" x-model="editandoDiagSerpStr" placeholder="Ex: Lucifer, Lilith"></div>
-            <div><label class="block text-sm font-medium text-gray-700 mb-1.5">Setenio Atual (1-9)</label>
+            <div><label class="block text-sm font-medium text-zinc-300 mb-1.5">Setenio Atual (1-9)</label>
                 <input class="input" type="number" min="1" max="9" x-model="editandoDiag.setenio_atual"></div>
-            <div><label class="block text-sm font-medium text-gray-700 mb-1.5">Florais Prescritos (virgula)</label>
+            <div><label class="block text-sm font-medium text-zinc-300 mb-1.5">Florais Prescritos (virgula)</label>
                 <input class="input" x-model="editandoDiagFloraisStr" placeholder="Ex: Rescue, Mimulus, Agrimony"></div>
-            <div><label class="block text-sm font-medium text-gray-700 mb-1.5">Protocolo Terapeutico</label>
+            <div><label class="block text-sm font-medium text-zinc-300 mb-1.5">Protocolo Terapeutico</label>
                 <textarea class="input" rows="4" x-model="editandoDiag.protocolo_texto" placeholder="Descreva o protocolo recomendado..."></textarea></div>
-            <div><label class="block text-sm font-medium text-gray-700 mb-1.5">Data da Sessao</label>
+            <div><label class="block text-sm font-medium text-zinc-300 mb-1.5">Data da Sessao</label>
                 <input class="input" type="date" x-model="editandoDiag.sessao_data"></div>
-            <div><label class="block text-sm font-medium text-gray-700 mb-1.5">Status</label>
+            <div><label class="block text-sm font-medium text-zinc-300 mb-1.5">Status</label>
                 <select class="input" x-model="editandoDiag.status">
                     <option value="rascunho">Rascunho</option>
                     <option value="finalizado">Finalizado</option>
@@ -2624,11 +2625,11 @@
             <div class="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center">
                 <i data-lucide="file-edit" class="w-5 h-5 text-teal-500"></i>
             </div>
-            <h3 class="text-lg font-heading font-bold text-gray-900" x-text="editandoNota?.id ? 'Editar Anotacao' : 'Nova Anotacao'"></h3>
+            <h3 class="text-lg font-serif tracking-widest uppercase text-white" x-text="editandoNota?.id ? 'Editar Anotacao' : 'Nova Anotacao'"></h3>
         </div>
         <div class="space-y-3">
             <div x-show="!pacienteContexto">
-                <label class="block text-sm font-medium text-gray-700 mb-1.5">Paciente *</label>
+                <label class="block text-sm font-medium text-zinc-300 mb-1.5">Paciente *</label>
                 <select class="input" x-model="editandoNota.paciente_id">
                     <option value="">Selecione...</option>
                     <template x-for="p in pacientes" :key="p.id">
@@ -2636,7 +2637,7 @@
                     </template>
                 </select>
             </div>
-            <div><label class="block text-sm font-medium text-gray-700 mb-1.5">Tipo</label>
+            <div><label class="block text-sm font-medium text-zinc-300 mb-1.5">Tipo</label>
                 <select class="input" x-model="editandoNota.tipo">
                     <option value="sessao">Sessao</option>
                     <option value="observacao">Observacao</option>
@@ -2644,14 +2645,14 @@
                     <option value="lembrete">Lembrete</option>
                     <option value="evolucao">Evolucao</option>
                 </select></div>
-            <div><label class="block text-sm font-medium text-gray-700 mb-1.5">Titulo</label>
+            <div><label class="block text-sm font-medium text-zinc-300 mb-1.5">Titulo</label>
                 <input class="input" x-model="editandoNota.titulo" placeholder="Titulo opcional"></div>
-            <div><label class="block text-sm font-medium text-gray-700 mb-1.5">Conteudo *</label>
+            <div><label class="block text-sm font-medium text-zinc-300 mb-1.5">Conteudo *</label>
                 <textarea class="input" rows="5" x-model="editandoNota.conteudo" placeholder="Escreva a anotacao aqui..."></textarea></div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div><label class="block text-sm font-medium text-gray-700 mb-1.5">Data da Anotacao</label>
+                <div><label class="block text-sm font-medium text-zinc-300 mb-1.5">Data da Anotacao</label>
                     <input class="input" type="date" x-model="editandoNota.data_anotacao"></div>
-                <div><label class="block text-sm font-medium text-gray-700 mb-1.5">Proxima Sessao</label>
+                <div><label class="block text-sm font-medium text-zinc-300 mb-1.5">Proxima Sessao</label>
                     <input class="input" type="date" x-model="editandoNota.proxima_sessao"></div>
             </div>
         </div>
@@ -2672,11 +2673,11 @@
             <div class="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center">
                 <i data-lucide="calendar-plus" class="w-5 h-5 text-amber-500"></i>
             </div>
-            <h3 class="text-lg font-heading font-bold text-gray-900" x-text="editandoAcomp?.id ? 'Editar Follow-up' : 'Novo Follow-up'"></h3>
+            <h3 class="text-lg font-serif tracking-widest uppercase text-white" x-text="editandoAcomp?.id ? 'Editar Follow-up' : 'Novo Follow-up'"></h3>
         </div>
         <div class="space-y-3">
             <div x-show="!pacienteContexto">
-                <label class="block text-sm font-medium text-gray-700 mb-1.5">Paciente *</label>
+                <label class="block text-sm font-medium text-zinc-300 mb-1.5">Paciente *</label>
                 <select class="input" x-model="editandoAcomp.paciente_id">
                     <option value="">Selecione...</option>
                     <template x-for="p in pacientes" :key="p.id">
@@ -2684,7 +2685,7 @@
                     </template>
                 </select>
             </div>
-            <div><label class="block text-sm font-medium text-gray-700 mb-1.5">Tipo</label>
+            <div><label class="block text-sm font-medium text-zinc-300 mb-1.5">Tipo</label>
                 <select class="input" x-model="editandoAcomp.tipo">
                     <option value="retorno">Retorno</option>
                     <option value="floral">Floral</option>
@@ -2692,14 +2693,14 @@
                     <option value="contato">Contato</option>
                     <option value="marco">Marco</option>
                 </select></div>
-            <div><label class="block text-sm font-medium text-gray-700 mb-1.5">Descricao *</label>
+            <div><label class="block text-sm font-medium text-zinc-300 mb-1.5">Descricao *</label>
                 <textarea class="input" rows="3" x-model="editandoAcomp.descricao" placeholder="O que precisa ser feito?"></textarea></div>
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div><label class="block text-sm font-medium text-gray-700 mb-1.5">Data Prevista</label>
+                <div><label class="block text-sm font-medium text-zinc-300 mb-1.5">Data Prevista</label>
                     <input class="input" type="date" x-model="editandoAcomp.data_prevista"></div>
-                <div><label class="block text-sm font-medium text-gray-700 mb-1.5">Horario *</label>
+                <div><label class="block text-sm font-medium text-zinc-300 mb-1.5">Horario *</label>
                     <input class="input" type="time" x-model="editandoAcomp.hora_prevista" required></div>
-                <div><label class="block text-sm font-medium text-gray-700 mb-1.5">Prioridade</label>
+                <div><label class="block text-sm font-medium text-zinc-300 mb-1.5">Prioridade</label>
                     <select class="input" x-model.number="editandoAcomp.prioridade">
                         <option :value="1">Alta (vermelho)</option>
                         <option :value="2">Media (amarelo)</option>
@@ -2707,7 +2708,7 @@
                     </select></div>
             </div>
             <div x-show="editandoAcomp?.id">
-                <label class="block text-sm font-medium text-gray-700 mb-1.5">Status</label>
+                <label class="block text-sm font-medium text-zinc-300 mb-1.5">Status</label>
                 <select class="input" x-model="editandoAcomp.status">
                     <option value="pendente">Pendente</option>
                     <option value="realizado">Realizado</option>
@@ -2731,11 +2732,11 @@
     <div class="modal-box p-0 max-w-4xl sm:rounded-2xl" style="max-height: 90vh; display: flex; flex-direction: column;">
         <div class="flex items-start justify-between p-4 sm:p-5 border-b flex-shrink-0">
             <div class="flex-1 min-w-0 mr-3">
-                <h3 class="font-heading font-bold text-gray-900 text-base sm:text-lg truncate" x-text="mapaVendo?.nome || mapaVendo?.nome_paciente || mapaVendo?.pacientes?.nome || ''"></h3>
-                <p x-show="!(mapaVendo?.nome || mapaVendo?.nome_paciente || mapaVendo?.pacientes?.nome)" class="text-gray-400 italic text-sm">Sem paciente vinculado</p>
+                <h3 class="font-serif tracking-widest uppercase text-white text-base sm:text-lg truncate" x-text="mapaVendo?.nome || mapaVendo?.nome_paciente || mapaVendo?.pacientes?.nome || ''"></h3>
+                <p x-show="!(mapaVendo?.nome || mapaVendo?.nome_paciente || mapaVendo?.pacientes?.nome)" class="text-zinc-500 italic text-sm">Sem paciente vinculado</p>
                 <p class="text-xs sm:text-sm text-gray-500 mt-0.5" x-text="mapasDoMesmoPaciente.length + ' mapa(s) deste paciente'"></p>
             </div>
-            <button @click="fecharModal()" class="text-gray-400 hover:text-gray-600 transition flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100">
+            <button @click="fecharModal()" class="text-zinc-500 hover:text-gray-600 transition flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100">
                 <i data-lucide="x" class="w-5 h-5"></i>
             </button>
         </div>
@@ -2769,7 +2770,7 @@
                             <span x-text="isAlquimico(mp) ? '\u{1F52E}' : '\u{2B50}'"></span>
                         </div>
                         <div class="flex-1 min-w-0">
-                            <h4 class="font-heading font-bold text-gray-900" x-text="mp.tipo_mapa || mp.mapa_json?.tipo || 'Mapa Natal'"></h4>
+                            <h4 class="font-serif tracking-widest uppercase text-white" x-text="mp.tipo_mapa || mp.mapa_json?.tipo || 'Mapa Natal'"></h4>
                             <p class="text-xs text-gray-500" x-text="'Gerado em ' + formatarDataCurta(mp.criado_em)"></p>
                         </div>
                         <span class="badge text-xs flex-shrink-0" :class="isAlquimico(mp) ? 'bg-amber-100 text-amber-700' : 'bg-brand-50 text-brand-600'" x-text="isAlquimico(mp) ? 'Alquimico' : 'Natal'"></span>
@@ -2843,7 +2844,7 @@
                                                 </p>
                                                 <div class="flex flex-wrap gap-1.5">
                                                     <template x-for="(asp, ai) in mp.mapa_json.aspectos.filter(a => !(a.aspecto||a.tipo||'').match(/Tr[íi]gono|trine|Sextil|sextile|Quadratura|square|Oposi/i))" :key="'other-'+ai">
-                                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700"
+                                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-zinc-300"
                                                             x-text="(asp.planeta1||asp.p1||'').slice(0,3) + ' ' + (asp.aspecto||asp.tipo||'') + ' ' + (asp.planeta2||asp.p2||'').slice(0,3)">
                                                         </span>
                                                     </template>
@@ -2917,7 +2918,7 @@
                             <h5 class="text-sm font-heading font-semibold mb-2 flex items-center gap-2" :class="isAlquimico(mp) ? 'text-amber-700' : 'text-brand-600'">
                                 <i data-lucide="scroll" class="w-4 h-4"></i> Resumo
                             </h5>
-                            <p class="text-sm text-gray-700 leading-relaxed" x-text="gerarResumoSigno(mp.mapa_json)"></p>
+                            <p class="text-sm text-zinc-300 leading-relaxed" x-text="gerarResumoSigno(mp.mapa_json)"></p>
                         </div>
                     </div>
                 </div>

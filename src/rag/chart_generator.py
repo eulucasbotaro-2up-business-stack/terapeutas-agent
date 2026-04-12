@@ -77,21 +77,21 @@ def _draw_sun_symbol(ax: Any, x: float, y: float, color: str,
     ax.add_patch(inner)
 
 # ---------------------------------------------------------------------------
-# Cores
+# Cores — TEMA PREMIUM DARK (Zinc-950 / Gold)
 # ---------------------------------------------------------------------------
-BG           = "#FFFFFF"
-BG_PAINEL    = "#F5F5F5"
-BORDA        = "#999999"
-TEXTO_ESCURO = "#111111"
-TEXTO_CINZA  = "#555555"
-LINHA_GRADE  = "#DDDDDD"
-OURO         = "#B8860B"
-FIGURA_COR   = "#2C2C2C"  # silhueta humana
+BG           = "#09090b"  # zinc-950
+BG_PAINEL    = "#18181b"  # zinc-900
+BORDA        = "#d4af37"  # gold
+TEXTO_ESCURO = "#ffffff"  # white text on dark
+TEXTO_CINZA  = "#a1a1aa"  # zinc-400
+LINHA_GRADE  = "#27272a"  # zinc-800
+OURO         = "#eab308"  # yellow-500/gold
+FIGURA_COR   = "#d4af37"  # gold silhueta
 
-COR_FOGO  = "#D32F2F"
-COR_TERRA = "#388E3C"
-COR_AR    = "#C6A800"
-COR_AGUA  = "#1565C0"
+COR_FOGO  = "#ef4444"  # red-500
+COR_TERRA = "#22c55e"  # green-500
+COR_AR    = "#eab308"  # yellow-500 (Air/Gold)
+COR_AGUA  = "#3b82f6"  # blue-500
 
 ELEMENTO_COR: dict[str, str] = {
     "Ari": COR_FOGO,  "Leo": COR_FOGO,  "Sag": COR_FOGO,
@@ -192,18 +192,18 @@ PLANETA_NOME_PT: dict[str, str] = {
 }
 
 COR_PLANETA: dict[str, str] = {
-    "Sun":          "#E65100",
-    "Moon":         "#1565C0",
-    "Mercury":      "#2E7D32",
-    "Venus":        "#AD1457",
-    "Mars":         "#C62828",
-    "Jupiter":      "#4527A0",
-    "Saturn":       "#37474F",
-    "Uranus":       "#006064",
-    "Neptune":      "#1A237E",
-    "Pluto":        "#4A0E4E",
-    "Ascendant":    "#000000",
-    "Medium_Coeli": "#000000",
+    "Sun":          "#fbbf24",  # amber-400
+    "Moon":         "#60a5fa",  # blue-400
+    "Mercury":      "#4ade80",  # green-400
+    "Venus":        "#f472b6",  # pink-400
+    "Mars":         "#f87171",  # red-400
+    "Jupiter":      "#a78bfa",  # violet-400
+    "Saturn":       "#94a3b8",  # slate-400
+    "Uranus":       "#2dd4bf",  # teal-400
+    "Neptune":      "#818cf8",  # indigo-400
+    "Pluto":        "#c084fc",  # fuchsia-400
+    "Ascendant":    "#d4af37",  # gold
+    "Medium_Coeli": "#d4af37",  # gold
 }
 
 ELEM_MAPA: dict[str, str] = {

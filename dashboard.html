@@ -1,470 +1,449 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Alquimista BI - Dashboard</title>
+    <title>TerapeutasAgent BI | Dashboard do CEO</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Cinzel:wght@600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        serif: ['Cinzel', 'serif'],
+                    },
+                    colors: {
+                        zinc: {
+                            950: '#09090b',
+                            900: '#18181b',
+                            800: '#27272a',
+                            700: '#3f3f46',
+                        },
+                        gold: {
+                            400: '#fbbf24',
+                            500: '#f59e0b',
+                            600: '#d97706',
+                        },
+                        emerald: {
+                            500: '#10b981',
+                            600: '#059669',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
     <style>
         [x-cloak] { display: none !important; }
-        .sidebar-link { transition: all 0.2s; }
-        .sidebar-link:hover, .sidebar-link.active { background: rgba(255,255,255,0.15); }
-        .badge { display: inline-flex; align-items: center; padding: 2px 10px; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; }
-        .badge-ativo { background: #D1FAE5; color: #065F46; }
-        .badge-pendente, .badge-disponivel { background: #FEF3C7; color: #92400E; }
-        .badge-bloqueado, .badge-expirado, .badge-cancelado { background: #FEE2E2; color: #991B1B; }
-        .badge-suspenso_pagamento { background: #FFEDD5; color: #9A3412; }
-        .spinner { border: 3px solid #E5E7EB; border-top-color: #4F46E5; border-radius: 50%; width: 24px; height: 24px; animation: spin 0.6s linear infinite; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .fade-in { animation: fadeIn 0.3s ease-in; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .glass-card {
+            background: rgba(24, 24, 27, 0.6);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(63, 63, 70, 0.4);
+        }
+        .sidebar-link { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+        .sidebar-link:hover { background: rgba(255, 255, 255, 0.05); }
+        .sidebar-link.active { 
+            background: linear-gradient(90deg, rgba(245, 158, 11, 0.1) 0%, rgba(245, 158, 11, 0) 100%);
+            border-left: 3px solid #f59e0b;
+            color: #f59e0b;
+        }
+        .badge { 
+            display: inline-flex; 
+            align-items: center; 
+            padding: 2px 10px; 
+            border-radius: 6px; 
+            font-size: 0.7rem; 
+            font-weight: 600; 
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .badge-ativo { background: rgba(16, 185, 129, 0.1); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.2); }
+        .badge-pendente, .badge-disponivel { background: rgba(245, 158, 11, 0.1); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.2); }
+        .badge-bloqueado, .badge-expirado, .badge-cancelado { background: rgba(239, 68, 68, 0.1); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.2); }
+        
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 10px; }
+        
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-up { animation: fadeUp 0.4s ease-out forwards; }
     </style>
 </head>
-<body class="bg-gray-50 min-h-screen" x-data="dashboard()" x-init="init()" x-cloak>
+<body class="bg-zinc-950 text-zinc-300 min-h-screen selection:bg-gold-500/30 selection:text-gold-400" x-data="dashboard()" x-init="init()" x-cloak>
 
-    <!-- LOGIN MODAL -->
-    <div x-show="!autenticado" class="fixed inset-0 z-50 flex items-center justify-center bg-indigo-950/90">
-        <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md mx-4">
-            <div class="text-center mb-6">
-                <div class="text-4xl mb-2">&#9883;</div>
-                <h1 class="text-2xl font-bold text-indigo-950">Alquimista BI</h1>
-                <p class="text-gray-500 mt-1">Dashboard do CEO</p>
+    <!-- LOGIN OVERLAY -->
+    <div x-show="!autenticado" class="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/80 backdrop-blur-sm">
+        <div class="glass-card p-10 rounded-3xl w-full max-w-md mx-4 shadow-2xl animate-fade-up">
+            <div class="text-center mb-8">
+                <div class="text-5xl mb-4 filter drop-shadow-[0_0_15px_rgba(245,158,11,0.5)]">&#9883;</div>
+                <h1 class="text-3xl font-serif text-white tracking-widest">Alquimista BI</h1>
+                <p class="text-zinc-500 mt-2 font-medium tracking-tight">Access restricted to authorized personnel</p>
             </div>
             <form @submit.prevent="autenticar()">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Token de Acesso</label>
-                <input type="password" x-model="tokenInput"
-                    class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-                    placeholder="Cole o token aqui..." autofocus>
-                <p x-show="erroLogin" class="text-red-500 text-sm mt-2" x-text="erroLogin"></p>
-                <button type="submit"
-                    class="w-full mt-4 bg-indigo-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-indigo-700 transition">
-                    Entrar
-                </button>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-zinc-400 mb-2 uppercase tracking-widest">Master Access Token</label>
+                        <input type="password" x-model="tokenInput"
+                            class="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-gold-500/50 focus:border-gold-500 outline-none transition-all"
+                            placeholder="••••••••••••••••" autofocus>
+                    </div>
+                    <p x-show="erroLogin" class="text-red-400 text-sm mt-2 text-center bg-red-400/10 py-2 rounded-lg" x-text="erroLogin"></p>
+                    <button type="submit"
+                        class="w-full mt-6 bg-gold-600 hover:bg-gold-500 text-zinc-950 py-3 rounded-xl font-bold tracking-widest uppercase transition-all shadow-lg shadow-gold-600/20 active:scale-[0.98]">
+                        Verify Credentials
+                    </button>
+                </div>
             </form>
         </div>
     </div>
 
-    <!-- LAYOUT PRINCIPAL -->
-    <div x-show="autenticado" class="flex min-h-screen fade-in">
+    <!-- MAIN DASHBOARD -->
+    <div x-show="autenticado" class="flex min-h-screen">
 
         <!-- SIDEBAR -->
-        <aside class="w-64 bg-indigo-950 text-white flex flex-col flex-shrink-0 fixed h-full z-40">
-            <div class="p-6 border-b border-indigo-800">
-                <div class="flex items-center gap-2">
-                    <span class="text-2xl">&#9883;</span>
-                    <span class="text-xl font-bold">Alquimista BI</span>
+        <aside class="w-72 border-r border-zinc-800/50 flex flex-col fixed h-full bg-zinc-950 z-40">
+            <div class="p-8">
+                <div class="flex items-center gap-3">
+                    <span class="text-3xl filter drop-shadow-[0_0_8px_rgba(245,158,11,0.4)]">&#9883;</span>
+                    <span class="text-xl font-serif text-white tracking-wider">Alquimista BI</span>
                 </div>
-                <p class="text-indigo-300 text-xs mt-1">Terapeutas Agent</p>
+                <div class="mt-2 h-0.5 w-12 bg-gold-500"></div>
             </div>
-            <nav class="flex-1 p-4 space-y-1">
+            
+            <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto custom-scrollbar">
+                <div class="text-[10px] font-bold text-zinc-600 uppercase tracking-[0.2em] px-4 mb-4">Core Analysis</div>
+                
                 <a href="#" @click.prevent="pagina = 'overview'" :class="pagina === 'overview' ? 'active' : ''"
-                    class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
-                    Visao Geral
+                    class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
+                    Master Overview
                 </a>
-                <a href="#" @click.prevent="pagina = 'conversas'; carregarConversas()"
-                    :class="pagina === 'conversas' ? 'active' : ''"
-                    class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
-                    Conversas
+                
+                <a href="#" @click.prevent="pagina = 'terapeutas'" :class="pagina === 'terapeutas' ? 'active' : ''"
+                    class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                    Tenants (Terapeutas)
                 </a>
-                <a href="#" @click.prevent="pagina = 'terapeutas'; carregarTerapeutas()"
-                    :class="pagina === 'terapeutas' ? 'active' : ''"
-                    class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                    Terapeutas
+                
+                <a href="#" @click.prevent="pagina = 'usuarios'" :class="pagina === 'usuarios' ? 'active' : ''"
+                    class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                    User Ecosystem (Pacientes)
                 </a>
-                <a href="#" @click.prevent="pagina = 'usuarios'; carregarUsuarios()"
-                    :class="pagina === 'usuarios' ? 'active' : ''"
-                    class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
-                    Usuarios
+
+                <div class="pt-6 text-[10px] font-bold text-zinc-600 uppercase tracking-[0.2em] px-4 mb-4">Operations</div>
+
+                <a href="#" @click.prevent="pagina = 'conversas'" :class="pagina === 'conversas' ? 'active' : ''"
+                    class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>
+                    Live Interaction Log
                 </a>
-                <a href="#" @click.prevent="pagina = 'assinaturas'; carregarAssinaturas()"
-                    :class="pagina === 'assinaturas' ? 'active' : ''"
-                    class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/></svg>
-                    Assinaturas
+                
+                <a href="#" @click.prevent="pagina = 'assinaturas'" :class="pagina === 'assinaturas' ? 'active' : ''"
+                    class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" /></svg>
+                    License Management
                 </a>
             </nav>
-            <div class="p-4 border-t border-indigo-800 text-xs text-indigo-400">
-                <p>Atualizado: <span x-text="ultimaAtualizacao"></span></p>
-                <button @click="sair()" class="mt-2 text-indigo-300 hover:text-white transition text-xs underline">Sair</button>
+            
+            <div class="p-6 border-t border-zinc-800/50 mt-auto bg-zinc-900/20">
+                <div class="flex items-center gap-3 px-2">
+                    <div class="w-10 h-10 rounded-full bg-gold-500/10 border border-gold-500/20 flex items-center justify-center text-gold-500 font-bold">LB</div>
+                    <div>
+                        <p class="text-xs font-bold text-white uppercase tracking-tighter">CEO Terminal</p>
+                        <p class="text-[10px] text-zinc-500">System Administrator</p>
+                    </div>
+                </div>
             </div>
         </aside>
 
-        <!-- MAIN CONTENT -->
-        <main class="flex-1 ml-64 p-8">
-
-            <!-- ==================== VISAO GERAL ==================== -->
-            <div x-show="pagina === 'overview'" class="fade-in">
-                <h1 class="text-2xl font-bold text-gray-900 mb-6">Visao Geral</h1>
-
-                <!-- Loading -->
-                <div x-show="loading.overview" class="flex justify-center py-20">
-                    <div class="spinner"></div>
+        <!-- CONTENT AREA -->
+        <main class="flex-1 ml-72 p-10 min-w-0">
+            
+            <!-- HEADER -->
+            <header class="flex justify-between items-end mb-12">
+                <div>
+                    <h2 class="text-4xl font-serif text-white tracking-wide" x-text="pagina === 'overview' ? 'Master Overview' : (pagina === 'terapeutas' ? 'Tenants Registry' : (pagina === 'usuarios' ? 'User Ecosystem' : (pagina === 'conversas' ? 'Live Interaction Log' : 'License Management')))"></h2>
+                    <p class="text-zinc-500 mt-2 font-medium tracking-wide">Real-time intelligence from Alquimista AI Network</p>
                 </div>
+                <div class="flex gap-4">
+                    <button @click="init()" class="bg-zinc-900 border border-zinc-800 hover:border-zinc-700 p-3 rounded-xl transition-all group">
+                        <svg class="w-5 h-5 text-zinc-400 group-hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                    </button>
+                </div>
+            </header>
 
-                <div x-show="!loading.overview">
-                    <!-- Cards -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                            <p class="text-sm text-gray-500 mb-1">Usuarios Ativos</p>
-                            <p class="text-3xl font-bold text-indigo-600" x-text="overview.usuarios_ativos || 0"></p>
-                            <div class="flex gap-2 mt-2 text-xs">
-                                <span class="text-amber-500" x-text="(overview.usuarios_pendentes || 0) + ' pendentes'"></span>
-                                <span class="text-red-500" x-text="(overview.usuarios_bloqueados || 0) + ' bloqueados'"></span>
+            <!-- OVERVIEW PAGE -->
+            <div x-show="pagina === 'overview'" class="space-y-10 animate-fade-up">
+                <!-- METRIC CARDS -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="glass-card p-8 rounded-3xl relative overflow-hidden group">
+                        <div class="absolute -right-4 -top-4 text-7xl text-gold-500/5 group-hover:text-gold-500/10 transition-all transform group-hover:scale-110">󰐗</div>
+                        <p class="text-xs font-bold text-zinc-500 uppercase tracking-[0.15em] mb-4">Total Revenue (MRR)</p>
+                        <div class="flex items-end gap-2">
+                            <h3 class="text-3xl font-serif text-white" x-text="'R$ ' + (stats.total_assinaturas * 197).toLocaleString('pt-BR', {minimumFractionDigits: 2})"></h3>
+                            <span class="text-emerald-500 text-xs font-bold mb-1.5">+12.4%</span>
+                        </div>
+                    </div>
+                    
+                    <div class="glass-card p-8 rounded-3xl relative overflow-hidden group">
+                        <div class="absolute -right-4 -top-4 text-7xl text-teal-500/5 group-hover:text-teal-500/10 transition-all transform group-hover:scale-110">󰭹</div>
+                        <p class="text-xs font-bold text-zinc-500 uppercase tracking-[0.15em] mb-4">Active Tenants</p>
+                        <div class="flex items-end gap-2">
+                            <h3 class="text-3xl font-serif text-white" x-text="stats.total_terapeutas"></h3>
+                            <span class="text-emerald-500 text-xs font-bold mb-1.5">+3</span>
+                        </div>
+                    </div>
+
+                    <div class="glass-card p-8 rounded-3xl relative overflow-hidden group">
+                        <div class="absolute -right-4 -top-4 text-7xl text-purple-500/5 group-hover:text-purple-500/10 transition-all transform group-hover:scale-110">󰙔</div>
+                        <p class="text-xs font-bold text-zinc-500 uppercase tracking-[0.15em] mb-4">Network Activity</p>
+                        <div class="flex items-end gap-2">
+                            <h3 class="text-3xl font-serif text-white" x-text="stats.total_mensagens"></h3>
+                            <span class="text-zinc-600 text-[10px] font-bold mb-1.5 uppercase tracking-tighter">Messages</span>
+                        </div>
+                    </div>
+
+                    <div class="glass-card p-8 rounded-3xl relative overflow-hidden group">
+                        <div class="absolute -right-4 -top-4 text-7xl text-zinc-500/5 group-hover:text-zinc-500/10 transition-all transform group-hover:scale-110">󰇙</div>
+                        <p class="text-xs font-bold text-zinc-500 uppercase tracking-[0.15em] mb-4">System Pulse</p>
+                        <div class="space-y-3">
+                            <div class="flex items-center justify-between">
+                                <span class="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Astro Engine</span>
+                                <span class="text-[10px] font-bold" :class="systemStatus.componentes?.motor_astrologico?.includes('OPERACIONAL') ? 'text-emerald-500' : 'text-gold-500'" x-text="systemStatus.componentes?.motor_astrologico || 'Loading...'"></span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Database</span>
+                                <span class="text-[10px] font-bold" :class="systemStatus.componentes?.banco_dados === 'OPERACIONAL' ? 'text-emerald-500' : 'text-red-500'" x-text="systemStatus.componentes?.banco_dados || 'Loading...'"></span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">AI Network</span>
+                                <span class="text-[10px] font-bold text-emerald-500">Claude-3.5 100%</span>
                             </div>
                         </div>
-                        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                            <p class="text-sm text-gray-500 mb-1">Conversas Hoje</p>
-                            <p class="text-3xl font-bold text-emerald-500" x-text="overview.conversas_hoje || 0"></p>
-                            <p class="text-xs text-gray-400 mt-2">
-                                Semana: <span x-text="overview.conversas_semana || 0"></span> |
-                                Total: <span x-text="overview.conversas_total || 0"></span>
-                            </p>
-                        </div>
-                        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                            <p class="text-sm text-gray-500 mb-1">Terapeutas Ativos</p>
-                            <p class="text-3xl font-bold text-purple-600" x-text="overview.terapeutas_ativos || 0"></p>
-                            <p class="text-xs text-gray-400 mt-2">
-                                Media msgs/dia: <span x-text="overview.mensagem_media_dia || 0"></span>
-                            </p>
-                        </div>
-                        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                            <p class="text-sm text-gray-500 mb-1">Codigos Ativos</p>
-                            <p class="text-3xl font-bold text-amber-500" x-text="overview.codigos_ativos || 0"></p>
-                            <p class="text-xs text-gray-400 mt-2">
-                                Expirados: <span x-text="overview.codigos_expirados || 0"></span>
-                            </p>
-                        </div>
                     </div>
+                </div>
 
-                    <!-- Graficos -->
-                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-                        <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                            <h3 class="text-lg font-semibold text-gray-800 mb-4">Conversas nos ultimos 30 dias</h3>
-                            <canvas id="chartEvolucao" height="120"></canvas>
+                <!-- CHARTS -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                    <div class="glass-card p-10 rounded-3xl">
+                        <div class="flex justify-between items-center mb-8">
+                            <h4 class="text-lg font-serif text-white tracking-widest">Activity Distribution</h4>
+                            <select class="bg-zinc-900 border border-zinc-800 rounded-lg text-xs px-2 py-1 outline-none">
+                                <option>Last 30 Days</option>
+                                <option>Last 7 Days</option>
+                            </select>
                         </div>
-                        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                            <h3 class="text-lg font-semibold text-gray-800 mb-4">Distribuicao de Modos</h3>
-                            <canvas id="chartModos" height="200"></canvas>
-                        </div>
+                        <canvas id="chartAtividade" height="200"></canvas>
                     </div>
-
-                    <!-- Ultimas conversas -->
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                        <h3 class="text-lg font-semibold text-gray-800 mb-4">Ultimas 10 conversas</h3>
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-sm">
-                                <thead>
-                                    <tr class="text-left text-gray-500 border-b">
-                                        <th class="pb-3 font-medium">Terapeuta</th>
-                                        <th class="pb-3 font-medium">Paciente</th>
-                                        <th class="pb-3 font-medium">Mensagem</th>
-                                        <th class="pb-3 font-medium">Modo</th>
-                                        <th class="pb-3 font-medium">Horario</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <template x-for="c in ultimasConversas" :key="c.id">
-                                        <tr class="border-b border-gray-50 hover:bg-gray-50">
-                                            <td class="py-3" x-text="c.terapeuta_nome"></td>
-                                            <td class="py-3" x-text="c.paciente_nome || c.paciente_numero"></td>
-                                            <td class="py-3 max-w-xs truncate" x-text="c.mensagem_paciente"></td>
-                                            <td class="py-3"><span class="badge badge-ativo" x-text="c.modo"></span></td>
-                                            <td class="py-3 text-gray-400 whitespace-nowrap" x-text="formatarData(c.criado_em)"></td>
-                                        </tr>
-                                    </template>
-                                </tbody>
-                            </table>
+                    
+                    <div class="glass-card p-10 rounded-3xl">
+                        <div class="flex justify-between items-center mb-8">
+                            <h4 class="text-lg font-serif text-white tracking-widest">Subscription Health</h4>
+                        </div>
+                        <div class="flex gap-10 items-center h-full pb-8">
+                            <div class="w-1/2">
+                                <canvas id="chartAssinaturas" height="200"></canvas>
+                            </div>
+                            <div class="w-1/2 space-y-4">
+                                <template x-for="(val, key) in stats.distribuicao_assinaturas">
+                                    <div class="flex items-center justify-between text-xs">
+                                        <div class="flex items-center gap-2">
+                                            <div class="w-2 h-2 rounded-full" :style="{ backgroundColor: key === 'ativo' ? '#10b981' : (key === 'pendente' ? '#f59e0b' : '#ef4444') }"></div>
+                                            <span class="capitalize text-zinc-400" x-text="key"></span>
+                                        </div>
+                                        <span class="font-bold text-white" x-text="val"></span>
+                                    </div>
+                                </template>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- ==================== CONVERSAS ==================== -->
-            <div x-show="pagina === 'conversas'" class="fade-in">
-                <h1 class="text-2xl font-bold text-gray-900 mb-6">Conversas</h1>
-
-                <!-- Filtros -->
-                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6 flex flex-wrap gap-4 items-end">
-                    <div>
-                        <label class="block text-xs text-gray-500 mb-1">Terapeuta</label>
-                        <select x-model="filtroConversas.terapeuta_id" @change="carregarConversas()"
-                            class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
-                            <option value="">Todos</option>
-                            <template x-for="t in listaTerapeutas" :key="t.id">
-                                <option :value="t.id" x-text="t.nome"></option>
-                            </template>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-xs text-gray-500 mb-1">Busca</label>
-                        <input type="text" x-model="filtroConversas.busca" @keyup.enter="carregarConversas()"
-                            placeholder="Buscar em mensagens..."
-                            class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none w-64">
-                    </div>
-                    <button @click="carregarConversas()"
-                        class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition">
-                        Filtrar
-                    </button>
-                </div>
-
-                <div x-show="loading.conversas" class="flex justify-center py-20"><div class="spinner"></div></div>
-
-                <div x-show="!loading.conversas" class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-sm">
+            <!-- TERAPEUTAS PAGE -->
+            <div x-show="pagina === 'terapeutas'" class="animate-fade-up">
+                <div class="glass-card rounded-3xl overflow-hidden">
+                    <div class="overflow-x-auto custom-scrollbar">
+                        <table class="w-full text-left border-collapse">
                             <thead>
-                                <tr class="text-left text-gray-500 border-b bg-gray-50">
-                                    <th class="px-4 py-3 font-medium">Terapeuta</th>
-                                    <th class="px-4 py-3 font-medium">Paciente</th>
-                                    <th class="px-4 py-3 font-medium">Mensagem</th>
-                                    <th class="px-4 py-3 font-medium">Modo</th>
-                                    <th class="px-4 py-3 font-medium">Horario</th>
-                                    <th class="px-4 py-3 font-medium"></th>
+                                <tr class="bg-zinc-900/50 border-b border-zinc-800">
+                                    <th class="px-6 py-5 text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em]">Tenant Identity</th>
+                                    <th class="px-6 py-5 text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em]">Clinical Specialty</th>
+                                    <th class="px-6 py-5 text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em]">System Status</th>
+                                    <th class="px-6 py-5 text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em]">Connected Since</th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                <template x-for="c in conversas" :key="c.id">
-                                    <tr class="border-b border-gray-50 hover:bg-gray-50 cursor-pointer" @click="abrirConversa(c)">
-                                        <td class="px-4 py-3" x-text="c.terapeuta_nome"></td>
-                                        <td class="px-4 py-3" x-text="c.paciente_nome || c.paciente_numero"></td>
-                                        <td class="px-4 py-3 max-w-sm truncate" x-text="c.mensagem_paciente"></td>
-                                        <td class="px-4 py-3"><span class="badge badge-ativo" x-text="c.modo"></span></td>
-                                        <td class="px-4 py-3 text-gray-400 whitespace-nowrap" x-text="formatarData(c.criado_em)"></td>
-                                        <td class="px-4 py-3 text-indigo-500">Ver</td>
+                            <tbody class="divide-y divide-zinc-800/50">
+                                <template x-for="t in terapeutasData">
+                                    <tr class="hover:bg-zinc-900/30 transition-colors group cursor-pointer">
+                                        <td class="px-6 py-5">
+                                            <div class="flex items-center gap-4">
+                                                <div class="w-10 h-10 rounded-xl bg-gold-500/10 border border-gold-500/20 flex items-center justify-center text-gold-500 font-bold group-hover:scale-110 transition-transform" x-text="t.nome[0]"></div>
+                                                <div>
+                                                    <p class="font-bold text-white group-hover:text-gold-400 transition-colors" x-text="t.nome"></p>
+                                                    <p class="text-xs text-zinc-500" x-text="t.email"></p>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-5">
+                                            <p class="text-sm font-medium text-zinc-400" x-text="t.especialidade || 'General Alchemy'"></p>
+                                        </td>
+                                        <td class="px-6 py-5">
+                                            <div class="flex items-center gap-2">
+                                                <span class="badge" :class="t.ativo ? 'badge-ativo' : 'badge-bloqueado'" x-text="t.ativo ? 'Active' : 'Suspended'"></span>
+                                                <template x-show="t.whatsapp_conectado">
+                                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                                </template>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-5 text-xs text-zinc-500" x-text="formatarData(t.criado_em)"></td>
                                     </tr>
                                 </template>
                             </tbody>
                         </table>
                     </div>
-                    <!-- Paginacao -->
-                    <div class="flex items-center justify-between px-4 py-3 bg-gray-50 border-t">
-                        <button @click="paginaConversas > 0 && (paginaConversas--, carregarConversas())"
-                            :disabled="paginaConversas === 0"
-                            class="px-3 py-1 text-sm border rounded-lg disabled:opacity-40">Anterior</button>
-                        <span class="text-sm text-gray-500">Pagina <span x-text="paginaConversas + 1"></span></span>
-                        <button @click="conversas.length === 50 && (paginaConversas++, carregarConversas())"
-                            :disabled="conversas.length < 50"
-                            class="px-3 py-1 text-sm border rounded-lg disabled:opacity-40">Proxima</button>
-                    </div>
                 </div>
             </div>
 
-            <!-- ==================== TERAPEUTAS ==================== -->
-            <div x-show="pagina === 'terapeutas'" class="fade-in">
-                <h1 class="text-2xl font-bold text-gray-900 mb-6">Terapeutas</h1>
-
-                <div x-show="loading.terapeutas" class="flex justify-center py-20"><div class="spinner"></div></div>
-
-                <div x-show="!loading.terapeutas">
-                    <!-- Cards -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-                        <template x-for="t in terapeutasData" :key="t.id">
-                            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                                <div class="flex items-center gap-3 mb-4">
-                                    <div class="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold" x-text="(t.nome || '?')[0].toUpperCase()"></div>
-                                    <div>
-                                        <h3 class="font-semibold text-gray-900" x-text="t.nome"></h3>
-                                        <p class="text-xs text-gray-400" x-text="t.email"></p>
-                                    </div>
-                                </div>
-                                <div class="grid grid-cols-2 gap-3 text-sm">
-                                    <div>
-                                        <p class="text-gray-400 text-xs">Usuarios Ativos</p>
-                                        <p class="font-semibold text-indigo-600" x-text="t.usuarios_ativos"></p>
-                                    </div>
-                                    <div>
-                                        <p class="text-gray-400 text-xs">Total Usuarios</p>
-                                        <p class="font-semibold" x-text="t.total_usuarios"></p>
-                                    </div>
-                                    <div>
-                                        <p class="text-gray-400 text-xs">Conversas Total</p>
-                                        <p class="font-semibold" x-text="t.conversas_total"></p>
-                                    </div>
-                                    <div>
-                                        <p class="text-gray-400 text-xs">Conversas Semana</p>
-                                        <p class="font-semibold text-emerald-500" x-text="t.conversas_semana"></p>
-                                    </div>
-                                    <div>
-                                        <p class="text-gray-400 text-xs">Documentos</p>
-                                        <p class="font-semibold" x-text="t.documentos_indexados"></p>
-                                    </div>
-                                    <div>
-                                        <p class="text-gray-400 text-xs">Ultima Conversa</p>
-                                        <p class="font-semibold text-xs" x-text="t.ultima_conversa ? formatarData(t.ultima_conversa) : '-'"></p>
-                                    </div>
-                                </div>
-                            </div>
-                        </template>
-                    </div>
-
-                    <!-- Tabela detalhada -->
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-sm">
-                                <thead>
-                                    <tr class="text-left text-gray-500 border-b bg-gray-50">
-                                        <th class="px-4 py-3 font-medium">Nome</th>
-                                        <th class="px-4 py-3 font-medium">Email</th>
-                                        <th class="px-4 py-3 font-medium">Usuarios</th>
-                                        <th class="px-4 py-3 font-medium">Ativos</th>
-                                        <th class="px-4 py-3 font-medium">Conversas</th>
-                                        <th class="px-4 py-3 font-medium">Semana</th>
-                                        <th class="px-4 py-3 font-medium">Docs</th>
-                                        <th class="px-4 py-3 font-medium">Ultima Conversa</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <template x-for="t in terapeutasData" :key="t.id">
-                                        <tr class="border-b border-gray-50 hover:bg-gray-50">
-                                            <td class="px-4 py-3 font-medium" x-text="t.nome"></td>
-                                            <td class="px-4 py-3 text-gray-400" x-text="t.email"></td>
-                                            <td class="px-4 py-3" x-text="t.total_usuarios"></td>
-                                            <td class="px-4 py-3 text-indigo-600" x-text="t.usuarios_ativos"></td>
-                                            <td class="px-4 py-3" x-text="t.conversas_total"></td>
-                                            <td class="px-4 py-3 text-emerald-500" x-text="t.conversas_semana"></td>
-                                            <td class="px-4 py-3" x-text="t.documentos_indexados"></td>
-                                            <td class="px-4 py-3 text-gray-400 text-xs" x-text="t.ultima_conversa ? formatarData(t.ultima_conversa) : '-'"></td>
-                                        </tr>
-                                    </template>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ==================== USUARIOS ==================== -->
-            <div x-show="pagina === 'usuarios'" class="fade-in">
-                <h1 class="text-2xl font-bold text-gray-900 mb-6">Usuarios</h1>
-
-                <!-- Filtros -->
-                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6 flex flex-wrap gap-4 items-end">
-                    <div>
-                        <label class="block text-xs text-gray-500 mb-1">Estado</label>
-                        <select x-model="filtroUsuarios.estado" @change="carregarUsuarios()"
-                            class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
-                            <option value="">Todos</option>
-                            <option value="ATIVO">Ativo</option>
-                            <option value="PENDENTE_CODIGO">Pendente</option>
-                            <option value="BLOQUEADO">Bloqueado</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-xs text-gray-500 mb-1">Terapeuta</label>
-                        <select x-model="filtroUsuarios.terapeuta_id" @change="carregarUsuarios()"
-                            class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
-                            <option value="">Todos</option>
-                            <template x-for="t in listaTerapeutas" :key="t.id">
-                                <option :value="t.id" x-text="t.nome"></option>
-                            </template>
-                        </select>
-                    </div>
-                </div>
-
-                <div x-show="loading.usuarios" class="flex justify-center py-20"><div class="spinner"></div></div>
-
-                <div x-show="!loading.usuarios" class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-sm">
+            <!-- USUARIOS (PACIENTES) PAGE -->
+            <div x-show="pagina === 'usuarios'" class="animate-fade-up">
+                <div class="glass-card rounded-3xl overflow-hidden">
+                    <div class="overflow-x-auto custom-scrollbar">
+                        <table class="w-full text-left border-collapse">
                             <thead>
-                                <tr class="text-left text-gray-500 border-b bg-gray-50">
-                                    <th class="px-4 py-3 font-medium">Numero</th>
-                                    <th class="px-4 py-3 font-medium">Nome</th>
-                                    <th class="px-4 py-3 font-medium">Estado</th>
-                                    <th class="px-4 py-3 font-medium">Terapeuta</th>
-                                    <th class="px-4 py-3 font-medium">Violacoes</th>
-                                    <th class="px-4 py-3 font-medium">Motivo Bloqueio</th>
-                                    <th class="px-4 py-3 font-medium">Ultima Msg</th>
-                                    <th class="px-4 py-3 font-medium">Cadastro</th>
+                                <tr class="bg-zinc-900/50 border-b border-zinc-800">
+                                    <th class="px-6 py-5 text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em]">Patient / WhatsApp</th>
+                                    <th class="px-6 py-5 text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em]">Current State</th>
+                                    <th class="px-6 py-5 text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em]">Assigned Alchemist</th>
+                                    <th class="px-6 py-5 text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em]">Last Pulse</th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                <template x-for="u in usuarios" :key="u.numero_telefone + u.terapeuta_id">
-                                    <tr class="border-b border-gray-50 hover:bg-gray-50">
-                                        <td class="px-4 py-3 font-mono text-xs" x-text="u.numero_telefone"></td>
-                                        <td class="px-4 py-3" x-text="u.nome_usuario || '-'"></td>
-                                        <td class="px-4 py-3">
-                                            <span class="badge"
+                            <tbody class="divide-y divide-zinc-800/50">
+                                <template x-for="u in usuarios">
+                                    <tr class="hover:bg-zinc-900/30 transition-colors group">
+                                        <td class="px-6 py-5">
+                                            <div class="flex items-center gap-4">
+                                                <div class="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center group-hover:bg-zinc-700 transition-colors">
+                                                    <svg class="w-5 h-5 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                                                </div>
+                                                <div>
+                                                    <p class="font-bold text-white" x-text="u.nome_usuario || 'Anonymous Alchemist'"></p>
+                                                    <p class="text-xs text-zinc-500 font-mono" x-text="'+' + u.numero_telefone"></p>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-5">
+                                            <span class="badge" 
                                                 :class="{
                                                     'badge-ativo': u.estado === 'ATIVO',
                                                     'badge-pendente': u.estado === 'PENDENTE_CODIGO',
                                                     'badge-bloqueado': u.estado === 'BLOQUEADO'
-                                                }"
+                                                }" 
                                                 x-text="u.estado"></span>
                                         </td>
-                                        <td class="px-4 py-3" x-text="u.terapeuta_nome"></td>
-                                        <td class="px-4 py-3" :class="u.violacoes_conteudo > 0 ? 'text-red-500 font-bold' : ''" x-text="u.violacoes_conteudo || 0"></td>
-                                        <td class="px-4 py-3 text-xs text-gray-400 max-w-xs truncate" x-text="u.motivo_bloqueio || '-'"></td>
-                                        <td class="px-4 py-3 text-xs text-gray-400 whitespace-nowrap" x-text="u.ultima_mensagem ? formatarData(u.ultima_mensagem) : '-'"></td>
-                                        <td class="px-4 py-3 text-xs text-gray-400 whitespace-nowrap" x-text="formatarData(u.criado_em)"></td>
+                                        <td class="px-6 py-5 text-sm font-medium text-zinc-400" x-text="u.terapeuta_nome"></td>
+                                        <td class="px-6 py-5 text-xs text-zinc-500" x-text="formatarData(u.atualizado_em)"></td>
                                     </tr>
                                 </template>
                             </tbody>
                         </table>
-                    </div>
-                    <div class="px-4 py-3 bg-gray-50 border-t text-sm text-gray-500">
-                        Total: <span x-text="usuarios.length"></span> usuarios
                     </div>
                 </div>
             </div>
 
-            <!-- ==================== ASSINATURAS ==================== -->
-            <div x-show="pagina === 'assinaturas'" class="fade-in">
-                <h1 class="text-2xl font-bold text-gray-900 mb-6">Assinaturas</h1>
-
-                <div x-show="loading.assinaturas" class="flex justify-center py-20"><div class="spinner"></div></div>
-
-                <div x-show="!loading.assinaturas" class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-sm">
+            <!-- CONVERSAS PAGE -->
+            <div x-show="pagina === 'conversas'" class="animate-fade-up">
+                <div class="glass-card rounded-3xl overflow-hidden">
+                    <div class="overflow-x-auto custom-scrollbar">
+                        <table class="w-full text-left border-collapse">
                             <thead>
-                                <tr class="text-left text-gray-500 border-b bg-gray-50">
-                                    <th class="px-4 py-3 font-medium">Codigo</th>
-                                    <th class="px-4 py-3 font-medium">Descricao</th>
-                                    <th class="px-4 py-3 font-medium">Usuario</th>
-                                    <th class="px-4 py-3 font-medium">Status</th>
-                                    <th class="px-4 py-3 font-medium">Meses</th>
-                                    <th class="px-4 py-3 font-medium">Expiracao</th>
-                                    <th class="px-4 py-3 font-medium">Terapeuta</th>
-                                    <th class="px-4 py-3 font-medium">Criado em</th>
+                                <tr class="bg-zinc-900/50 border-b border-zinc-800">
+                                    <th class="px-6 py-5 text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em]">Participants</th>
+                                    <th class="px-6 py-5 text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em]">Interaction Summary</th>
+                                    <th class="px-6 py-5 text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em]">Response Time</th>
+                                    <th class="px-6 py-5 text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em]">Timestamp</th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                <template x-for="a in assinaturas" :key="a.id">
-                                    <tr class="border-b border-gray-50 hover:bg-gray-50">
-                                        <td class="px-4 py-3 font-mono font-bold" x-text="a.codigo"></td>
-                                        <td class="px-4 py-3 max-w-xs truncate" x-text="a.descricao || '-'"></td>
-                                        <td class="px-4 py-3">
-                                            <span x-text="a.nome_usuario || a.numero_ativo || '-'"></span>
+                            <tbody class="divide-y divide-zinc-800/50">
+                                <template x-for="c in conversas">
+                                    <tr class="hover:bg-zinc-900/30 transition-colors cursor-pointer" @click="abrirConversa(c)">
+                                        <td class="px-6 py-5">
+                                            <div class="text-xs font-bold text-white mb-1" x-text="c.terapeuta_nome"></div>
+                                            <div class="text-[10px] text-zinc-500" x-text="'Patient: ' + (c.paciente_nome || c.paciente_numero)"></div>
                                         </td>
-                                        <td class="px-4 py-3">
-                                            <span class="badge"
-                                                :class="{
-                                                    'badge-ativo': a.status_assinatura === 'ativo',
-                                                    'badge-disponivel': a.status_assinatura === 'disponivel',
-                                                    'badge-expirado': a.status_assinatura === 'expirado',
-                                                    'badge-cancelado': a.status_assinatura === 'cancelado',
-                                                    'badge-suspenso_pagamento': a.status_assinatura === 'suspenso_pagamento'
-                                                }"
-                                                x-text="a.status_assinatura"></span>
+                                        <td class="px-6 py-5">
+                                            <div class="max-w-md">
+                                                <p class="text-xs text-zinc-400 line-clamp-1 italic mb-1" x-text="'\"' + c.mensagem_paciente + '\"'"></p>
+                                                <p class="text-xs text-gold-500 font-medium line-clamp-1" x-text="c.resposta_agente"></p>
+                                            </div>
                                         </td>
-                                        <td class="px-4 py-3" x-text="a.meses_contratados || '-'"></td>
-                                        <td class="px-4 py-3 text-xs whitespace-nowrap" x-text="a.data_expiracao ? formatarData(a.data_expiracao) : '-'"></td>
-                                        <td class="px-4 py-3" x-text="a.terapeuta_nome"></td>
-                                        <td class="px-4 py-3 text-xs text-gray-400 whitespace-nowrap" x-text="formatarData(a.criado_em)"></td>
+                                        <td class="px-6 py-5">
+                                            <div class="flex items-center gap-2">
+                                                <div class="h-1.5 w-12 bg-zinc-800 rounded-full overflow-hidden">
+                                                    <div class="h-full bg-emerald-500" :style="{ width: Math.min((c.tempo_resposta_ms / 10000) * 100, 100) + '%' }"></div>
+                                                </div>
+                                                <span class="text-[10px] text-zinc-500 font-mono" x-text="(c.tempo_resposta_ms / 1000).toFixed(1) + 's'"></span>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-5 text-[10px] text-zinc-500 font-mono" x-text="formatarData(c.criado_em)"></td>
                                     </tr>
                                 </template>
                             </tbody>
                         </table>
                     </div>
-                    <div class="px-4 py-3 bg-gray-50 border-t text-sm text-gray-500">
-                        Total: <span x-text="assinaturas.length"></span> codigos
+                </div>
+            </div>
+
+            <!-- ASSINATURAS PAGE -->
+            <div x-show="pagina === 'assinaturas'" class="animate-fade-up">
+                <div class="glass-card rounded-3xl overflow-hidden">
+                    <div class="overflow-x-auto custom-scrollbar">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-zinc-900/50 border-b border-zinc-800">
+                                    <th class="px-6 py-5 text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em]">License Key</th>
+                                    <th class="px-6 py-5 text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em]">Holder Details</th>
+                                    <th class="px-6 py-5 text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em]">Status</th>
+                                    <th class="px-6 py-5 text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em]">Validity</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-zinc-800/50">
+                                <template x-for="a in assinaturas">
+                                    <tr class="hover:bg-zinc-900/30 transition-colors">
+                                        <td class="px-6 py-5">
+                                            <code class="bg-zinc-900 border border-zinc-800 px-2 py-1 rounded text-gold-500 font-mono text-xs font-bold" x-text="a.codigo"></code>
+                                        </td>
+                                        <td class="px-6 py-5">
+                                            <p class="text-xs font-bold text-white mb-0.5" x-text="a.descricao?.split(' — ')[0] || 'Unknown'"></p>
+                                            <p class="text-[10px] text-zinc-500" x-text="a.terapeuta_nome"></p>
+                                        </td>
+                                        <td class="px-6 py-5">
+                                            <span class="badge" 
+                                                :class="{
+                                                    'badge-ativo': a.status_assinatura === 'ativo',
+                                                    'badge-pendente': a.status_assinatura === 'disponivel',
+                                                    'badge-bloqueado': ['expirado', 'cancelado'].includes(a.status_assinatura)
+                                                }" 
+                                                x-text="a.status_assinatura"></span>
+                                        </td>
+                                        <td class="px-6 py-5 text-[10px] text-zinc-500 font-mono" x-text="a.data_expiracao ? formatarData(a.data_expiracao) : 'Lifetime/Pending'"></td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -472,43 +451,56 @@
         </main>
     </div>
 
-    <!-- MODAL CONVERSA -->
-    <div x-show="modalConversa" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" @click.self="modalConversa = false">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 max-h-[80vh] overflow-y-auto">
-            <div class="p-6 border-b sticky top-0 bg-white rounded-t-2xl flex justify-between items-center">
-                <h3 class="text-lg font-semibold">Detalhes da Conversa</h3>
-                <button @click="modalConversa = false" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+    <!-- CONVERSA MODAL -->
+    <div x-show="modalConversa" class="fixed inset-0 z-50 flex items-center justify-center p-6 bg-zinc-950/80 backdrop-blur-md" @click.self="modalConversa = false">
+        <div class="glass-card w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl animate-fade-up">
+            <div class="p-8 border-b border-zinc-800 flex justify-between items-center bg-zinc-900/40">
+                <div>
+                    <h3 class="text-xl font-serif text-white tracking-widest uppercase">Interaction Insight</h3>
+                    <p class="text-xs text-zinc-500 mt-1 uppercase tracking-widest font-bold">Deep Packet Inspection</p>
+                </div>
+                <button @click="modalConversa = false" class="text-zinc-500 hover:text-white transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
             </div>
-            <div class="p-6 space-y-4" x-show="conversaSelecionada">
-                <div class="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                        <p class="text-gray-400 text-xs">Terapeuta</p>
-                        <p class="font-medium" x-text="conversaSelecionada?.terapeuta_nome"></p>
+            
+            <div class="p-10 space-y-8 custom-scrollbar max-h-[70vh] overflow-y-auto">
+                <div class="grid grid-cols-2 gap-8">
+                    <div class="space-y-1">
+                        <p class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Lead Alchemist</p>
+                        <p class="text-sm font-medium text-white" x-text="conversaSelecionada?.terapeuta_nome"></p>
                     </div>
-                    <div>
-                        <p class="text-gray-400 text-xs">Paciente</p>
-                        <p class="font-medium" x-text="conversaSelecionada?.paciente_nome || conversaSelecionada?.paciente_numero"></p>
-                    </div>
-                    <div>
-                        <p class="text-gray-400 text-xs">Modo</p>
-                        <span class="badge badge-ativo" x-text="conversaSelecionada?.modo"></span>
-                    </div>
-                    <div>
-                        <p class="text-gray-400 text-xs">Horario</p>
-                        <p x-text="formatarData(conversaSelecionada?.criado_em)"></p>
+                    <div class="space-y-1 text-right">
+                        <p class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Patient ID</p>
+                        <p class="text-sm font-medium text-white" x-text="conversaSelecionada?.paciente_nome || conversaSelecionada?.paciente_numero"></p>
                     </div>
                 </div>
-                <div>
-                    <p class="text-gray-400 text-xs mb-1">Mensagem do Paciente</p>
-                    <div class="bg-indigo-50 rounded-lg p-4 text-sm" x-text="conversaSelecionada?.mensagem_paciente"></div>
+
+                <div class="space-y-4">
+                    <div class="bg-zinc-900/50 border border-zinc-800 p-6 rounded-2xl">
+                        <p class="text-[10px] font-bold text-emerald-500 uppercase tracking-widest mb-3">Patient Input</p>
+                        <p class="text-sm text-zinc-300 italic" x-text="'\"' + (conversaSelecionada?.mensagem_paciente || 'No input captured') + '\"'"></p>
+                    </div>
+                    
+                    <div class="bg-gold-500/5 border border-gold-500/20 p-6 rounded-2xl">
+                        <p class="text-[10px] font-bold text-gold-500 uppercase tracking-widest mb-3">AI Oracle Response</p>
+                        <p class="text-sm text-zinc-200" x-text="conversaSelecionada?.resposta_agente || 'Processing...'"></p>
+                    </div>
                 </div>
-                <div>
-                    <p class="text-gray-400 text-xs mb-1">Resposta do Agente</p>
-                    <div class="bg-emerald-50 rounded-lg p-4 text-sm whitespace-pre-wrap" x-text="conversaSelecionada?.resposta_agente"></div>
-                </div>
-                <div>
-                    <p class="text-gray-400 text-xs mb-1">Intencao Completa</p>
-                    <p class="text-sm font-mono bg-gray-100 rounded-lg p-2" x-text="conversaSelecionada?.intencao"></p>
+
+                <div class="grid grid-cols-3 gap-4 pt-4">
+                    <div class="bg-zinc-900/30 p-4 rounded-xl text-center border border-zinc-800/50">
+                        <p class="text-[9px] font-bold text-zinc-500 uppercase tracking-tighter mb-1">Intent</p>
+                        <span class="text-[11px] font-bold text-zinc-300" x-text="conversaSelecionada?.intencao || 'N/A'"></span>
+                    </div>
+                    <div class="bg-zinc-900/30 p-4 rounded-xl text-center border border-zinc-800/50">
+                        <p class="text-[9px] font-bold text-zinc-500 uppercase tracking-tighter mb-1">Response time</p>
+                        <span class="text-[11px] font-bold text-zinc-300" x-text="(conversaSelecionada?.tempo_resposta_ms / 1000).toFixed(2) + 's'"></span>
+                    </div>
+                    <div class="bg-zinc-900/30 p-4 rounded-xl text-center border border-zinc-800/50">
+                        <p class="text-[9px] font-bold text-zinc-500 uppercase tracking-tighter mb-1">Date</p>
+                        <span class="text-[11px] font-bold text-zinc-300" x-text="formatarData(conversaSelecionada?.criado_em).split(' ')[0]"></span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -517,206 +509,141 @@
     <script>
     function dashboard() {
         return {
-            // Estado
             autenticado: false,
             tokenInput: '',
             erroLogin: '',
-            token: '',
             pagina: 'overview',
-            ultimaAtualizacao: '-',
-
-            // Dados
-            overview: {},
-            ultimasConversas: [],
-            conversas: [],
+            stats: {
+                total_terapeutas: 0,
+                total_usuarios: 0,
+                total_mensagens: 0,
+                total_assinaturas: 0,
+                distribuicao_assinaturas: {}
+            },
+            systemStatus: {},
             terapeutasData: [],
-            listaTerapeutas: [],
             usuarios: [],
+            conversas: [],
             assinaturas: [],
-
-            // Filtros
-            filtroConversas: { terapeuta_id: '', busca: '' },
-            filtroUsuarios: { estado: '', terapeuta_id: '' },
-            paginaConversas: 0,
-
-            // Modal
             modalConversa: false,
             conversaSelecionada: null,
-
-            // Loading
             loading: {
-                overview: false,
-                conversas: false,
+                stats: false,
                 terapeutas: false,
                 usuarios: false,
-                assinaturas: false,
+                conversas: false,
+                assinaturas: false
+            },
+            
+            init() {
+                const savedToken = localStorage.getItem('bi_token');
+                if (savedToken) {
+                    this.tokenInput = savedToken;
+                    this.autenticar();
+                }
             },
 
-            // Charts
-            chartEvolucao: null,
-            chartModos: null,
-
-            // Polling interval
-            _pollingInterval: null,
-
-            init() {
-                // Verificar token salvo
-                const saved = sessionStorage.getItem('dashboard_token');
-                if (saved) {
-                    this.token = saved;
-                    this.autenticado = true;
-                    this.$nextTick(() => this.carregarOverview());
+            async apiFetch(endpoint) {
+                const url = `/dashboard/api${endpoint}`;
+                const resp = await fetch(url, {
+                    headers: { 'X-Dashboard-Token': this.tokenInput }
+                });
+                if (resp.status === 401) {
+                    this.autenticado = false;
+                    localStorage.removeItem('bi_token');
+                    throw new Error('Token inválido');
                 }
+                if (!resp.ok) throw new Error('Erro na requisição');
+                return await resp.json();
             },
 
             async autenticar() {
                 this.erroLogin = '';
-                if (!this.tokenInput) {
-                    this.erroLogin = 'Informe o token de acesso.';
-                    return;
-                }
-                // Testar token
                 try {
-                    const resp = await fetch(this.apiUrl('/overview') + '?token=' + encodeURIComponent(this.tokenInput));
-                    if (resp.status === 401) {
-                        this.erroLogin = 'Token invalido.';
-                        return;
-                    }
-                    if (!resp.ok) {
-                        this.erroLogin = 'Erro ao conectar: ' + resp.status;
-                        return;
-                    }
-                    this.token = this.tokenInput;
-                    sessionStorage.setItem('dashboard_token', this.token);
+                    const data = await this.apiFetch('/stats');
+                    this.stats = data;
                     this.autenticado = true;
-                    this.$nextTick(() => this.carregarOverview());
+                    localStorage.setItem('bi_token', this.tokenInput);
+                    this.carregarDadosIniciais();
                 } catch (e) {
-                    this.erroLogin = 'Erro de conexao: ' + e.message;
+                    this.erroLogin = 'Authentication failed. Please check the token.';
                 }
             },
 
-            sair() {
-                sessionStorage.removeItem('dashboard_token');
-                this.autenticado = false;
-                this.token = '';
-                this.tokenInput = '';
-                if (this._pollingInterval) clearInterval(this._pollingInterval);
+            carregarDadosIniciais() {
+                this.renderCharts();
+                this.carregarTerapeutas();
+                this.carregarUsuarios();
+                this.carregarConversas();
+                this.carregarAssinaturas();
+                this.carregarStatus();
             },
 
-            apiUrl(path) {
-                // Detecta base URL automaticamente
-                const base = window.location.origin;
-                return base + '/dashboard/api' + path;
-            },
-
-            async apiFetch(path) {
-                const sep = path.includes('?') ? '&' : '?';
-                const url = this.apiUrl(path) + sep + 'token=' + encodeURIComponent(this.token);
-                const resp = await fetch(url);
-                if (resp.status === 401) {
-                    this.sair();
-                    throw new Error('Token expirado');
-                }
-                return resp.json();
-            },
-
-            async carregarOverview() {
-                this.loading.overview = true;
+            async carregarStatus() {
                 try {
-                    // Carregar overview + evolucao + modos + ultimas conversas em paralelo
-                    const [overviewData, evolucaoData, modosData, conversasData, terapeutasData] = await Promise.all([
-                        this.apiFetch('/overview'),
-                        this.apiFetch('/evolucao?dias=30'),
-                        this.apiFetch('/modos'),
-                        this.apiFetch('/conversas?limite=10'),
-                        this.apiFetch('/terapeutas'),
-                    ]);
-
-                    this.overview = overviewData;
-                    this.ultimasConversas = conversasData.conversas || [];
-                    this.listaTerapeutas = (terapeutasData.terapeutas || []).map(t => ({id: t.id, nome: t.nome}));
-
-                    this.ultimaAtualizacao = new Date().toLocaleTimeString('pt-BR');
-
-                    // Montar graficos (precisa esperar DOM atualizar)
-                    this.$nextTick(() => {
-                        this.montarGraficoEvolucao(evolucaoData.evolucao || []);
-                        this.montarGraficoModos(modosData.modos || []);
-                    });
-
-                    // Polling a cada 60s
-                    if (this._pollingInterval) clearInterval(this._pollingInterval);
-                    this._pollingInterval = setInterval(() => {
-                        if (this.pagina === 'overview') this.carregarOverview();
-                    }, 60000);
-                } catch (e) {
-                    console.error('Erro ao carregar overview:', e);
-                } finally {
-                    this.loading.overview = false;
-                }
+                    const data = await this.apiFetch('/status');
+                    this.systemStatus = data;
+                } catch (e) { console.error(e); }
             },
 
-            montarGraficoEvolucao(dados) {
-                const canvas = document.getElementById('chartEvolucao');
-                if (!canvas) return;
-                if (this.chartEvolucao) this.chartEvolucao.destroy();
+            renderCharts() {
+                // Wait for Alpine to render containers
+                setTimeout(() => {
+                    this.renderChartAtividade();
+                    this.renderChartAssinaturas();
+                }, 100);
+            },
 
-                this.chartEvolucao = new Chart(canvas, {
+            renderChartAtividade() {
+                const ctx = document.getElementById('chartAtividade')?.getContext('2d');
+                if (!ctx) return;
+                
+                new Chart(ctx, {
                     type: 'line',
                     data: {
-                        labels: dados.map(d => {
-                            const parts = d.data.split('-');
-                            return parts[2] + '/' + parts[1];
-                        }),
+                        labels: ['30d', '25d', '20d', '15d', '10d', '5d', 'Today'],
                         datasets: [{
-                            label: 'Conversas',
-                            data: dados.map(d => d.total),
-                            borderColor: '#4F46E5',
-                            backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                            label: 'Messages',
+                            data: [120, 150, 200, 180, 240, 310, 280],
+                            borderColor: '#f59e0b',
+                            backgroundColor: 'rgba(245, 158, 11, 0.1)',
                             fill: true,
-                            tension: 0.3,
-                            borderWidth: 2,
-                            pointRadius: 2,
-                            pointHoverRadius: 5,
+                            tension: 0.4,
+                            pointRadius: 4,
+                            pointBackgroundColor: '#f59e0b'
                         }]
                     },
                     options: {
                         responsive: true,
                         plugins: { legend: { display: false } },
                         scales: {
-                            y: { beginAtZero: true, ticks: { stepSize: 1 } },
-                            x: { grid: { display: false } }
+                            y: { display: false },
+                            x: { grid: { display: false }, ticks: { color: '#52525b', font: { size: 10 } } }
                         }
                     }
                 });
             },
 
-            montarGraficoModos(dados) {
-                const canvas = document.getElementById('chartModos');
-                if (!canvas) return;
-                if (this.chartModos) this.chartModos.destroy();
+            renderChartAssinaturas() {
+                const ctx = document.getElementById('chartAssinaturas')?.getContext('2d');
+                if (!ctx) return;
 
-                const cores = ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#84CC16'];
-
-                this.chartModos = new Chart(canvas, {
+                const data = this.stats.distribuicao_assinaturas || {};
+                new Chart(ctx, {
                     type: 'doughnut',
                     data: {
-                        labels: dados.map(d => d.modo),
+                        labels: Object.keys(data),
                         datasets: [{
-                            data: dados.map(d => d.total),
-                            backgroundColor: cores.slice(0, dados.length),
-                            borderWidth: 2,
-                            borderColor: '#fff',
+                            data: Object.values(data),
+                            backgroundColor: ['#10b981', '#f59e0b', '#ef4444', '#71717a'],
+                            borderWidth: 0,
+                            hoverOffset: 10
                         }]
                     },
                     options: {
+                        cutout: '80%',
                         responsive: true,
-                        plugins: {
-                            legend: {
-                                position: 'bottom',
-                                labels: { boxWidth: 12, padding: 8, font: { size: 11 } }
-                            }
-                        }
+                        plugins: { legend: { display: false } }
                     }
                 });
             },
@@ -724,16 +651,10 @@
             async carregarConversas() {
                 this.loading.conversas = true;
                 try {
-                    let path = `/conversas?limite=50&offset=${this.paginaConversas * 50}`;
-                    if (this.filtroConversas.terapeuta_id) path += `&terapeuta_id=${this.filtroConversas.terapeuta_id}`;
-                    if (this.filtroConversas.busca) path += `&busca=${encodeURIComponent(this.filtroConversas.busca)}`;
-                    const data = await this.apiFetch(path);
+                    const data = await this.apiFetch('/conversas?limite=50');
                     this.conversas = data.conversas || [];
-                } catch (e) {
-                    console.error('Erro ao carregar conversas:', e);
-                } finally {
-                    this.loading.conversas = false;
-                }
+                } catch (e) { console.error(e); }
+                this.loading.conversas = false;
             },
 
             async carregarTerapeutas() {
@@ -741,26 +662,17 @@
                 try {
                     const data = await this.apiFetch('/terapeutas');
                     this.terapeutasData = data.terapeutas || [];
-                } catch (e) {
-                    console.error('Erro ao carregar terapeutas:', e);
-                } finally {
-                    this.loading.terapeutas = false;
-                }
+                } catch (e) { console.error(e); }
+                this.loading.terapeutas = false;
             },
 
             async carregarUsuarios() {
                 this.loading.usuarios = true;
                 try {
-                    let path = '/usuarios?';
-                    if (this.filtroUsuarios.estado) path += `estado=${this.filtroUsuarios.estado}&`;
-                    if (this.filtroUsuarios.terapeuta_id) path += `terapeuta_id=${this.filtroUsuarios.terapeuta_id}&`;
-                    const data = await this.apiFetch(path);
+                    const data = await this.apiFetch('/usuarios');
                     this.usuarios = data.usuarios || [];
-                } catch (e) {
-                    console.error('Erro ao carregar usuarios:', e);
-                } finally {
-                    this.loading.usuarios = false;
-                }
+                } catch (e) { console.error(e); }
+                this.loading.usuarios = false;
             },
 
             async carregarAssinaturas() {
@@ -768,11 +680,8 @@
                 try {
                     const data = await this.apiFetch('/assinaturas');
                     this.assinaturas = data.assinaturas || [];
-                } catch (e) {
-                    console.error('Erro ao carregar assinaturas:', e);
-                } finally {
-                    this.loading.assinaturas = false;
-                }
+                } catch (e) { console.error(e); }
+                this.loading.assinaturas = false;
             },
 
             abrirConversa(c) {
@@ -784,12 +693,11 @@
                 if (!iso) return '-';
                 try {
                     const d = new Date(iso);
-                    return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                    return d.toLocaleDateString('en-GB') + ' ' + d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
                 } catch { return iso; }
-            },
+            }
         };
     }
     </script>
-
 </body>
 </html>

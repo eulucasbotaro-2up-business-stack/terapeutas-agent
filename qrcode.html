@@ -1,17 +1,84 @@
 <!DOCTYPE html>
-<html>
-<head><title>QR Code - Alquimia Joel</title></head>
-<body style="display:flex;justify-content:center;align-items:center;height:100vh;flex-direction:column;font-family:Arial">
-<h2>Escaneie com o WhatsApp do Tony</h2>
-<p>WhatsApp > Aparelhos Conectados > Conectar Aparelho</p>
-<div id="qr"></div>
-<script>
-fetch('http://localhost:8080/instance/connect/alquimia-joel', {headers:{'apikey':'terapeutas-agent-evo-key-2026'}})
-.then(r=>r.json())
-.then(d=>{
-  if(d.base64) document.getElementById('qr').innerHTML='<img src="'+d.base64+'" width="400">';
-  else document.getElementById('qr').innerHTML='<p>Ja conectado ou erro: '+JSON.stringify(d)+'</p>';
-})
-</script>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conectar Alquimista | Alquimia Joel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body { background-color: #09090b; color: #d4d4d8; font-family: 'Inter', sans-serif; }
+        .font-serif { font-family: 'Cinzel', serif; }
+        .glass { background: rgba(24, 24, 27, 0.6); backdrop-filter: blur(12px); border: 1px solid rgba(63, 63, 70, 0.4); }
+        @keyframes pulse-gold { 0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4); } 70% { box-shadow: 0 0 0 20px rgba(245, 158, 11, 0); } 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); } }
+        .qr-pulse { animation: pulse-gold 2s infinite; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-6 bg-[radial-gradient(circle_at_50%_50%,rgba(245,158,11,0.05),transparent_70%)]">
+
+    <div class="glass p-10 rounded-3xl w-full max-w-lg shadow-2xl text-center border border-zinc-800/50">
+        <div class="text-6xl mb-6 filter drop-shadow-[0_0_15px_rgba(245,158,11,0.4)]">&#9883;</div>
+        <h1 class="text-3xl font-serif text-white tracking-widest uppercase mb-4">Conectar Alquimista</h1>
+        <p class="text-zinc-500 mb-8 font-medium">Escaneie o código abaixo com o seu WhatsApp para ativar a consciência do Tony no seu ecossistema clínico.</p>
+
+        <div class="glass p-6 rounded-2xl mb-8 flex justify-center bg-white shadow-inner">
+            <div id="qr" class="qr-pulse rounded-lg overflow-hidden">
+                <div class="w-64 h-64 bg-zinc-100 animate-pulse flex items-center justify-center text-zinc-400">
+                    Sincronizando...
+                </div>
+            </div>
+        </div>
+
+        <div class="space-y-4 text-left">
+            <h3 class="text-xs font-bold text-zinc-500 uppercase tracking-widest border-b border-zinc-800 pb-2">Instruções de Ritual</h3>
+            <ul class="text-sm space-y-3">
+                <li class="flex items-center gap-3 text-zinc-400">
+                    <span class="w-6 h-6 rounded-full bg-gold-500/10 border border-gold-500/20 flex items-center justify-center text-[10px] text-gold-500 font-bold">1</span>
+                    Abra o WhatsApp no seu aparelho principal.
+                </li>
+                <li class="flex items-center gap-3 text-zinc-400">
+                    <span class="w-6 h-6 rounded-full bg-gold-500/10 border border-gold-500/20 flex items-center justify-center text-[10px] text-gold-500 font-bold">2</span>
+                    Acesse <span class="text-zinc-200">Menu</span> ou <span class="text-zinc-200">Configurações</span>.
+                </li>
+                <li class="flex items-center gap-3 text-zinc-400">
+                    <span class="w-6 h-6 rounded-full bg-gold-500/10 border border-gold-500/20 flex items-center justify-center text-[10px] text-gold-500 font-bold">3</span>
+                    Clique em <span class="text-zinc-200">Aparelhos Conectados</span> e <span class="text-zinc-200">Conectar Aparelho</span>.
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <p class="mt-8 text-[10px] font-bold text-zinc-600 uppercase tracking-[0.3em]">Tony Integration v4.0 — Secure Alchemy Layer</p>
+
+    <script>
+        const inst = 'alquimia-joel';
+        const apikey = 'terapeutas-agent-evo-key-2026';
+        
+        function loadQR() {
+            fetch(`/instance/connect/${inst}`, { headers: { 'apikey': apikey } })
+            .then(r => r.json())
+            .then(d => {
+                if(d.base64) {
+                    document.getElementById('qr').innerHTML = `<img src="${d.base64}" class="w-64 h-64 object-contain shadow-lg">`;
+                } else if (d.status === 'CONNECTED') {
+                    document.getElementById('qr').innerHTML = `
+                        <div class="w-64 h-64 bg-emerald-500/10 flex flex-col items-center justify-center text-emerald-500 gap-3 border border-emerald-500/20">
+                            <svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                            <span class="font-bold uppercase tracking-widest text-xs">Conectado!</span>
+                        </div>`;
+                } else {
+                    document.getElementById('qr').innerHTML = '<p class="text-xs text-red-400">Erro: '+ (d.message || 'Instância não encontrada') +'</p>';
+                }
+            })
+            .catch(e => {
+                document.getElementById('qr').innerHTML = '<p class="text-xs text-red-400">Erro de Conexão com Servidor</p>';
+            });
+        }
+        
+        loadQR();
+        setInterval(loadQR, 30000); // Atualiza a cada 30s
+    </script>
 </body>
 </html>
